@@ -1,0 +1,53 @@
+# SeoVista Sprint 0 — disposable local persistence and transport.
+# PostgreSQL 16 and Redis 7 are bound to loopback only to avoid exposing
+# project data to the local network. Ports 5433, 5434 and 6379 are off-limits
+# and are never used by this project.
+
+name: seovista
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: seovista-postgres
+    environment:
+      POSTGRES_USER: seovista
+      POSTGRES_PASSWORD: seovista
+      POSTGRES_DB: seovista
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - seovista-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seovista -d seovista"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: seovista-redis
+    ports:
+      - "127.0.0.1:56379:6379"
+    volumes:
+      - seovista-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+
+volumes:
+  seovista-postgres-data:
+    name: seovista-postgres-data
+  seovista-redis-data:
+    name: seovista-redis-data

@@ -121,6 +121,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@seovista/audit-core':
+        specifier: workspace:*
+        version: link:../../packages/audit-core
       bullmq:
         specifier: ^5.43.1
         version: 5.80.1
