@@ -50,6 +50,9 @@ importers:
 
   apps/nextg:
     dependencies:
+      '@seovista/content-models':
+        specifier: workspace:*
+        version: link:../../packages/content-models
       zod:
         specifier: ^3.24.2
         version: 3.25.76
