@@ -1,0 +1,14 @@
+packages:
+  - apps/web
+  - apps/nextg
+  - apps/worker
+  - packages/ui
+  - packages/seo-core
+  - packages/schema
+  - packages/content-models
+  - packages/audit-core
+  - packages/open-seo-adapter
+  - packages/dataforseo
+  - packages/geo-engine
+  - packages/reports
+  - packages/analytics
