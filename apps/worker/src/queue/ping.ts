@@ -6,6 +6,7 @@ import { applyRetentionPolicy } from "./retention.js";
 export interface PingJobData {
   correlationId: string;
   target: string;
+  failOnce?: boolean;
 }
 
 export interface PingJobResult {
@@ -113,21 +114,36 @@ export function createPingWorker(options: PingQueueOptions): Worker<PingJobData,
       await jobs.start(jobIdentity);
     }
 
-    const resultPayload: PingJobResult = {
-      correlationId,
-      target,
-      status: "ok",
-      respondedAt: new Date().toISOString(),
-    };
+    try {
+      if (job.data.failOnce && job.attemptsMade <= 1) {
+        throw new Error("injected first-attempt failure for retry test");
+      }
 
-    const result = await withTimeout(
-      results.create(correlationId, jobIdentity, PING_RESULT_TYPE, resultPayload),
-      timeoutMs,
-      "result-persistence"
-    );
-    await withTimeout(jobs.complete(jobIdentity, result.id), timeoutMs, "job-completion");
+      const resultPayload: PingJobResult = {
+        correlationId,
+        target,
+        status: "ok",
+        respondedAt: new Date().toISOString(),
+      };
 
-    return resultPayload;
+      const result = await withTimeout(
+        results.create(correlationId, jobIdentity, PING_RESULT_TYPE, resultPayload),
+        timeoutMs,
+        "result-persistence"
+      );
+      await withTimeout(jobs.complete(jobIdentity, result.id), timeoutMs, "job-completion");
+
+      return resultPayload;
+    } catch (error) {
+      const maxAttempts = job.opts.attempts ?? 3;
+      const isRetryable = job.attemptsMade < maxAttempts;
+      const status: "failed" | "permanent" = isRetryable ? "failed" : "permanent";
+      const terminalClass: "retryable" | "permanent" = isRetryable ? "retryable" : "permanent";
+      await jobs.markTerminal(jobIdentity, status, terminalClass).catch(() => {
+        // swallow DB update failures to preserve the original error
+      });
+      throw error;
+    }
   };
 
   const workerOptions: WorkerOptions = {

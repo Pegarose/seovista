@@ -450,6 +450,33 @@ describe("infrastructure walking skeleton", () => {
       await freshDb.close();
       expect(jobCount.rows[0]?.count).toBe(1);
     }, 60_000);
+
+    it("recovers from a retryable first-attempt failure", async () => {
+      const correlationId = `ping-retry-${env.projectId}`;
+      const target = "https://seovista.com/";
+
+      await pingQueue!.add(
+        "ping",
+        { correlationId, target, failOnce: true },
+        { jobId: createPingJobId(correlationId), attempts: 3, backoff: { type: "exponential", delay: 100 } }
+      );
+
+      const completed = await waitForJobCompletion(env, correlationId, 30_000);
+      expect(completed.status).toBe("completed");
+      expect(completed.terminal_class).toBe("success");
+
+      const freshDb = createDbClient({ connectionString: env.databaseUrl, max: 1 });
+      const jobRecord = await freshDb.query<{
+        attempt_count: number;
+        status: string;
+      }>(
+        "SELECT attempt_count, status FROM job_records WHERE job_identity = $1",
+        [createPingJobId(correlationId)]
+      );
+      await freshDb.close();
+      expect(jobRecord.rows[0]?.status).toBe("completed");
+      expect(jobRecord.rows[0]?.attempt_count).toBeGreaterThanOrEqual(2);
+    }, 60_000);
   });
 });
 
