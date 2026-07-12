@@ -56,6 +56,8 @@ SOFTWARE.
 | Lighthouse CI | Apache-2.0 | Performance/SEO auditing | root | Pin to compatible version |
 | ESLint | MIT | Linting | root | Follow stable releases |
 | Prettier | MIT | Formatting | root | Follow stable releases |
+| server-only | MIT | Server-only client import guard | packages/seo-core | Follow stable releases |
+| ipaddr.js | MIT | IPv4/IPv6 parsing for SSRF validation | packages/audit-core | Follow stable releases |
 
 A full dependency-policy inventory is maintained in `docs/dependency-policy.md` and reconciled with the lockfile.
 

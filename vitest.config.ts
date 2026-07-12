@@ -1,6 +1,17 @@
 import { defineConfig } from "vitest/config";
+import { resolve } from "node:path";
+
+const __dirname = import.meta.dirname ?? resolve();
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // server-only throws unconditionally in non-Next.js runtimes; treat it
+      // as a no-op in tests so server-only modules can be unit-tested. The
+      // Next.js client boundary is still enforced at build time.
+      "server-only": resolve(__dirname, "tests/mocks/server-only.ts"),
+    },
+  },
   test: {
     globals: true,
     environment: "node",
