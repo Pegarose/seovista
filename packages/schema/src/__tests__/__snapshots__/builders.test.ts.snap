@@ -1,0 +1,67 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`schema snapshots > matches a full launch-route graph snapshot 1`] = `
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@id": "https://seovista.com/#organization",
+      "@type": "Organization",
+      "name": "SeoVista",
+      "parentOrganization": {
+        "@type": "Organization",
+        "name": "GMedya Group",
+      },
+      "url": "https://seovista.com",
+    },
+    {
+      "@id": "https://seovista.com/#website",
+      "@type": "WebSite",
+      "name": "SeoVista",
+      "publisher": {
+        "@id": "https://seovista.com/#organization",
+      },
+      "url": "https://seovista.com",
+    },
+    {
+      "@id": "https://seovista.com/geo/",
+      "@type": "WebPage",
+      "description": "Understand GEO readiness.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://seovista.com/#website",
+      },
+      "name": "GEO Readiness",
+      "url": "https://seovista.com/geo/",
+    },
+    {
+      "@id": "https://seovista.com/geo/#service",
+      "@type": "Service",
+      "description": "Understand GEO readiness.",
+      "inLanguage": "en",
+      "name": "GEO Readiness",
+      "provider": {
+        "@id": "https://seovista.com/#organization",
+      },
+      "url": "https://seovista.com/geo/",
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "item": "https://seovista.com/",
+          "name": "Home",
+          "position": 1,
+        },
+        {
+          "@type": "ListItem",
+          "item": "https://seovista.com/geo/",
+          "name": "GEO",
+          "position": 2,
+        },
+      ],
+    },
+  ],
+}
+`;

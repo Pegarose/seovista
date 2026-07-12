@@ -11,4 +11,6 @@ export type {
 
 export { defaultScoringConfiguration, defaultLimitations, getScoringConfiguration } from "./scoring.js";
 
+export { parseGeoReadinessResult, GeoReadinessValidationError } from "./result.js";
+
 export const name: string = "@seovista/geo-engine";

@@ -270,6 +270,9 @@ importers:
 
   packages/schema:
     dependencies:
+      '@seovista/content-models':
+        specifier: workspace:*
+        version: link:../content-models
       zod:
         specifier: ^3.24.2
         version: 3.25.76

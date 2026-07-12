@@ -1,0 +1,48 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`geo-engine scoring configuration snapshot > matches the versioned scoring configuration 1`] = `
+{
+  "limitations": [
+    {
+      "description": "Sprint 0 uses no live AI model queries and calculates no share-of-model metrics.",
+      "id": "limitation-no-live-model",
+      "scope": "methodology",
+    },
+    {
+      "description": "Sprint 0 performs no real HTTP crawls; audit results are contract-only.",
+      "id": "limitation-no-real-crawl",
+      "scope": "data",
+    },
+  ],
+  "maxScore": 1,
+  "passFailRules": [
+    {
+      "checkId": "crawlable",
+      "operator": "eq",
+      "threshold": 1,
+    },
+    {
+      "checkId": "canonical_present",
+      "operator": "eq",
+      "threshold": 1,
+    },
+    {
+      "checkId": "schema_understandable",
+      "operator": "gte",
+      "threshold": 0.5,
+    },
+    {
+      "checkId": "cited_sources",
+      "operator": "gte",
+      "threshold": 0.5,
+    },
+  ],
+  "version": "0.1.0",
+  "weights": {
+    "access": 0.25,
+    "authorityReadiness": 0.25,
+    "evidence": 0.25,
+    "understanding": 0.25,
+  },
+}
+`;
