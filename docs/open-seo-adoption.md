@@ -35,7 +35,7 @@ Each row records the immutable upstream identity, SeoVista destination, purpose,
 | **Purpose** | Typed registry of technical SEO issue descriptors (severity, title, explanation, howToFix) for use by the audit-core package and future site-audit engine. Provides a reference catalog of 27 standard issue types. |
 | **Modification** | Converted from `const` assertion registry to a Zod-validated `z.record()` schema with SeoVista-owned `AuditIssueType` enum. Removed `satisfies` keyword (not supported in our TS target). Wrapped in a SeoVista-owned `SeovistaAuditIssueRegistry` class. Added explicit `readonly` immutability guarantees. |
 | **Owner** | SeoVista Foundation Team |
-| **Test** | `packages/open-seo-adapter/src/__tests__/audit-issue-types.test.ts` — validates all 25 issue types parse, severity ordering, getIssueDescriptor lookup, immutability |
+| **Test** | `packages/open-seo-adapter/src/__tests__/index.test.ts` (describe: `audit issue types`; test: `has 27 issue types`) — validates the issue registry, severity ordering, descriptor lookup, and immutability |
 | **Review** | Accepted — Sprint 0 adaptation boundary |
 
 ### 2. Audit Limits
@@ -49,7 +49,7 @@ Each row records the immutable upstream identity, SeoVista destination, purpose,
 | **Purpose** | Named constants for per-audit page bounds (min, default, free-tier max, paid-tier max). Shared between launch form, input schema, and server-side tier gate. |
 | **Modification** | Re-exported as a SeoVista-owned `SeovistaAuditLimits` const object with JSDoc. Values preserved. Added Zod schema for runtime validation. |
 | **Owner** | SeoVista Foundation Team |
-| **Test** | `packages/open-seo-adapter/src/__tests__/audit-limits.test.ts` — validates constant values, Zod schema parsing, range consistency (min <= default <= free <= paid) |
+| **Test** | `packages/open-seo-adapter/src/__tests__/index.test.ts` (describe: `audit limits`; test: `limit consistency invariant holds`) — validates constant values and the min <= default <= free <= paid invariant |
 | **Review** | Accepted — Sprint 0 adaptation boundary |
 
 ### 3. Error Codes
@@ -63,7 +63,7 @@ Each row records the immutable upstream identity, SeoVista destination, purpose,
 | **Purpose** | Canonical error code enum and classification helpers shared between server and client for consistent error handling and observability filtering. |
 | **Modification** | Re-exported as SeoVista-owned `SeovistaErrorCode` enum and `SeovistaErrorCodes` namespace. `shouldCaptureAppErrorCode` renamed to `shouldReportError`. Removed upstream-specific codes not applicable to SeoVista (BACKLINKS_BILLING_ISSUE, AI_SEARCH_BILLING_ISSUE). Added SeoVista-specific codes: `NEXTG_UNAVAILABLE`, `WORKER_HEALTH_FAILED`. |
 | **Owner** | SeoVista Foundation Team |
-| **Test** | `packages/open-seo-adapter/src/__tests__/error-codes.test.ts` — validates enum values, non-reportable set, isErrorCode guard |
+| **Test** | `packages/open-seo-adapter/src/__tests__/index.test.ts` (describe: `error codes`; test: `isSeovistaErrorCode recognizes valid codes`) — validates error-code recognition and reporting classification |
 | **Review** | Accepted — Sprint 0 adaptation boundary |
 
 ### 4. JSON Codec
@@ -77,7 +77,7 @@ Each row records the immutable upstream identity, SeoVista destination, purpose,
 | **Purpose** | Zod codec for safe JSON serialization/deserialization with schema validation at parse boundaries. Used by content-models and DataForSEO normalization layers. |
 | **Modification** | Renamed from `jsonCodec` to `createSeovistaJsonCodec`. Added explicit `JsonCodec` branded type for type-safe codec passing. Added error message customization parameters. |
 | **Owner** | SeoVista Foundation Team |
-| **Test** | `packages/open-seo-adapter/src/__tests__/json-codec.test.ts` — validates parse success, parse failure, encode round-trip, schema mismatch handling |
+| **Test** | `packages/open-seo-adapter/src/__tests__/index.test.ts` (describe: `json codec`; test: `round-trips through encode/decode`) — validates parse success, parse failure, schema mismatch handling, and JSON round trips |
 | **Review** | Accepted — Sprint 0 adaptation boundary |
 
 ### 5. DataForSEO Normalization Patterns (Reference)
@@ -157,9 +157,10 @@ The following upstream directories and patterns are **explicitly rejected** and 
 A verifier reconciling this adoption record must confirm:
 
 1. **Pin match**: Commit `3f2b4872caef809f0280a765f9eb469e8a6b523a` matches `every-app/open-seo` v0.0.25 tag.
-2. **License digest**: SHA-256 of the MIT license text in `THIRD_PARTY_NOTICES.md` matches `08799D173D3DA2799CE36A9ABD691DFF62CAA778C718FF16C987B3AD83B76C93`.
-3. **Row completeness**: Each adapted destination (7 rows above) has upstream identity, destination path, purpose, modification, owner, test file, and review status.
-4. **No runtime dependency**: `packages/open-seo-adapter/package.json` has no dependency on `every-app/open-seo` or any Git-based dependency pointing to the upstream.
-5. **Export boundary**: `packages/open-seo-adapter/src/index.ts` exports only SeoVista-owned identifiers (prefixed or namespaced with `Seovista`).
-6. **Import boundary**: No file in `apps/` or other `packages/` imports from paths containing `open-seo` upstream references. Import-boundary test proves this at compile time.
-7. **Render boundary**: No public HTML, metadata, JSON-LD, or discovery file contains OpenSEO branding, route paths from the upstream shell, or unsupported AI Visibility claims. Render-boundary test proves this.
+2. **License digest**: SHA-256 of the MIT license text in `THIRD_PARTY_NOTICES.md` matches `62DE25B254287E61E6026AC04A629FBFA88332D14E4175D408092229D80E0D3C`.
+3. **Row completeness**: Each of the seven inventory rows has upstream identity, destination path, purpose, modification, owner, test evidence path, and review status. Rows 1 through 4 use the consolidated adapter test file with explicit `describe` and `test` identifiers.
+4. **Evidence resolution**: Every recorded destination and test evidence path resolves to an existing repository file or directory. The focused adoption-record test reconciles these paths and the notice-derived license digest.
+5. **No runtime dependency**: `packages/open-seo-adapter/package.json` has no dependency on `every-app/open-seo` or any Git-based dependency pointing to the upstream.
+6. **Export boundary**: `packages/open-seo-adapter/src/index.ts` exports only SeoVista-owned identifiers (prefixed or namespaced with `Seovista`).
+7. **Import boundary**: No file in `apps/` or other `packages/` imports from paths containing `open-seo` upstream references. Import-boundary test proves this at compile time.
+8. **Render boundary**: No public HTML, metadata, JSON-LD, or discovery file contains OpenSEO branding, route paths from the upstream shell, or unsupported AI Visibility claims. Render-boundary test proves this.
