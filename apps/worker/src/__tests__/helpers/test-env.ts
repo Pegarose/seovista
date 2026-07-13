@@ -25,14 +25,9 @@ function generateProjectId(): string {
 }
 
 function ensureDocker(): void {
+  // docker compose up -d is idempotent: starts containers if they exist,
+  // creates them if they don't
   execSync("docker compose up -d postgres redis", {
-    cwd: PROJECT_ROOT,
-    stdio: "pipe",
-  });
-}
-
-function stopDocker(): void {
-  execSync("docker compose down -v", {
     cwd: PROJECT_ROOT,
     stdio: "pipe",
   });
@@ -120,7 +115,9 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
     await dropDatabase(databaseName).catch(() => {
       // ignore drop errors during cleanup
     });
-    stopDocker();
+    // Docker containers are NOT stopped here; they remain available for
+    // other test files. The vitest globalTeardown or the test runner's
+    // process exit handles final Docker cleanup.
   }
 
   return {

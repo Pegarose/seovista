@@ -54,7 +54,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
 | @seovista/content-models | apps/nextg | Domain entity contracts for mock content | prod | server, build | workspace:* | MIT | Follow workspace releases |
-| zod | apps/nextg | Schema validation for mock fixtures | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | apps/nextg | Schema validation for mock fixtures | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/nextg — devDependencies
 
@@ -72,7 +72,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 | bullmq | apps/worker | Background job queue on Redis | prod | server | 5.43.1 | MIT | Follow stable releases |
 | ioredis | apps/worker | Redis client | prod | server | 5.6.0 | MIT | Follow stable releases |
 | pg | apps/worker | PostgreSQL client | prod | server | 8.14.0 | MIT | Follow stable releases |
-| zod | apps/worker | Schema validation | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | apps/worker | Schema validation | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/worker — devDependencies
 
@@ -98,7 +98,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
 | server-only | packages/seo-core | Build-time guard preventing client import of server modules | prod | build | 0.0.1 | MIT | Follow stable releases |
-| zod | packages/seo-core | Schema validation for env and metadata | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/seo-core | Schema validation for env and metadata | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/seo-core — devDependencies
 
@@ -113,7 +113,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
 | @seovista/content-models | packages/schema | Domain entity input for JSON-LD graph building | prod | server, build | workspace:* | MIT | Follow workspace releases |
-| zod | packages/schema | Schema validation for graph builders | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/schema | Schema validation for graph builders | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/schema — devDependencies
 
@@ -127,7 +127,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
-| zod | packages/content-models | Schema validation for domain entities | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/content-models | Schema validation for domain entities | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/content-models — devDependencies
 
@@ -142,7 +142,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
 | ipaddr.js | packages/audit-core | IPv4/IPv6 CIDR parsing for SSRF-safe URL validation | prod | server | 2.4.0 | MIT | Follow stable releases |
-| zod | packages/audit-core | Schema validation for audit policies | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/audit-core | Schema validation for audit policies | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/audit-core — devDependencies
 
@@ -156,7 +156,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
-| zod | packages/open-seo-adapter | Schema validation for adapted data | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/open-seo-adapter | Schema validation for adapted data | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/open-seo-adapter — devDependencies
 
@@ -170,7 +170,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
-| zod | packages/dataforseo | Schema validation for DataForSEO contracts | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/dataforseo | Schema validation for DataForSEO contracts | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/dataforseo — devDependencies
 
@@ -184,7 +184,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
-| zod | packages/geo-engine | Schema validation for GeoReadinessResult contracts | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/geo-engine | Schema validation for GeoReadinessResult contracts | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/geo-engine — devDependencies
 
@@ -198,7 +198,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
-| zod | packages/reports | Schema validation for report/storage/email contracts | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/reports | Schema validation for report/storage/email contracts | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/reports — devDependencies
 
@@ -212,7 +212,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
-| zod | packages/analytics | Schema validation for analytics event contracts | prod | server, build | 3.25.76 | MIT | Follow stable releases |
+| zod | packages/analytics | Schema validation for analytics event contracts | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/analytics — devDependencies
 

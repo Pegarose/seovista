@@ -15,6 +15,7 @@ import { createPingQueueName, createPingJobId } from "../queue/ping.js";
 import { createMigrationRunner, defaultMigrationsDir } from "../db/migrations.js";
 import { createDbClient } from "../db/client.js";
 import { setupTestEnvironment, buildWorkerEnv, PROJECT_ROOT } from "./helpers/test-env.js";
+import { waitForWorkerReady, redactSecrets } from "./helpers/startup-utils.js";
 import type { TestEnvironment } from "./helpers/test-env.js";
 
 describe("infrastructure walking skeleton", () => {
@@ -423,9 +424,10 @@ describe("infrastructure walking skeleton", () => {
       expect(result?.payload).toMatchObject({ correlationId, target, status: "ok" });
 
       // Verify no secrets leaked in the worker process output.
-      const output = await readProcessOutput(workerProcess!);
-      expect(output).not.toContain(env.databaseUrl);
-      expect(output).not.toContain(env.redisUrl);
+      const output = await collectProcessOutput(workerProcess!);
+      const redacted = redactSecrets(output);
+      expect(redacted).not.toContain(env.databaseUrl);
+      expect(redacted).not.toContain(env.redisUrl);
     }, 60_000);
 
     it("is idempotent under repeated enqueue", async () => {
@@ -480,31 +482,6 @@ describe("infrastructure walking skeleton", () => {
   });
 });
 
-async function waitForWorkerReady(process: ChildProcess): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error("Worker did not start within timeout"));
-    }, 30_000);
-
-    const onData = (data: Buffer) => {
-      const text = data.toString();
-      if (text.includes("\"status\":\"started\"")) {
-        clearTimeout(timer);
-        process.stdout?.off("data", onData);
-        resolve();
-      }
-    };
-
-    process.stdout?.on("data", onData);
-    process.stderr?.on("data", (data) => {
-      if (data.toString().includes("startup_failed")) {
-        clearTimeout(timer);
-        reject(new Error(`Worker startup failed: ${data.toString()}`));
-      }
-    });
-  });
-}
-
 async function waitForJobCompletion(
   env: TestEnvironment,
   correlationId: string,
@@ -534,7 +511,7 @@ async function waitForJobCompletion(
   }
 }
 
-async function readProcessOutput(process: ChildProcess): Promise<string> {
+async function collectProcessOutput(process: ChildProcess): Promise<string> {
   return new Promise((resolve) => {
     let output = "";
     const collect = (data: Buffer) => {
@@ -542,10 +519,17 @@ async function readProcessOutput(process: ChildProcess): Promise<string> {
     };
     process.stdout?.on("data", collect);
     process.stderr?.on("data", collect);
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       process.stdout?.off("data", collect);
       process.stderr?.off("data", collect);
       resolve(output);
     }, 2000);
+    // Also resolve on process exit to avoid hanging
+    process.on("exit", () => {
+      clearTimeout(timer);
+      process.stdout?.off("data", collect);
+      process.stderr?.off("data", collect);
+      resolve(output);
+    });
   });
 }

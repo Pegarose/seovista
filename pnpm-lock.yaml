@@ -54,8 +54,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/content-models
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -137,8 +137,8 @@ importers:
         specifier: ^8.14.0
         version: 8.22.0
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -156,8 +156,8 @@ importers:
   packages/analytics:
     dependencies:
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -175,8 +175,8 @@ importers:
         specifier: ^2.4.0
         version: 2.4.0
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -191,8 +191,8 @@ importers:
   packages/content-models:
     dependencies:
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -207,8 +207,8 @@ importers:
   packages/dataforseo:
     dependencies:
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -223,8 +223,8 @@ importers:
   packages/geo-engine:
     dependencies:
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -239,8 +239,8 @@ importers:
   packages/open-seo-adapter:
     dependencies:
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -255,8 +255,8 @@ importers:
   packages/reports:
     dependencies:
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -274,8 +274,8 @@ importers:
         specifier: workspace:*
         version: link:../content-models
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -293,8 +293,8 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 3.24.4
+        version: 3.24.4
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -3805,8 +3805,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@3.24.4:
+    resolution: {integrity: sha512-OdqJE9UDRPwWsrHjLN2F8bPxvwJBK22EHLWtanu0LSYr5YqzsaaW3RMgmjwr8Rypg5k+meEJdSPXJZXE/yqOMg==}
 
 snapshots:
 
@@ -5186,7 +5186,7 @@ snapshots:
     dependencies:
       devtools-protocol: 0.0.1608973
       mitt: 3.0.1
-      zod: 3.25.76
+      zod: 3.24.4
 
   cjs-module-lexer@1.4.3: {}
 
@@ -7632,4 +7632,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@3.25.76: {}
+  zod@3.24.4: {}
