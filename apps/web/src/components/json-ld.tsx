@@ -1,4 +1,4 @@
-import type { SchemaGraph } from "@seovista/schema";
+import { renderGraph, type SchemaGraph } from "@seovista/schema";
 
 export interface JsonLdProps {
   readonly graph: SchemaGraph;
@@ -9,7 +9,7 @@ export function JsonLd({ graph }: JsonLdProps): React.ReactElement {
     <script
       type="application/ld+json"
       // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(graph) }}
+      dangerouslySetInnerHTML={{ __html: renderGraph(graph) }}
     />
   );
 }
