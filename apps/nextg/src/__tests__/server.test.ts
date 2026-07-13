@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { createServer } from "node:http";
 import { mapEntity, createAdapter } from "@seovista/content-models";
 import type { MapOptions } from "@seovista/content-models";
-import { startServer, checkNextgHealth, buildCollectionResponse, allFixtures, isRegisteredCollection } from "../index.js";
+import { startServer, checkNextgHealth, buildCollectionResponse, allFixtures, isRegisteredCollection, registeredCollections, validateRegisteredCollections } from "../index.js";
 
 describe("nextg mock server", () => {
   let server: ReturnType<typeof createServer>;
@@ -87,6 +87,13 @@ describe("nextg mock server", () => {
     expect(items.some((item) => item.provenance.status === "preview")).toBe(true);
   });
 
+  it("does not expose private Audit Leads in preview mode", async () => {
+    const { status, body } = await fetchJson("/api/auditLeads?mode=preview&locale=en");
+    expect(status).toBe(200);
+    expect((body as { items: unknown[]; total: number }).items).toEqual([]);
+    expect((body as { total: number }).total).toBe(0);
+  });
+
   it("produces byte-stable responses across repeated reads", async () => {
     const a = await fetchJson("/api/pages?mode=public&locale=en");
     const b = await fetchJson("/api/pages?mode=public&locale=en");
@@ -95,23 +102,13 @@ describe("nextg mock server", () => {
 });
 
 describe("nextg fixtures", () => {
-  it("covers all 13 registered collections", () => {
-    const collections = [
-      "pages",
-      "services",
-      "tools",
-      "articles",
-      "authors",
-      "organizations",
-      "researchReports",
-      "definitions",
-      "faqs",
-      "sources",
-      "redirects",
-      "locales",
-      "auditLeads",
-    ];
-    for (const collection of collections) {
+  it("uses the owned exact thirteen-collection registry", () => {
+    expect(registeredCollections).toHaveLength(13);
+    expect(validateRegisteredCollections(registeredCollections).success).toBe(true);
+    expect(validateRegisteredCollections(["pages", "pages"]).success).toBe(false);
+    expect(validateRegisteredCollections(["caseStudies"]).success).toBe(false);
+    expect(validateRegisteredCollections(["unsupported"]).success).toBe(false);
+    for (const collection of registeredCollections) {
       expect(isRegisteredCollection(collection)).toBe(true);
       const items = allFixtures.filter((item) => item.collection === collection);
       expect(items.length).toBeGreaterThan(0);

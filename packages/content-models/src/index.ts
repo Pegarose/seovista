@@ -3,6 +3,7 @@ export type {
   LocaleCode,
   Provenance,
   CollectionName,
+  DeferredCollectionName,
   PublicCollectionName,
   CanonicalInfo,
   IndexationInfo,
@@ -41,6 +42,7 @@ export type {
   ResolvedFAQ,
   ResolvedContentEntity,
   ResolvedEntity,
+  RelationshipDiagnostic,
   RelationshipField,
   ResolveOptions,
   EntityIndex,
@@ -50,6 +52,7 @@ export type {
 export {
   mapEntity,
   mapCollection,
+  mapCollectionEnvelope,
   mapPage,
   mapService,
   mapTool,
@@ -94,6 +97,18 @@ export {
   isRedirectPubliclyEligible,
   isAuditLeadPrivate,
 } from "./publication";
+
+export {
+  SPRINT_ZERO_COLLECTION_MATRIX,
+  SPRINT_ZERO_COLLECTIONS,
+  isSprintZeroCollection,
+  validateSprintZeroRegistration,
+  relationshipContractFor,
+  type CollectionVisibility,
+  type RelationshipCardinality,
+  type RelationshipContract,
+  type CollectionContract,
+} from "./collection-matrix";
 
 export { validateLocale, defaultLocale, isEnglish, isHreflangEligible } from "./locale";
 

@@ -1,4 +1,5 @@
-import type { RawEntity, RawCollectionResponse, RegisteredCollection } from "./types.js";
+import type { RawEntity, RawCollectionResponse } from "./types.js";
+import { SPRINT_ZERO_COLLECTIONS, isSprintZeroCollection, validateSprintZeroRegistration, type CollectionName } from "@seovista/content-models";
 
 const STABLE_TIMESTAMP = "2026-07-01T00:00:00.000Z";
 const UPDATED_TIMESTAMP = "2026-07-10T00:00:00.000Z";
@@ -389,8 +390,6 @@ export const allFixtures: readonly RawEntity[] = [
   {
     id: "redirect-1",
     collection: "redirects",
-    slug: "old-geo",
-    locale: "en",
     source: "/old-geo/",
     destination: "/geo/",
     permanent: true,
@@ -401,8 +400,6 @@ export const allFixtures: readonly RawEntity[] = [
   {
     id: "locale-en",
     collection: "locales",
-    slug: "en",
-    locale: "en",
     code: "en",
     name: "English",
     isDefault: true,
@@ -422,24 +419,14 @@ export const allFixtures: readonly RawEntity[] = [
   },
 ];
 
-const registeredCollections: readonly string[] = [
-  "pages",
-  "services",
-  "tools",
-  "articles",
-  "authors",
-  "organizations",
-  "researchReports",
-  "definitions",
-  "faqs",
-  "sources",
-  "redirects",
-  "locales",
-  "auditLeads",
-];
+export const registeredCollections: readonly CollectionName[] = SPRINT_ZERO_COLLECTIONS;
 
-export function isRegisteredCollection(candidate: string): candidate is RegisteredCollection {
-  return registeredCollections.includes(candidate);
+export function isRegisteredCollection(candidate: string): candidate is CollectionName {
+  return isSprintZeroCollection(candidate);
+}
+
+export function validateRegisteredCollections(collections: readonly string[]) {
+  return validateSprintZeroRegistration(collections);
 }
 
 export function getFixturesForCollection(collection: string): readonly RawEntity[] {
@@ -448,13 +435,19 @@ export function getFixturesForCollection(collection: string): readonly RawEntity
 }
 
 export function buildCollectionResponse(
-  collection: string,
+  collection: CollectionName,
   mode: "public" | "preview",
   locale: string,
   now: string,
 ): RawCollectionResponse {
   const items = getFixturesForCollection(collection);
-  const filtered = mode === "public" ? items.filter((item) => item.provenance.status === "published") : items;
+  const filtered = items.filter((item) => {
+    if (item.collection === "locales" || item.collection === "redirects") return true;
+    const itemLocale = typeof item.locale === "string" ? item.locale : item.provenance.locale;
+    if (itemLocale !== locale || item.provenance.locale !== locale) return false;
+    if (mode === "public") return item.provenance.status === "published";
+    return item.provenance.status !== "private";
+  });
   return {
     collection,
     mode,

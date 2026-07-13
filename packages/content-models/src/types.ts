@@ -32,10 +32,10 @@ export type CollectionName =
   | "sources"
   | "redirects"
   | "locales"
-  | "auditLeads"
-  | "caseStudies";
+  | "auditLeads";
 
-export type PublicCollectionName = Exclude<CollectionName, "auditLeads" | "caseStudies">;
+export type DeferredCollectionName = "caseStudies";
+export type PublicCollectionName = Exclude<CollectionName, "auditLeads">;
 
 export interface CanonicalInfo {
   path: string;
@@ -273,42 +273,54 @@ export interface EligibilityCheck {
   readonly projection: ContentProjection;
 }
 
+export interface RelationshipDiagnostic {
+  readonly field: RelationshipField;
+  readonly code: "missing_target" | "ineligible_target" | "wrong_target_kind" | "duplicate_target" | "self_reference";
+  readonly redacted: true;
+}
+
 export interface ResolvedPage extends Page {
   readonly resolvedAuthor?: Author | undefined;
   readonly resolvedReviewer?: Author | undefined;
   readonly resolvedSources: readonly Source[];
   readonly resolvedRelatedEntities: readonly ContentEntity[];
+  readonly relationshipDiagnostics: readonly RelationshipDiagnostic[];
 }
 
 export interface ResolvedService extends Service {
   readonly resolvedSources: readonly Source[];
   readonly resolvedRelatedEntities: readonly ContentEntity[];
+  readonly relationshipDiagnostics: readonly RelationshipDiagnostic[];
 }
 
 export interface ResolvedTool extends Tool {
   readonly resolvedSources: readonly Source[];
   readonly resolvedRelatedEntities: readonly ContentEntity[];
+  readonly relationshipDiagnostics: readonly RelationshipDiagnostic[];
 }
 
 export interface ResolvedArticle extends Article {
   readonly resolvedAuthor: Author;
   readonly resolvedReviewer?: Author | undefined;
   readonly resolvedSources: readonly Source[];
+  readonly relationshipDiagnostics: readonly RelationshipDiagnostic[];
 }
 
 export interface ResolvedResearchReport extends ResearchReport {
   readonly resolvedAuthors: readonly Author[];
   readonly resolvedSources: readonly Source[];
   readonly resolvedRelatedEntities: readonly ContentEntity[];
+  readonly relationshipDiagnostics: readonly RelationshipDiagnostic[];
 }
 
 export interface ResolvedDefinition extends Definition {
   readonly resolvedSources: readonly Source[];
   readonly resolvedRelatedTerms: readonly Definition[];
+  readonly relationshipDiagnostics: readonly RelationshipDiagnostic[];
 }
 
 export interface ResolvedFAQ extends FAQ {
-  readonly resolvedSources: readonly Source[];
+  readonly relationshipDiagnostics: readonly RelationshipDiagnostic[];
 }
 
 export type ResolvedContentEntity =

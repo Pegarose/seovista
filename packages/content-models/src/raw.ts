@@ -13,6 +13,7 @@ export const rawPublicationStatusSchema = z.enum(["published", "draft", "preview
 export const localeCodeSchema = z.string().min(1).max(16);
 
 export const rawTimestampSchema = z.string().datetime({ offset: true });
+export const rawRelationshipIdSchema = z.string().min(1).max(128);
 
 export const rawSlugSchema = z
   .string()
@@ -30,7 +31,7 @@ export const rawIndexationSchema = z.object({
   includeInSitemap: z.boolean().default(true),
   includeInFeed: z.boolean().default(false),
   includeInJsonLd: z.boolean().default(true),
-});
+}).strict();
 
 export const rawProvenanceSchema = z.object({
   createdAt: rawTimestampSchema,
@@ -38,7 +39,7 @@ export const rawProvenanceSchema = z.object({
   status: rawPublicationStatusSchema,
   locale: localeCodeSchema,
   version: z.number().int().nonnegative().default(1),
-});
+}).strict();
 
 export const rawBaseContentSchema = z.object({
   id: z.string().min(1).max(128),
@@ -48,33 +49,33 @@ export const rawBaseContentSchema = z.object({
   canonicalOverride: z.string().url().optional(),
   indexation: rawIndexationSchema.default({ indexable: true }),
   provenance: rawProvenanceSchema,
-});
+}).strict();
 
 export const rawPageSchema = rawBaseContentSchema.extend({
   collection: z.literal("pages"),
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(500),
   body: z.string().optional(),
-  author: z.string().optional(),
-  reviewer: z.string().optional(),
-  sources: z.array(z.string()).default([]),
-  relatedEntities: z.array(z.string()).default([]),
+  author: rawRelationshipIdSchema.optional(),
+  reviewer: rawRelationshipIdSchema.optional(),
+  sources: z.array(rawRelationshipIdSchema).default([]),
+  relatedEntities: z.array(rawRelationshipIdSchema).default([]),
   socialImage: z.string().url().optional(),
   publishedAt: rawTimestampSchema.optional(),
   modifiedAt: rawTimestampSchema.optional(),
-});
+}).strict();
 
 export const rawServiceSchema = rawBaseContentSchema.extend({
   collection: z.literal("services"),
   name: z.string().min(1).max(200),
   description: z.string().min(1).max(500),
   body: z.string().optional(),
-  sources: z.array(z.string()).default([]),
-  relatedEntities: z.array(z.string()).default([]),
+  sources: z.array(rawRelationshipIdSchema).default([]),
+  relatedEntities: z.array(rawRelationshipIdSchema).default([]),
   socialImage: z.string().url().optional(),
   publishedAt: rawTimestampSchema.optional(),
   modifiedAt: rawTimestampSchema.optional(),
-});
+}).strict();
 
 export const rawToolSchema = rawBaseContentSchema.extend({
   collection: z.literal("tools"),
@@ -82,25 +83,25 @@ export const rawToolSchema = rawBaseContentSchema.extend({
   description: z.string().min(1).max(500),
   body: z.string().optional(),
   isFunctioning: z.boolean().default(false),
-  sources: z.array(z.string()).default([]),
-  relatedEntities: z.array(z.string()).default([]),
+  sources: z.array(rawRelationshipIdSchema).default([]),
+  relatedEntities: z.array(rawRelationshipIdSchema).default([]),
   socialImage: z.string().url().optional(),
   publishedAt: rawTimestampSchema.optional(),
   modifiedAt: rawTimestampSchema.optional(),
-});
+}).strict();
 
 export const rawArticleSchema = rawBaseContentSchema.extend({
   collection: z.literal("articles"),
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(500),
   body: z.string().optional(),
-  author: z.string().min(1),
-  reviewer: z.string().optional(),
-  sources: z.array(z.string()).default([]),
+  author: rawRelationshipIdSchema,
+  reviewer: rawRelationshipIdSchema.optional(),
+  sources: z.array(rawRelationshipIdSchema).default([]),
   category: z.string().optional(),
   publishedAt: rawTimestampSchema.optional(),
   modifiedAt: rawTimestampSchema.optional(),
-});
+}).strict();
 
 export const rawAuthorSchema = rawBaseContentSchema.extend({
   collection: z.literal("authors"),
@@ -108,7 +109,7 @@ export const rawAuthorSchema = rawBaseContentSchema.extend({
   bio: z.string().optional(),
   photo: z.string().url().optional(),
   socialProfiles: z.record(z.string().url()).default({}),
-});
+}).strict();
 
 export const rawOrganizationSchema = rawBaseContentSchema.extend({
   collection: z.literal("organizations"),
@@ -116,8 +117,8 @@ export const rawOrganizationSchema = rawBaseContentSchema.extend({
   description: z.string().optional(),
   logo: z.string().url().optional(),
   url: z.string().url().optional(),
-  parentOrganization: z.string().optional(),
-});
+  parentOrganization: rawRelationshipIdSchema.optional(),
+}).strict();
 
 export const rawResearchReportSchema = rawBaseContentSchema.extend({
   collection: z.literal("researchReports"),
@@ -125,22 +126,22 @@ export const rawResearchReportSchema = rawBaseContentSchema.extend({
   description: z.string().min(1).max(500),
   body: z.string().optional(),
   isOriginalResearch: z.boolean().default(false),
-  authors: z.array(z.string()).min(1),
-  sources: z.array(z.string()).default([]),
-  relatedEntities: z.array(z.string()).default([]),
+  authors: z.array(rawRelationshipIdSchema).min(1),
+  sources: z.array(rawRelationshipIdSchema).default([]),
+  relatedEntities: z.array(rawRelationshipIdSchema).default([]),
   publishedAt: rawTimestampSchema.optional(),
   modifiedAt: rawTimestampSchema.optional(),
-});
+}).strict();
 
 export const rawDefinitionSchema = rawBaseContentSchema.extend({
   collection: z.literal("definitions"),
   term: z.string().min(1).max(200),
   definition: z.string().min(1).max(2000),
-  sources: z.array(z.string()).default([]),
-  relatedTerms: z.array(z.string()).default([]),
+  sources: z.array(rawRelationshipIdSchema).default([]),
+  relatedTerms: z.array(rawRelationshipIdSchema).default([]),
   publishedAt: rawTimestampSchema.optional(),
   modifiedAt: rawTimestampSchema.optional(),
-});
+}).strict();
 
 export const rawFaqSchema = rawBaseContentSchema.extend({
   collection: z.literal("faqs"),
@@ -149,7 +150,7 @@ export const rawFaqSchema = rawBaseContentSchema.extend({
   category: z.string().optional(),
   publishedAt: rawTimestampSchema.optional(),
   modifiedAt: rawTimestampSchema.optional(),
-});
+}).strict();
 
 export const rawSourceSchema = rawBaseContentSchema.extend({
   collection: z.literal("sources"),
@@ -158,7 +159,7 @@ export const rawSourceSchema = rawBaseContentSchema.extend({
   author: z.string().optional(),
   publisher: z.string().optional(),
   publishedAt: rawTimestampSchema.optional(),
-});
+}).strict();
 
 export const rawRedirectSchema = z.object({
   id: z.string().min(1).max(128),
@@ -168,7 +169,7 @@ export const rawRedirectSchema = z.object({
   permanent: z.boolean().default(true),
   statusCode: z.union([z.literal(301), z.literal(302)]).default(301),
   provenance: rawProvenanceSchema,
-});
+}).strict();
 
 export const rawLocaleEntitySchema = z.object({
   id: z.string().min(1).max(128),
@@ -178,7 +179,7 @@ export const rawLocaleEntitySchema = z.object({
   isDefault: z.boolean().default(false),
   isSupported: z.boolean().default(true),
   provenance: rawProvenanceSchema,
-});
+}).strict();
 
 export const rawAuditLeadSchema = z.object({
   id: z.string().min(1).max(128),
@@ -189,13 +190,7 @@ export const rawAuditLeadSchema = z.object({
   locale: localeCodeSchema,
   status: rawPublicationStatusSchema,
   provenance: rawProvenanceSchema,
-});
-
-export const rawCaseStudySchema = z.object({
-  id: z.string().min(1).max(128),
-  collection: z.literal("caseStudies"),
-  provenance: rawProvenanceSchema,
-});
+}).strict();
 
 export const rawEntitySchema = z.discriminatedUnion("collection", [
   rawPageSchema,
@@ -211,23 +206,22 @@ export const rawEntitySchema = z.discriminatedUnion("collection", [
   rawRedirectSchema,
   rawLocaleEntitySchema,
   rawAuditLeadSchema,
-  rawCaseStudySchema,
 ]);
 
 export const rawCollectionResponseSchema = z.object({
   collection: z.string().min(1),
-  mode: z.enum(["public", "preview"]).default("public"),
-  locale: z.string().min(1).max(16).default("en"),
+  mode: z.enum(["public", "preview"]),
+  locale: z.string().min(1).max(16),
   items: z.array(z.record(z.unknown())),
   generatedAt: rawTimestampSchema,
   total: z.number().int().nonnegative(),
-});
+}).strict();
 
 export const rawErrorResponseSchema = z.object({
   error: z.string(),
   code: z.string(),
   collection: z.string().optional(),
-});
+}).strict();
 
 export type RawPublicationStatus = z.infer<typeof rawPublicationStatusSchema>;
 export type RawBaseContent = z.infer<typeof rawBaseContentSchema>;

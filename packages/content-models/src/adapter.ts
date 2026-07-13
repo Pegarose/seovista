@@ -24,8 +24,10 @@ import type {
   ResolvedFAQ,
   ResolvedContentEntity,
   Adapter,
+  RelationshipDiagnostic,
 } from "./types";
-import { isContentEntityPubliclyEligible } from "./publication";
+import { isContentEntityPubliclyEligible, isFeedEligible, isJsonLdEligible, isSitemapEligible } from "./publication";
+import { relationshipContractFor, type RelationshipContract } from "./collection-matrix";
 
 export function buildEntityIndex(entities: readonly ContentEntity[]): EntityIndex {
   const byId = new Map<string, ContentEntity>();
@@ -45,20 +47,45 @@ export function buildEntityIndex(entities: readonly ContentEntity[]): EntityInde
   };
 }
 
+interface RelationshipResolution<T extends ContentEntity = ContentEntity> {
+  readonly success: boolean;
+  readonly value: T | undefined;
+  readonly diagnostics: readonly RelationshipDiagnostic[];
+}
+
+function diagnostic(field: RelationshipField, code: RelationshipDiagnostic["code"]): RelationshipDiagnostic {
+  return { field, code, redacted: true };
+}
+
+function expectedContract(
+  owner: ContentEntity | undefined,
+  field: RelationshipField,
+): RelationshipContract | undefined {
+  return owner ? relationshipContractFor(owner, field) : undefined;
+}
+
 export function resolveSingle(
   id: string | undefined,
   field: RelationshipField,
   options: ResolveOptions,
-): { success: true; value: ContentEntity | undefined; diagnostics: readonly string[] } | { success: false; reason: string } {
+  owner?: ContentEntity,
+): RelationshipResolution {
   if (id === undefined || id === "") {
     return { success: true, value: undefined, diagnostics: [] };
   }
+  if (owner?.id === id || owner?.slug === id) {
+    return { success: false, value: undefined, diagnostics: [diagnostic(field, "self_reference")] };
+  }
   const target = options.index.byId.get(id) ?? options.index.bySlug.get(id);
   if (!target) {
-    return { success: false, reason: `Relationship target not found for ${field}: ${id}` };
+    return { success: false, value: undefined, diagnostics: [diagnostic(field, "missing_target")] };
   }
-  if (!isContentEntityPubliclyEligible(target, options.mode, options.projection)) {
-    return { success: false, reason: `Relationship target ineligible for ${field}: ${id}` };
+  const contract = expectedContract(owner, field);
+  if (contract && !contract.targetKinds.includes(target.kind)) {
+    return { success: false, value: undefined, diagnostics: [diagnostic(field, "wrong_target_kind")] };
+  }
+  if (!isEligibleForProjection(target, options.mode, options.projection)) {
+    return { success: false, value: undefined, diagnostics: [diagnostic(field, "ineligible_target")] };
   }
   return { success: true, value: target, diagnostics: [] };
 }
@@ -67,66 +94,81 @@ export function resolveMany(
   ids: readonly string[],
   field: RelationshipField,
   options: ResolveOptions,
-): { success: true; value: readonly ContentEntity[]; diagnostics: readonly string[] } {
+  owner?: ContentEntity,
+): { success: true; value: readonly ContentEntity[]; diagnostics: readonly RelationshipDiagnostic[] } {
   const value: ContentEntity[] = [];
-  const diagnostics: string[] = [];
+  const diagnostics: RelationshipDiagnostic[] = [];
+  const seen = new Set<string>();
   for (const id of ids) {
-    const result = resolveSingle(id, field, options);
+    if (seen.has(id)) {
+      diagnostics.push(diagnostic(field, "duplicate_target"));
+      continue;
+    }
+    seen.add(id);
+    const result = resolveSingle(id, field, options, owner);
     if (result.success && result.value) {
       value.push(result.value);
-    } else if (!result.success) {
-      diagnostics.push(result.reason);
+    } else {
+      diagnostics.push(...result.diagnostics);
     }
   }
   return { success: true, value: Object.freeze(value), diagnostics: Object.freeze(diagnostics) };
 }
 
+function allDiagnostics(...groups: readonly (readonly RelationshipDiagnostic[])[]): readonly RelationshipDiagnostic[] {
+  return Object.freeze(groups.flat());
+}
+
 export function resolvePage(page: Page, options: ResolveOptions): ResolvedPage {
-  const author = resolveSingle(page.author, "author", options);
-  const reviewer = resolveSingle(page.reviewer, "reviewer", options);
-  const sources = resolveMany(page.sources, "sources", options);
-  const related = resolveMany(page.relatedEntities, "relatedEntities", options);
+  const author = resolveSingle(page.author, "author", options, page);
+  const reviewer = resolveSingle(page.reviewer, "reviewer", options, page);
+  const sources = resolveMany(page.sources, "sources", options, page);
+  const related = resolveMany(page.relatedEntities, "relatedEntities", options, page);
   return {
     ...page,
-    resolvedAuthor: author.success ? (author.value as Author | undefined) : undefined,
-    resolvedReviewer: reviewer.success ? (reviewer.value as Author | undefined) : undefined,
+    resolvedAuthor: author.value as Author | undefined,
+    resolvedReviewer: reviewer.value as Author | undefined,
     resolvedSources: sources.value as Source[],
     resolvedRelatedEntities: related.value,
+    relationshipDiagnostics: allDiagnostics(author.diagnostics, reviewer.diagnostics, sources.diagnostics, related.diagnostics),
   };
 }
 
 export function resolveService(service: Service, options: ResolveOptions): ResolvedService {
-  const sources = resolveMany(service.sources, "sources", options);
-  const related = resolveMany(service.relatedEntities, "relatedEntities", options);
+  const sources = resolveMany(service.sources, "sources", options, service);
+  const related = resolveMany(service.relatedEntities, "relatedEntities", options, service);
   return {
     ...service,
     resolvedSources: sources.value as Source[],
     resolvedRelatedEntities: related.value,
+    relationshipDiagnostics: allDiagnostics(sources.diagnostics, related.diagnostics),
   };
 }
 
 export function resolveTool(tool: Tool, options: ResolveOptions): ResolvedTool {
-  const sources = resolveMany(tool.sources, "sources", options);
-  const related = resolveMany(tool.relatedEntities, "relatedEntities", options);
+  const sources = resolveMany(tool.sources, "sources", options, tool);
+  const related = resolveMany(tool.relatedEntities, "relatedEntities", options, tool);
   return {
     ...tool,
     resolvedSources: sources.value as Source[],
     resolvedRelatedEntities: related.value,
+    relationshipDiagnostics: allDiagnostics(sources.diagnostics, related.diagnostics),
   };
 }
 
 export function resolveArticle(article: Article, options: ResolveOptions): ResolvedArticle | { success: false; reason: string } {
-  const author = resolveSingle(article.author, "author", options);
+  const author = resolveSingle(article.author, "author", options, article);
   if (!author.success || !author.value) {
-    return { success: false, reason: `Article requires an eligible author: ${article.id}` };
+    return { success: false, reason: "Article required author relationship is invalid." };
   }
-  const reviewer = resolveSingle(article.reviewer, "reviewer", options);
-  const sources = resolveMany(article.sources, "sources", options);
+  const reviewer = resolveSingle(article.reviewer, "reviewer", options, article);
+  const sources = resolveMany(article.sources, "sources", options, article);
   return {
     ...article,
     resolvedAuthor: author.value as Author,
-    resolvedReviewer: reviewer.success ? (reviewer.value as Author | undefined) : undefined,
+    resolvedReviewer: reviewer.value as Author | undefined,
     resolvedSources: sources.value as Source[],
+    relationshipDiagnostics: allDiagnostics(reviewer.diagnostics, sources.diagnostics),
   };
 }
 
@@ -134,36 +176,51 @@ export function resolveResearchReport(
   report: ResearchReport,
   options: ResolveOptions,
 ): ResolvedResearchReport | { success: false; reason: string } {
-  const authors = resolveMany(report.authors, "authors", options);
-  if (authors.value.length === 0) {
-    return { success: false, reason: `Research report requires at least one eligible author: ${report.id}` };
+  const authors = resolveMany(report.authors, "authors", options, report);
+  if (authors.value.length === 0 || authors.diagnostics.length > 0) {
+    return { success: false, reason: "Research report required author relationship is invalid." };
   }
-  const sources = resolveMany(report.sources, "sources", options);
-  const related = resolveMany(report.relatedEntities, "relatedEntities", options);
+  const sources = resolveMany(report.sources, "sources", options, report);
+  const related = resolveMany(report.relatedEntities, "relatedEntities", options, report);
   return {
     ...report,
     resolvedAuthors: authors.value as Author[],
     resolvedSources: sources.value as Source[],
     resolvedRelatedEntities: related.value,
+    relationshipDiagnostics: allDiagnostics(sources.diagnostics, related.diagnostics),
   };
 }
 
 export function resolveDefinition(definition: Definition, options: ResolveOptions): ResolvedDefinition {
-  const sources = resolveMany(definition.sources, "sources", options);
-  const relatedTerms = resolveMany(definition.relatedTerms, "relatedTerms", options);
+  const sources = resolveMany(definition.sources, "sources", options, definition);
+  const relatedTerms = resolveMany(definition.relatedTerms, "relatedTerms", options, definition);
   return {
     ...definition,
     resolvedSources: sources.value as Source[],
     resolvedRelatedTerms: relatedTerms.value as Definition[],
+    relationshipDiagnostics: allDiagnostics(sources.diagnostics, relatedTerms.diagnostics),
   };
 }
 
-export function resolveFAQ(faq: FAQ, options: ResolveOptions): ResolvedFAQ {
-  const sources = resolveMany([], "sources", options);
-  return {
-    ...faq,
-    resolvedSources: sources.value as Source[],
-  };
+export function resolveFAQ(faq: FAQ, _options: ResolveOptions): ResolvedFAQ {
+  return { ...faq, relationshipDiagnostics: Object.freeze([]) };
+}
+
+function isEligibleForProjection(
+  entity: ContentEntity,
+  mode: MapOptions["mode"],
+  projection: ContentProjection,
+): boolean {
+  switch (projection) {
+    case "sitemap":
+      return isSitemapEligible(entity, mode);
+    case "feed":
+      return isFeedEligible(entity, mode);
+    case "jsonLd":
+      return isJsonLdEligible(entity, mode);
+    default:
+      return isContentEntityPubliclyEligible(entity, mode, projection);
+  }
 }
 
 export function resolveContentEntity(
@@ -200,10 +257,10 @@ export function createAdapter(entities: readonly DomainEntity[], options: MapOpt
     content: Object.freeze(content),
     index,
     readContent(projection: ContentProjection): readonly ContentEntity[] {
-      return content.filter((entity) => isContentEntityPubliclyEligible(entity, options.mode, projection));
+      return content.filter((entity) => isEligibleForProjection(entity, options.mode, projection));
     },
     readResolved(projection: ContentProjection): readonly ResolvedContentEntity[] {
-      const eligible = content.filter((entity) => isContentEntityPubliclyEligible(entity, options.mode, projection));
+      const eligible = content.filter((entity) => isEligibleForProjection(entity, options.mode, projection));
       const resolveOptions: ResolveOptions = { index, mode: options.mode, projection };
       const resolved: ResolvedContentEntity[] = [];
       for (const entity of eligible) {
@@ -216,17 +273,17 @@ export function createAdapter(entities: readonly DomainEntity[], options: MapOpt
       return Object.freeze(resolved);
     },
     readByKind<T extends ContentEntity["kind"]>(kind: T, projection: ContentProjection): readonly Extract<ContentEntity, { kind: T }>[] {
-      return content.filter((entity): entity is Extract<ContentEntity, { kind: T }> => entity.kind === kind && isContentEntityPubliclyEligible(entity, options.mode, projection));
+      return content.filter((entity): entity is Extract<ContentEntity, { kind: T }> => entity.kind === kind && isEligibleForProjection(entity, options.mode, projection));
     },
     readBySlug(slug: string, projection: ContentProjection): ContentEntity | undefined {
       const entity = content.find((e) => e.slug === slug);
       if (!entity) return undefined;
-      return isContentEntityPubliclyEligible(entity, options.mode, projection) ? entity : undefined;
+      return isEligibleForProjection(entity, options.mode, projection) ? entity : undefined;
     },
     readById(id: string, projection: ContentProjection): ContentEntity | undefined {
       const entity = content.find((e) => e.id === id);
       if (!entity) return undefined;
-      return isContentEntityPubliclyEligible(entity, options.mode, projection) ? entity : undefined;
+      return isEligibleForProjection(entity, options.mode, projection) ? entity : undefined;
     },
     readRedirects(): readonly Extract<DomainEntity, { kind: "redirect" }>[] {
       return Object.freeze(entities.filter((e): e is Extract<DomainEntity, { kind: "redirect" }> => e.kind === "redirect"));

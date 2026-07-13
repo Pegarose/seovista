@@ -7,6 +7,8 @@ export {
   buildCaseStudyError,
   buildUnknownCollectionError,
   isRegisteredCollection,
+  registeredCollections,
+  validateRegisteredCollections,
   STABLE_TIMESTAMP,
 } from "./fixtures.js";
 export type {

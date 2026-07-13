@@ -4,6 +4,8 @@
  * produced by this app and consumed by the content-models mapper.
  */
 
+import type { CollectionName } from "@seovista/content-models";
+
 export type RawPublicationStatus = "published" | "draft" | "preview" | "private";
 
 export interface RawProvenance {
@@ -33,7 +35,11 @@ export interface RawBaseContent {
   provenance: RawProvenance;
 }
 
-export type RawEntity = RawBaseContent & Record<string, unknown>;
+export type RawEntity = {
+  id: string;
+  collection: string;
+  provenance: RawProvenance;
+} & Record<string, unknown>;
 
 export interface RawCollectionResponse {
   collection: string;
@@ -50,17 +56,4 @@ export interface RawErrorResponse {
   collection?: string;
 }
 
-export type RegisteredCollection =
-  | "pages"
-  | "services"
-  | "tools"
-  | "articles"
-  | "authors"
-  | "organizations"
-  | "researchReports"
-  | "definitions"
-  | "faqs"
-  | "sources"
-  | "redirects"
-  | "locales"
-  | "auditLeads";
+export type RegisteredCollection = CollectionName;

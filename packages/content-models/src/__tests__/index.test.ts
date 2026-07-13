@@ -385,7 +385,7 @@ describe("content-models adapter and eligibility", () => {
     const adapter = createAdapter([publishedResult.value, draftResult.value], baseOptions);
     expect(adapter.readContent("html")).toHaveLength(1);
     expect(adapter.readContent("sitemap")).toHaveLength(1);
-    expect(adapter.readContent("feed")).toHaveLength(1);
+    expect(adapter.readContent("feed")).toHaveLength(0);
   });
 
   it("keeps audit leads private and absent from public projections", () => {

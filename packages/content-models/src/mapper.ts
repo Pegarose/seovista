@@ -36,13 +36,21 @@ import {
   rawRedirectSchema,
   rawLocaleEntitySchema,
   rawAuditLeadSchema,
+  rawCollectionResponseSchema,
 } from "./raw";
+import { isSprintZeroCollection } from "./collection-matrix";
 import { resolveCanonical, validateRedirect, parseTrustedSiteUrl } from "./canonical";
 import { validateLocale } from "./locale";
 import { normalizeIndexation, validateIndexationCombination } from "./publication";
 
 export function toMapFailure(field: string, reason: string): MapFailure {
   return { success: false, field, reason, redacted: true };
+}
+
+function toSchemaFailure(collection: string, error: z.ZodError): MapFailure {
+  const issue = error.issues[0];
+  const path = issue?.path.map(String).join(".");
+  return toMapFailure(path ? `${collection}.${path}` : collection, "Invalid raw content field.");
 }
 
 function buildCanonicalInfo(
@@ -97,9 +105,23 @@ function baseOutcomeChecks(
     return { success: false, value: localeResult.value };
   }
 
+  if (raw.provenance.locale !== raw.locale) {
+    return { success: false, value: toMapFailure("provenance.locale", "Provenance locale must match the record locale.") };
+  }
+
   const canonicalResult = buildCanonicalInfo(options, raw.canonicalPath, raw.canonicalOverride);
   if (!canonicalResult.success) {
     return { success: false, value: canonicalResult.value };
+  }
+
+  if (Date.parse(raw.provenance.updatedAt) < Date.parse(raw.provenance.createdAt)) {
+    return { success: false, value: toMapFailure("provenance.updatedAt", "Updated time must not precede created time.") };
+  }
+
+  const editorialPublishedAt = (raw as { publishedAt?: string | undefined }).publishedAt;
+  const editorialModifiedAt = (raw as { modifiedAt?: string | undefined }).modifiedAt;
+  if (editorialPublishedAt && editorialModifiedAt && Date.parse(editorialModifiedAt) < Date.parse(editorialPublishedAt)) {
+    return { success: false, value: toMapFailure("modifiedAt", "Modified time must not precede published time.") };
   }
 
   const provenance = buildProvenance(raw);
@@ -119,7 +141,7 @@ function baseOutcomeChecks(
 export function mapPage(raw: unknown, options: MapOptions): MapOutcome<Page> {
   const parsed = rawPageSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("pages", `Invalid page fixture: ${parsed.error.message}`);
+    return toSchemaFailure("pages", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -153,7 +175,7 @@ export function mapPage(raw: unknown, options: MapOptions): MapOutcome<Page> {
 export function mapService(raw: unknown, options: MapOptions): MapOutcome<Service> {
   const parsed = rawServiceSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("services", `Invalid service fixture: ${parsed.error.message}`);
+    return toSchemaFailure("services", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -185,7 +207,7 @@ export function mapService(raw: unknown, options: MapOptions): MapOutcome<Servic
 export function mapTool(raw: unknown, options: MapOptions): MapOutcome<Tool> {
   const parsed = rawToolSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("tools", `Invalid tool fixture: ${parsed.error.message}`);
+    return toSchemaFailure("tools", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -218,7 +240,7 @@ export function mapTool(raw: unknown, options: MapOptions): MapOutcome<Tool> {
 export function mapArticle(raw: unknown, options: MapOptions): MapOutcome<Article> {
   const parsed = rawArticleSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("articles", `Invalid article fixture: ${parsed.error.message}`);
+    return toSchemaFailure("articles", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -251,7 +273,7 @@ export function mapArticle(raw: unknown, options: MapOptions): MapOutcome<Articl
 export function mapAuthor(raw: unknown, options: MapOptions): MapOutcome<Author> {
   const parsed = rawAuthorSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("authors", `Invalid author fixture: ${parsed.error.message}`);
+    return toSchemaFailure("authors", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -279,7 +301,7 @@ export function mapAuthor(raw: unknown, options: MapOptions): MapOutcome<Author>
 export function mapOrganization(raw: unknown, options: MapOptions): MapOutcome<Organization> {
   const parsed = rawOrganizationSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("organizations", `Invalid organization fixture: ${parsed.error.message}`);
+    return toSchemaFailure("organizations", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -308,7 +330,7 @@ export function mapOrganization(raw: unknown, options: MapOptions): MapOutcome<O
 export function mapResearchReport(raw: unknown, options: MapOptions): MapOutcome<ResearchReport> {
   const parsed = rawResearchReportSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("researchReports", `Invalid research report fixture: ${parsed.error.message}`);
+    return toSchemaFailure("researchReports", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -341,7 +363,7 @@ export function mapResearchReport(raw: unknown, options: MapOptions): MapOutcome
 export function mapDefinition(raw: unknown, options: MapOptions): MapOutcome<Definition> {
   const parsed = rawDefinitionSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("definitions", `Invalid definition fixture: ${parsed.error.message}`);
+    return toSchemaFailure("definitions", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -371,7 +393,7 @@ export function mapDefinition(raw: unknown, options: MapOptions): MapOutcome<Def
 export function mapFAQ(raw: unknown, options: MapOptions): MapOutcome<FAQ> {
   const parsed = rawFaqSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("faqs", `Invalid FAQ fixture: ${parsed.error.message}`);
+    return toSchemaFailure("faqs", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -400,7 +422,7 @@ export function mapFAQ(raw: unknown, options: MapOptions): MapOutcome<FAQ> {
 export function mapSource(raw: unknown, options: MapOptions): MapOutcome<Source> {
   const parsed = rawSourceSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("sources", `Invalid source fixture: ${parsed.error.message}`);
+    return toSchemaFailure("sources", parsed.error);
   }
   const r = parsed.data;
   const base = baseOutcomeChecks(options, r);
@@ -429,7 +451,7 @@ export function mapSource(raw: unknown, options: MapOptions): MapOutcome<Source>
 export function mapRedirect(raw: unknown, options: MapOptions): MapOutcome<Redirect> {
   const parsed = rawRedirectSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("redirects", `Invalid redirect fixture: ${parsed.error.message}`);
+    return toSchemaFailure("redirects", parsed.error);
   }
   const r = parsed.data;
 
@@ -474,7 +496,7 @@ export function mapRedirect(raw: unknown, options: MapOptions): MapOutcome<Redir
 export function mapLocale(raw: unknown, _options: MapOptions): MapOutcome<Locale> {
   const parsed = rawLocaleEntitySchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("locales", `Invalid locale fixture: ${parsed.error.message}`);
+    return toSchemaFailure("locales", parsed.error);
   }
   const r = parsed.data;
 
@@ -502,7 +524,7 @@ export function mapLocale(raw: unknown, _options: MapOptions): MapOutcome<Locale
 export function mapAuditLead(raw: unknown, options: MapOptions): MapOutcome<AuditLead> {
   const parsed = rawAuditLeadSchema.safeParse(raw);
   if (!parsed.success) {
-    return toMapFailure("auditLeads", `Invalid audit lead fixture: ${parsed.error.message}`);
+    return toSchemaFailure("auditLeads", parsed.error);
   }
   const r = parsed.data;
 
@@ -574,10 +596,67 @@ export function mapEntity(raw: unknown, options: MapOptions): MapOutcome<DomainE
     case "caseStudies":
       return toMapFailure("collection", "Case Studies are deferred and not supported in Sprint 0.");
     default:
-      return toMapFailure("collection", `Unknown collection: ${collection}`);
+      return toMapFailure("collection", "Unknown collection discriminator.");
   }
 }
 
+export interface CollectionMapResult {
+  readonly success: true;
+  readonly value: readonly DomainEntity[];
+  readonly diagnostics: readonly string[];
+}
+
+function envelopeFailure(field: string, reason: string): MapFailure {
+  return toMapFailure(field, reason);
+}
+
+/**
+ * Validates a raw NextG envelope before any item escapes as a domain record.
+ * Collection reads are atomic: a malformed envelope or one malformed item
+ * returns only a redacted failure, never a partial mapped collection.
+ */
+export function mapCollectionEnvelope(raw: unknown, options: MapOptions): CollectionMapResult | MapFailure {
+  const parsed = rawCollectionResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    return envelopeFailure("envelope", "Invalid collection envelope.");
+  }
+  const envelope = parsed.data;
+  if (!isSprintZeroCollection(envelope.collection)) {
+    return envelopeFailure("collection", "Unsupported collection envelope.");
+  }
+  if (envelope.total !== envelope.items.length) {
+    return envelopeFailure("total", "Collection total does not match the item count.");
+  }
+  if (!options.supportedLocales.includes(envelope.locale)) {
+    return envelopeFailure("locale", "Collection envelope locale is unsupported.");
+  }
+  if (envelope.mode !== options.mode.kind) {
+    return envelopeFailure("mode", "Collection envelope mode does not match the requested read mode.");
+  }
+
+  const mapped: DomainEntity[] = [];
+  for (let index = 0; index < envelope.items.length; index += 1) {
+    const item = envelope.items[index];
+    const itemRecord = item as { collection?: unknown; locale?: unknown; provenance?: { locale?: unknown } };
+    if (itemRecord.collection !== envelope.collection) {
+      return envelopeFailure(`items[${index}].collection`, "Collection item discriminator does not match its envelope.");
+    }
+    if (itemRecord.locale !== undefined && itemRecord.locale !== envelope.locale) {
+      return envelopeFailure(`items[${index}].locale`, "Collection item locale does not match its envelope.");
+    }
+    if (itemRecord.provenance?.locale !== undefined && itemRecord.provenance.locale !== envelope.locale) {
+      return envelopeFailure(`items[${index}].provenance.locale`, "Collection item provenance locale does not match its envelope.");
+    }
+    const outcome = mapEntity(item, options);
+    if (!outcome.success) {
+      return envelopeFailure(`items[${index}]`, `Invalid collection item field: ${outcome.field}.`);
+    }
+    mapped.push(outcome.value);
+  }
+  return { success: true, value: Object.freeze(mapped), diagnostics: Object.freeze([]) };
+}
+
+/** @deprecated Prefer mapCollectionEnvelope for strict, atomic raw response mapping. */
 export function mapCollection(
   rawItems: unknown[],
   options: MapOptions,
