@@ -138,10 +138,10 @@ test("canonical: query parameters do not change canonical", async ({ request }) 
   expect(body).toContain('href="https://seovista.com/geo/"');
 });
 
-test("canonical: uppercase variants do not resolve to trusted content", async ({ request }) => {
-  const response = await request.get("/GEO/");
-  // Uppercase should return 404
-  expect(response.status()).toBe(404);
+test("canonical: uppercase approved variants normalize directly to trusted lowercase content", async ({ request }) => {
+  const response = await request.get("/GEO/", { maxRedirects: 0 });
+  expect(response.status()).toBe(301);
+  expect(response.headers().location).toBe("https://seovista.com/geo/");
 });
 
 // ─── VAL-SEO-001/002: Slash and status matrix ────────────────────────────────

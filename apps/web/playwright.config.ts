@@ -40,6 +40,7 @@ export default defineConfig({
       name: "production-routing",
       use: { ...devices["Desktop Chrome"] },
       testMatch: /runtime-routing\.spec\.ts/,
+      metadata: { runtime: "production" },
     },
   ],
   webServer: {
