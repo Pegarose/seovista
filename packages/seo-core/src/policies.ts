@@ -1,4 +1,4 @@
-import { parseSiteUrl, parseTrustedUrl, resolveCanonical } from "./canonical";
+import { parseTrustedUrl, resolveCanonical, resolveRootUrl } from "./canonical";
 import type { FeedEntry, FeedOptions, LlmsOptions, RobotsGroup, RobotsOptions, SitemapUrl } from "./types";
 
 export const DEFAULT_DISALLOWED_PREFIXES: readonly string[] = [
@@ -75,7 +75,7 @@ export function buildSitemapUrl(siteUrl: string, path: string): SitemapUrl {
 }
 
 export function buildFeedXml(options: FeedOptions): string {
-  const { origin } = parseSiteUrl(options.siteUrl);
+  const rootUrl = resolveRootUrl(options.siteUrl);
   const entries = (options.entries ?? [])
     .map(
       (entry) => `
@@ -90,18 +90,18 @@ export function buildFeedXml(options: FeedOptions): string {
     )
     .join("");
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">\n  <title>${escapeXml(options.title)}</title>\n  <link href="${escapeXml(options.feedUrl)}" rel="self" />\n  <link href="${escapeXml(origin)}" />\n  <updated>${escapeXml(new Date().toISOString())}</updated>\n  <id>${escapeXml(options.feedUrl)}</id>\n  <subtitle>${escapeXml(options.description)}</subtitle>\n${entries}\n</feed>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">\n  <title>${escapeXml(options.title)}</title>\n  <link href="${escapeXml(options.feedUrl)}" rel="self" />\n  <link href="${escapeXml(rootUrl)}" />\n  <updated>${escapeXml(new Date().toISOString())}</updated>\n  <id>${escapeXml(options.feedUrl)}</id>\n  <subtitle>${escapeXml(options.description)}</subtitle>\n${entries}\n</feed>\n`;
 }
 
 export function buildLlmsTxt(options: LlmsOptions): string {
-  const { origin } = parseSiteUrl(options.siteUrl);
+  const rootUrl = resolveRootUrl(options.siteUrl);
   const lines: string[] = [
     "# SeoVista",
     "",
     options.description,
     "",
     "## Resources",
-    `- ${origin}/`,
+    `- ${rootUrl}`,
   ];
   for (const resource of options.resources) {
     lines.push(`- ${resource.url}${resource.title ? ` ${resource.title}` : ""}`);

@@ -12,7 +12,7 @@ exports[`schema snapshots > matches a full launch-route graph snapshot 1`] = `
         "@type": "Organization",
         "name": "GMedya Group",
       },
-      "url": "https://seovista.com",
+      "url": "https://seovista.com/",
     },
     {
       "@id": "https://seovista.com/#website",
@@ -21,7 +21,7 @@ exports[`schema snapshots > matches a full launch-route graph snapshot 1`] = `
       "publisher": {
         "@id": "https://seovista.com/#organization",
       },
-      "url": "https://seovista.com",
+      "url": "https://seovista.com/",
     },
     {
       "@id": "https://seovista.com/geo/",

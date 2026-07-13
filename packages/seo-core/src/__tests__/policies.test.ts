@@ -66,6 +66,8 @@ describe("seo-core robots/sitemap/feed/llms policies", () => {
     expect(feed).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
     expect(feed).toContain("SeoVista Insights");
     expect(feed).toContain("https://seovista.com/feed.xml");
+    expect(feed).toContain('<link href="https://seovista.com/" />');
+    expect(feed).not.toContain('<link href="https://seovista.com" />');
     expect(feed).toContain("https://seovista.com/insights/article/");
   });
 

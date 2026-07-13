@@ -240,6 +240,10 @@ test("system: feed.xml returns 200 well-formed Atom with empty entries", async (
   expect(parsed.feed.link).toContainEqual(
     expect.objectContaining({ "@_href": "https://seovista.com/feed.xml", "@_rel": "self" }),
   );
+  expect(parsed.feed.link).toContainEqual(
+    expect.objectContaining({ "@_href": "https://seovista.com/" }),
+  );
+  expect(body).not.toContain('href="https://seovista.com"');
 });
 
 test("system: manifest.webmanifest returns 200 parseable JSON with required fields", async ({ request }) => {
@@ -338,10 +342,12 @@ test("jsonld: Organization and WebSite IDs are stable", async ({ page }) => {
   const org = graph["@graph"].find((n) => n["@type"] === "Organization");
   expect(org).toBeDefined();
   expect(org!["@id"]).toBe(expectedOrganisationId);
+  expect(org!["url"]).toBe("https://seovista.com/");
 
   const website = graph["@graph"].find((n) => n["@type"] === "WebSite");
   expect(website).toBeDefined();
   expect(website!["@id"]).toBe(expectedWebsiteId);
+  expect(website!["url"]).toBe("https://seovista.com/");
 });
 
 test("jsonld: Organization parentOrganization identifies GMedya Group", async ({ page }) => {

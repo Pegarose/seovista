@@ -1,5 +1,6 @@
+import { resolveRootUrl } from "@seovista/seo-core";
 import { organizationId, websiteId } from "../ids";
-import { ensureString, validateSiteUrl } from "../validate";
+import { ensureString } from "../validate";
 import type { SchemaNode } from "../types";
 
 export function buildWebSite(
@@ -7,13 +8,12 @@ export function buildWebSite(
   options: { name: string; alternateName?: string | undefined },
 ): SchemaNode {
   const name = ensureString(options.name, "name");
-  const { origin } = validateSiteUrl(siteUrl);
 
   return {
     "@type": "WebSite",
     "@id": websiteId(siteUrl),
     name,
-    url: origin,
+    url: resolveRootUrl(siteUrl),
     publisher: {
       "@id": organizationId(siteUrl),
     },

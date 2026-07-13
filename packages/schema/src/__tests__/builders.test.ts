@@ -42,6 +42,7 @@ describe("schema JSON-LD builders", () => {
     const org = buildOrganization(siteUrl, makeOrganization());
     expect(org["@id"]).toBe("https://seovista.com/#organization");
     expect(org["@type"]).toBe("Organization");
+    expect(org.url).toBe("https://seovista.com/");
     expect(org.name).toBe("SeoVista");
     expect(org.parentOrganization).toEqual({
       "@type": "Organization",
@@ -54,7 +55,7 @@ describe("schema JSON-LD builders", () => {
     expect(website["@id"]).toBe("https://seovista.com/#website");
     expect(website["@type"]).toBe("WebSite");
     expect(website.publisher).toEqual({ "@id": organizationId(siteUrl) });
-    expect(website.url).toBe("https://seovista.com");
+    expect(website.url).toBe("https://seovista.com/");
   });
 
   it("WebPage URL matches canonical and references WebSite", () => {

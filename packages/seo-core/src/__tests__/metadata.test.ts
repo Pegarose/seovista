@@ -3,6 +3,7 @@ import {
   buildMetadata,
   buildNoIndexMetadata,
   resolveCanonical,
+  resolveRootUrl,
   parseSiteUrl,
   normalizePath,
   CanonicalError,
@@ -26,6 +27,10 @@ describe("seo-core metadata builder", () => {
     expect(home.description).not.toBe(geo.description);
     expect(home.title).toBe("SeoVista — GEO & Search Visibility");
     expect(geo.description).toBe("Understand generative engine optimization readiness.");
+  });
+
+  it("resolves the root resource to a trailing-slash canonical URL", () => {
+    expect(resolveRootUrl(siteUrl)).toBe("https://seovista.com/");
   });
 
   it("canonical resolver uses only NEXT_PUBLIC_SITE_URL and never request headers", () => {

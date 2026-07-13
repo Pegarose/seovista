@@ -60,6 +60,10 @@ export function resolveCanonical(siteUrl: string, path: string): string {
   return `${origin}${normalizePath(path)}`;
 }
 
+export function resolveRootUrl(siteUrl: string): string {
+  return resolveCanonical(siteUrl, "/");
+}
+
 export function resolveCanonicalFromOverride(siteUrl: string, overrideUrl: string): string {
   const { origin } = parseSiteUrl(siteUrl);
   let url: URL;

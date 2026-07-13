@@ -26,6 +26,7 @@ export {
   parseTrustedUrl,
   normalizePath,
   resolveCanonical,
+  resolveRootUrl,
   resolveCanonicalFromOverride,
   CanonicalError,
 } from "./canonical";

@@ -1,4 +1,5 @@
 import type { Organization } from "@seovista/content-models";
+import { resolveRootUrl } from "@seovista/seo-core";
 import { organizationId } from "../ids";
 import { SchemaValidationError, ensureString, rejectProhibitedClaims } from "../validate";
 import type { SchemaNode } from "../types";
@@ -22,7 +23,7 @@ export function buildOrganization(siteUrl: string, organization: Organization): 
     "@type": "Organization",
     "@id": orgId,
     name,
-    url: siteUrl,
+    url: resolveRootUrl(siteUrl),
     parentOrganization: {
       "@type": "Organization",
       name: EXPECTED_PARENT_NAME,
