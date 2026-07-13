@@ -2,14 +2,19 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { createServer } from "node:http";
 import { mapEntity, createAdapter } from "@seovista/content-models";
 import type { MapOptions } from "@seovista/content-models";
-import { startServer, checkNextgHealth, buildCollectionResponse, allFixtures, isRegisteredCollection, registeredCollections, validateRegisteredCollections } from "../index.js";
+import { startServer, checkNextgHealth, buildCollectionResponse, allFixtures, fixturePreviewAuthorization, isRegisteredCollection, registeredCollections, validateRegisteredCollections } from "../index.js";
 
 describe("nextg mock server", () => {
   let server: ReturnType<typeof createServer>;
   let port: number;
 
   beforeAll(async () => {
-    server = startServer(0);
+    server = startServer(0, {
+      authorizePreview: (request) => {
+        const token = request.headers["x-nextg-preview-authorization"];
+        return typeof token === "string" ? fixturePreviewAuthorization(token) : undefined;
+      },
+    });
     await new Promise<void>((resolve) => {
       server.once("listening", () => {
         const address = server.address();
@@ -23,8 +28,10 @@ describe("nextg mock server", () => {
     server.close();
   });
 
-  async function fetchJson(path: string): Promise<{ status: number; body: unknown }> {
-    const res = await fetch(`http://localhost:${port}${path}`);
+  async function fetchJson(path: string, headers?: HeadersInit): Promise<{ status: number; body: unknown }> {
+    const res = headers
+      ? await fetch(`http://localhost:${port}${path}`, { headers })
+      : await fetch(`http://localhost:${port}${path}`);
     const text = await res.text();
     return { status: res.status, body: text ? (JSON.parse(text) as unknown) : null };
   }
@@ -79,12 +86,43 @@ describe("nextg mock server", () => {
     expect(items.some((item) => item.provenance.status === "preview")).toBe(false);
   });
 
-  it("includes draft and preview items in preview mode", async () => {
-    const { status, body } = await fetchJson("/api/pages?mode=preview&locale=en");
+  it("does not grant preview access from a query flag alone", async () => {
+    const publicResponse = await fetchJson("/api/pages?mode=public&locale=en");
+    const previewResponse = await fetchJson("/api/pages?mode=preview&locale=en");
+    expect(previewResponse.status).toBe(200);
+    expect(previewResponse.body).toEqual(publicResponse.body);
+  });
+
+  it("returns preview records only for valid server authorization", async () => {
+    const { status, body } = await fetchJson("/api/pages?mode=preview&locale=en", {
+      "x-nextg-preview-authorization": "preview-valid",
+    });
     expect(status).toBe(200);
-    const items = (body as { items: { provenance: { status: string } }[] }).items;
-    expect(items.some((item) => item.provenance.status === "draft")).toBe(true);
+    const items = (body as { mode: string; items: { provenance: { status: string } }[] }).items;
+    expect((body as { mode: string }).mode).toBe("preview");
+    expect(items.some((item) => item.provenance.status === "draft")).toBe(false);
     expect(items.some((item) => item.provenance.status === "preview")).toBe(true);
+  });
+
+  it("fails closed without preview diagnostics for malformed, expired, future, and wrong-scope authorization", async () => {
+    const publicResponse = await fetchJson("/api/pages?locale=en");
+    const denied = await Promise.all([
+      fetchJson("/api/pages?mode=preview&locale=en", { "x-nextg-preview-authorization": "malformed" }),
+      fetchJson("/api/pages?mode=preview&locale=en", { "x-nextg-preview-authorization": "preview-expired" }),
+      fetchJson("/api/pages?mode=preview&locale=en", { "x-nextg-preview-authorization": "preview-future" }),
+      fetchJson("/api/pages?mode=preview&locale=en", { "x-nextg-preview-authorization": "wrong-scope" }),
+    ]);
+    for (const response of denied) {
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(publicResponse.body);
+    }
+  });
+
+  it("rejects malformed modes and unsupported locales without locale fallback", async () => {
+    const malformedMode = await fetchJson("/api/pages?mode=untrusted&locale=en");
+    const unsupportedLocale = await fetchJson("/api/pages?locale=fr");
+    expect(malformedMode).toMatchObject({ status: 400, body: { code: "INVALID_MODE" } });
+    expect(unsupportedLocale).toMatchObject({ status: 400, body: { code: "UNSUPPORTED_LOCALE" } });
   });
 
   it("does not expose private Audit Leads in preview mode", async () => {

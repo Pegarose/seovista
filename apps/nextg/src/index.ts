@@ -1,4 +1,4 @@
-export { startServer, handleRequest, readBody } from "./server.js";
+export { startServer, handleRequest, readBody, fixturePreviewAuthorization, type NextgServerOptions } from "./server.js";
 export { checkNextgHealth, type NextgHealthReport } from "./health.js";
 export {
   allFixtures,

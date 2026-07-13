@@ -58,58 +58,91 @@ export function resolveCanonical(
   }
 }
 
+export interface RedirectInput {
+  readonly source: string;
+  readonly destination: string;
+  readonly permanent: boolean;
+  readonly statusCode: number;
+}
+
+export interface ValidatedRedirect {
+  readonly source: string;
+  readonly destination: string;
+  readonly permanent: true;
+  readonly statusCode: 301;
+}
+
 export function validateRedirect(
   trustedSiteUrl: string,
-  redirect: { source: string; destination: string; permanent: boolean; statusCode: number },
-): { success: true; value: { source: string; destination: string; permanent: boolean; statusCode: 301 | 302 } } | { success: false; value: MapFailure } {
+  redirect: RedirectInput,
+): { success: true; value: ValidatedRedirect } | { success: false; value: MapFailure } {
   const trusted = parseTrustedSiteUrl(trustedSiteUrl);
-  if (!trusted) {
-    return canonicalFailure("trustedSiteUrl", parseCanonicalFailure(trustedSiteUrl));
+  if (!trusted) return canonicalFailure("trustedSiteUrl", parseCanonicalFailure(trustedSiteUrl));
+  if (!redirect.permanent || redirect.statusCode !== 301) {
+    return canonicalFailure("redirect", "Sprint 0 redirects must be permanent HTTP 301 redirects.");
   }
 
-  if (redirect.source === redirect.destination) {
+  const source = resolveRedirectPath(trusted.origin, redirect.source, "redirect.source");
+  if (!source.success) return source;
+  const destination = resolveRedirectPath(trusted.origin, redirect.destination, "redirect.destination");
+  if (!destination.success) return destination;
+  if (source.value === destination.value) {
     return canonicalFailure("redirect", "Redirect source and destination must not be identical.");
   }
 
-  let destinationUrl: URL;
+  return {
+    success: true,
+    value: { source: source.value, destination: `${trusted.origin}${destination.value}`, permanent: true, statusCode: 301 },
+  };
+}
+
+/** Validates the complete set so every legacy route resolves in exactly one permanent hop. */
+export function validateRedirectSet(
+  trustedSiteUrl: string,
+  redirects: readonly RedirectInput[],
+): { success: true; value: readonly ValidatedRedirect[] } | { success: false; value: MapFailure } {
+  const validated: ValidatedRedirect[] = [];
+  const sources = new Set<string>();
+  for (const redirect of redirects) {
+    const result = validateRedirect(trustedSiteUrl, redirect);
+    if (!result.success) return result;
+    if (sources.has(result.value.source)) return canonicalFailure("redirect.source", "Duplicate redirect source.");
+    sources.add(result.value.source);
+    validated.push(result.value);
+  }
+
+  const sourcePaths = new Set(validated.map((redirect) => redirect.source));
+  for (const redirect of validated) {
+    const destinationPath = new URL(redirect.destination).pathname;
+    if (sourcePaths.has(destinationPath)) {
+      return canonicalFailure("redirect.destination", "Redirect chains and loops are not allowed.");
+    }
+  }
+  return { success: true, value: Object.freeze(validated) };
+}
+
+function resolveRedirectPath(
+  trustedOrigin: string,
+  raw: string,
+  field: "redirect.source" | "redirect.destination",
+): { success: true; value: string } | { success: false; value: MapFailure } {
+  let url: URL;
   try {
-    destinationUrl = new URL(redirect.destination, trusted.origin);
+    url = new URL(raw, trustedOrigin);
   } catch {
-    return canonicalFailure("redirect.destination", "Redirect destination must be a valid URL.");
+    return canonicalFailure(field, "Redirect path must be a valid trusted URL.");
   }
-
-  if (destinationUrl.origin !== trusted.origin) {
-    return canonicalFailure(
-      "redirect.destination",
-      "Redirect destination must stay within the trusted site origin.",
-    );
+  if (url.origin !== trustedOrigin || url.username || url.password || url.port || url.search || url.hash) {
+    return canonicalFailure(field, "Redirect path must be trusted and contain no credentials, port, query, or fragment.");
   }
-
   try {
-    const destination = resolveSharedCanonical(trusted.origin, destinationUrl.pathname);
-    if (destinationUrl.username || destinationUrl.password || destinationUrl.port || destinationUrl.search || destinationUrl.hash) {
-      return canonicalFailure(
-        "redirect.destination",
-        "Redirect destination must not contain credentials, ports, query, or fragment.",
-      );
+    const normalized = resolveSharedCanonical(trustedOrigin, url.pathname);
+    if (`${trustedOrigin}${url.pathname}` !== normalized) {
+      return canonicalFailure(field, "Redirect path must be lowercase and have a trailing slash.");
     }
-
-    const statusCode = redirect.statusCode === 301 || redirect.statusCode === 302 ? redirect.statusCode : 301;
-    if (!redirect.permanent && statusCode === 301) {
-      return canonicalFailure("redirect.permanent", "Permanent redirect must use status code 301.");
-    }
-
-    return {
-      success: true,
-      value: {
-        source: redirect.source,
-        destination,
-        permanent: statusCode === 301,
-        statusCode,
-      },
-    };
+    return { success: true, value: url.pathname };
   } catch (error) {
-    return canonicalFailure("redirect.destination", toCanonicalFailure(error).reason);
+    return canonicalFailure(field, toCanonicalFailure(error).reason);
   }
 }
 

@@ -172,6 +172,63 @@ describe("strict raw collection envelope mapping", () => {
     }, options);
     expect(result).toEqual(expect.objectContaining({ success: false, field: "items[1]", redacted: true }));
   });
+
+  it("rejects a redirect envelope with a duplicate source, chain, or unpublished record", () => {
+    const redirect = (source: string, destination: string, status = "published") => ({
+      id: `redirect-${source}`,
+      collection: "redirects",
+      source,
+      destination,
+      permanent: true,
+      statusCode: 301,
+      provenance: {
+        createdAt: "2026-07-01T00:00:00.000Z",
+        updatedAt: "2026-07-10T00:00:00.000Z",
+        status,
+        locale: "en",
+        version: 1,
+      },
+    });
+    const envelope = (items: readonly Record<string, unknown>[]) => mapCollectionEnvelope({
+      collection: "redirects",
+      mode: "public",
+      locale: "en",
+      items,
+      total: items.length,
+      generatedAt: "2026-07-10T00:00:00.000Z",
+    }, options);
+    expect(envelope([redirect("/legacy/", "/geo/"), redirect("/legacy/", "/seo/")])).toEqual(expect.objectContaining({ success: false, redacted: true }));
+    expect(envelope([redirect("/legacy/", "/old-geo/"), redirect("/old-geo/", "/geo/")])).toEqual(expect.objectContaining({ success: false, redacted: true }));
+    expect(envelope([redirect("/legacy/", "/geo/", "draft")])).toEqual(expect.objectContaining({ success: false, field: "items[0]", redacted: true }));
+  });
+
+  it("rejects locale records that are unpublished or inconsistent with the configured default", () => {
+    const locale = (code: string, isDefault: boolean, status = "published") => ({
+      id: `locale-${code}`,
+      collection: "locales",
+      code,
+      name: code === "en" ? "English" : "Turkish",
+      isDefault,
+      isSupported: true,
+      provenance: {
+        createdAt: "2026-07-01T00:00:00.000Z",
+        updatedAt: "2026-07-10T00:00:00.000Z",
+        status,
+        locale: "en",
+        version: 1,
+      },
+    });
+    const envelope = (items: readonly Record<string, unknown>[]) => mapCollectionEnvelope({
+      collection: "locales",
+      mode: "public",
+      locale: "en",
+      items,
+      total: items.length,
+      generatedAt: "2026-07-10T00:00:00.000Z",
+    }, options);
+    expect(envelope([locale("en", false)])).toEqual(expect.objectContaining({ success: false, redacted: true }));
+    expect(envelope([locale("en", true, "preview")])).toEqual(expect.objectContaining({ success: false, field: "items[0]", redacted: true }));
+  });
 });
 
 describe("relationship integrity", () => {

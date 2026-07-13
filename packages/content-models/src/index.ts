@@ -115,10 +115,13 @@ export { validateLocale, defaultLocale, isEnglish, isHreflangEligible } from "./
 export {
   resolveCanonical,
   validateRedirect,
+  validateRedirectSet,
   parseTrustedSiteUrl,
   isTrustedUrl,
   siteUrlSchema,
   type TrustedSiteUrl,
+  type RedirectInput,
+  type ValidatedRedirect,
 } from "./canonical";
 
 export const name: string = "@seovista/content-models";

@@ -7,6 +7,8 @@ import {
   resolveCanonical,
   validateRedirect,
   validateLocale,
+  isHreflangEligible,
+  validateRedirectSet,
   isContentEntityPubliclyEligible,
   isAuditLeadPrivate,
   toMapFailure,
@@ -310,6 +312,47 @@ describe("content-models redirects", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("rejects unsafe redirect sources and temporary destinations", () => {
+    expect(validateRedirect(trustedSiteUrl, {
+      source: "/Old-Geo/",
+      destination: "/geo/",
+      permanent: true,
+      statusCode: 301,
+    }).success).toBe(false);
+    expect(validateRedirect(trustedSiteUrl, {
+      source: "/old-geo/?campaign=1",
+      destination: "/geo/",
+      permanent: true,
+      statusCode: 301,
+    }).success).toBe(false);
+    expect(validateRedirect(trustedSiteUrl, {
+      source: "/old-geo/",
+      destination: "/geo/",
+      permanent: false,
+      statusCode: 302,
+    }).success).toBe(false);
+  });
+
+  it("rejects duplicate sources, chains, and indirect redirect loops", () => {
+    const valid = [{ source: "/legacy/", destination: "/geo/", permanent: true, statusCode: 301 }];
+    const duplicate = [
+      { source: "/legacy/", destination: "/geo/", permanent: true, statusCode: 301 },
+      { source: "/legacy/", destination: "/seo/", permanent: true, statusCode: 301 },
+    ];
+    const chain = [
+      { source: "/legacy/", destination: "/old-geo/", permanent: true, statusCode: 301 },
+      { source: "/old-geo/", destination: "/geo/", permanent: true, statusCode: 301 },
+    ];
+    const loop = [
+      { source: "/legacy-a/", destination: "/legacy-b/", permanent: true, statusCode: 301 },
+      { source: "/legacy-b/", destination: "/legacy-a/", permanent: true, statusCode: 301 },
+    ];
+    expect(validateRedirectSet(trustedSiteUrl, valid).success).toBe(true);
+    expect(validateRedirectSet(trustedSiteUrl, duplicate).success).toBe(false);
+    expect(validateRedirectSet(trustedSiteUrl, chain).success).toBe(false);
+    expect(validateRedirectSet(trustedSiteUrl, loop).success).toBe(false);
+  });
 });
 
 describe("content-models locale policy", () => {
@@ -324,6 +367,27 @@ describe("content-models locale policy", () => {
   it("fails unsupported locales", () => {
     const result = validateLocale("fr", ["en"]);
     expect(result.success).toBe(false);
+  });
+
+  it("permits hreflang only between reciprocal published indexable translations", () => {
+    const english = {
+      id: "page-geo-en",
+      locale: "en",
+      translationKey: "geo",
+      provenance: { status: "published" },
+      indexation: { indexable: true },
+    };
+    const turkish = {
+      id: "page-geo-tr",
+      locale: "tr",
+      translationKey: "geo",
+      provenance: { status: "published" },
+      indexation: { indexable: true },
+    };
+    expect(isHreflangEligible(english, turkish, ["en", "tr"])).toBe(true);
+    expect(isHreflangEligible(english, { ...turkish, translationKey: "different" }, ["en", "tr"])).toBe(false);
+    expect(isHreflangEligible(english, { ...turkish, provenance: { status: "preview" } }, ["en", "tr"])).toBe(false);
+    expect(isHreflangEligible(english, { ...turkish, indexation: { indexable: false } }, ["en", "tr"])).toBe(false);
   });
 });
 

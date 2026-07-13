@@ -39,7 +39,7 @@ import {
   rawCollectionResponseSchema,
 } from "./raw";
 import { isSprintZeroCollection } from "./collection-matrix";
-import { resolveCanonical, validateRedirect, parseTrustedSiteUrl } from "./canonical";
+import { resolveCanonical, validateRedirect, validateRedirectSet, parseTrustedSiteUrl } from "./canonical";
 import { validateLocale } from "./locale";
 import { normalizeIndexation, validateIndexationCombination } from "./publication";
 
@@ -456,8 +456,12 @@ export function mapRedirect(raw: unknown, options: MapOptions): MapOutcome<Redir
   const r = parsed.data;
 
   const localeResult = validateLocale(r.provenance.locale, options.supportedLocales);
-  if (!localeResult.success) {
-    return localeResult.value;
+  if (!localeResult.success) return localeResult.value;
+  if (r.provenance.status !== "published") {
+    return toMapFailure("provenance.status", "Redirects must be published.");
+  }
+  if (Date.parse(r.provenance.updatedAt) < Date.parse(r.provenance.createdAt)) {
+    return toMapFailure("provenance.updatedAt", "Updated time must not precede created time.");
   }
 
   const redirectResult = validateRedirect(options.trustedSiteUrl, {
@@ -493,12 +497,22 @@ export function mapRedirect(raw: unknown, options: MapOptions): MapOutcome<Redir
   };
 }
 
-export function mapLocale(raw: unknown, _options: MapOptions): MapOutcome<Locale> {
+export function mapLocale(raw: unknown, options: MapOptions): MapOutcome<Locale> {
   const parsed = rawLocaleEntitySchema.safeParse(raw);
-  if (!parsed.success) {
-    return toSchemaFailure("locales", parsed.error);
-  }
+  if (!parsed.success) return toSchemaFailure("locales", parsed.error);
   const r = parsed.data;
+  if (!options.supportedLocales.includes(r.code) || !r.isSupported) {
+    return toMapFailure("code", "Locale must be supported by the configured locale set.");
+  }
+  if (r.provenance.status !== "published") {
+    return toMapFailure("provenance.status", "Locale records must be published.");
+  }
+  if (Date.parse(r.provenance.updatedAt) < Date.parse(r.provenance.createdAt)) {
+    return toMapFailure("provenance.updatedAt", "Updated time must not precede created time.");
+  }
+  if (r.isDefault !== (r.code === options.defaultLocale)) {
+    return toMapFailure("isDefault", "Locale default flag must match the configured default locale.");
+  }
 
   return {
     success: true,
@@ -652,6 +666,21 @@ export function mapCollectionEnvelope(raw: unknown, options: MapOptions): Collec
       return envelopeFailure(`items[${index}]`, `Invalid collection item field: ${outcome.field}.`);
     }
     mapped.push(outcome.value);
+  }
+
+  if (envelope.collection === "redirects") {
+    const redirects = mapped.filter((entity): entity is Redirect => entity.kind === "redirect");
+    const redirectSet = validateRedirectSet(options.trustedSiteUrl, redirects);
+    if (!redirectSet.success) return envelopeFailure(redirectSet.value.field, redirectSet.value.reason);
+  }
+  if (envelope.collection === "locales") {
+    const locales = mapped.filter((entity): entity is Locale => entity.kind === "locale");
+    const localeCodes = new Set(locales.map((locale) => locale.code));
+    const defaults = locales.filter((locale) => locale.isDefault);
+    if (localeCodes.size !== locales.length) return envelopeFailure("code", "Duplicate locale code.");
+    if (defaults.length !== 1 || defaults[0]?.code !== options.defaultLocale) {
+      return envelopeFailure("isDefault", "Collection must contain exactly one configured default locale.");
+    }
   }
   return { success: true, value: Object.freeze(mapped), diagnostics: Object.freeze([]) };
 }

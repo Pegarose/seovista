@@ -445,8 +445,9 @@ export function buildCollectionResponse(
     if (item.collection === "locales" || item.collection === "redirects") return true;
     const itemLocale = typeof item.locale === "string" ? item.locale : item.provenance.locale;
     if (itemLocale !== locale || item.provenance.locale !== locale) return false;
+    if (item.provenance.status === "draft" || item.provenance.status === "private") return false;
     if (mode === "public") return item.provenance.status === "published";
-    return item.provenance.status !== "private";
+    return item.provenance.status === "published" || item.provenance.status === "preview";
   });
   return {
     collection,

@@ -26,12 +26,27 @@ export function isEnglish(locale: string): boolean {
   return locale === "en";
 }
 
+export interface TranslationCandidate {
+  readonly id: string;
+  readonly locale: string;
+  readonly translationKey?: string | undefined;
+  readonly provenance: { readonly status: string };
+  readonly indexation: { readonly indexable: boolean };
+}
+
+/**
+ * Hreflang is safe only for distinct, reciprocal translated equivalents that
+ * are both published and indexable. Locale equality alone is never evidence
+ * that two records translate one another.
+ */
 export function isHreflangEligible(
-  locale: string,
-  entityLocale: string,
+  source: TranslationCandidate,
+  counterpart: TranslationCandidate,
   supportedLocales: readonly string[],
 ): boolean {
-  if (locale === entityLocale) return false;
-  if (!supportedLocales.includes(entityLocale)) return false;
-  return true;
+  if (source.id === counterpart.id || source.locale === counterpart.locale) return false;
+  if (!source.translationKey || source.translationKey !== counterpart.translationKey) return false;
+  if (!supportedLocales.includes(source.locale) || !supportedLocales.includes(counterpart.locale)) return false;
+  if (source.provenance.status !== "published" || counterpart.provenance.status !== "published") return false;
+  return source.indexation.indexable && counterpart.indexation.indexable;
 }
