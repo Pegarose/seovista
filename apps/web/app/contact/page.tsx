@@ -4,11 +4,7 @@ import { pageMetadataFrom } from "../../src/lib/metadata";
 import { buildPageGraph } from "../../src/lib/jsonld";
 import { JsonLd } from "../../src/components/json-ld";
 
-export const metadata = pageMetadataFrom({
-  title: contactPage.title,
-  description: contactPage.description,
-  canonicalPath: contactPage.canonical.path,
-});
+export const metadata = pageMetadataFrom(contactPage);
 
 export default function ContactPage(): React.ReactElement {
   const graph = buildPageGraph(contactPage);
@@ -22,17 +18,13 @@ export default function ContactPage(): React.ReactElement {
             <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               {contactPage.title}
             </h1>
-            <p className="mt-4 max-w-2xl text-lg text-muted">
-              {contactPage.description}
-            </p>
+            <p className="mt-4 max-w-2xl text-lg text-muted">{contactPage.description}</p>
           </Container>
         </Section>
 
         <Section padding="md">
           <Container>
-            <p className="max-w-3xl text-lg leading-relaxed text-ink">
-              {contactPage.body}
-            </p>
+            <p className="max-w-3xl text-lg leading-relaxed text-ink">{contactPage.body}</p>
             <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink">
               Email us at{" "}
               <Link href="mailto:hello@seovista.com" external>

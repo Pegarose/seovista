@@ -4,11 +4,7 @@ import { pageMetadataFrom } from "../src/lib/metadata";
 import { buildPageGraph } from "../src/lib/jsonld";
 import { JsonLd } from "../src/components/json-ld";
 
-export const metadata = pageMetadataFrom({
-  title: homePage.title,
-  description: homePage.description,
-  canonicalPath: homePage.canonical.path,
-});
+export const metadata = pageMetadataFrom(homePage);
 
 export default function HomePage(): React.ReactElement {
   const graph = buildPageGraph(homePage);
@@ -22,9 +18,7 @@ export default function HomePage(): React.ReactElement {
             <h1 className="max-w-4xl text-4xl font-semibold leading-tight tracking-tight text-ink sm:text-5xl lg:text-6xl">
               {homePage.title}
             </h1>
-            <p className="mt-6 max-w-2xl text-lg text-muted sm:text-xl">
-              {homePage.description}
-            </p>
+            <p className="mt-6 max-w-2xl text-lg text-muted sm:text-xl">{homePage.description}</p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
                 href="/geo/"
@@ -46,9 +40,7 @@ export default function HomePage(): React.ReactElement {
 
         <Section padding="lg">
           <Container>
-            <p className="max-w-3xl text-lg leading-relaxed text-ink">
-              {homePage.body}
-            </p>
+            <p className="max-w-3xl text-lg leading-relaxed text-ink">{homePage.body}</p>
           </Container>
         </Section>
       </main>

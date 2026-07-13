@@ -1,5 +1,12 @@
 import { parseTrustedUrl, resolveCanonical, resolveRootUrl } from "./canonical";
-import type { FeedEntry, FeedOptions, LlmsOptions, RobotsGroup, RobotsOptions, SitemapUrl } from "./types";
+import type {
+  FeedEntry,
+  FeedOptions,
+  LlmsOptions,
+  RobotsGroup,
+  RobotsOptions,
+  SitemapUrl,
+} from "./types";
 
 export const DEFAULT_DISALLOWED_PREFIXES: readonly string[] = [
   "/api/",
@@ -86,11 +93,12 @@ export function buildFeedXml(options: FeedOptions): string {
       <summary>${escapeXml(entry.description)}</summary>
       <published>${escapeXml(entry.publishedAt)}</published>
       ${entry.modifiedAt ? `<updated>${escapeXml(entry.modifiedAt)}</updated>` : ""}
-    </entry>`,
+    </entry>`
     )
     .join("");
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">\n  <title>${escapeXml(options.title)}</title>\n  <link href="${escapeXml(options.feedUrl)}" rel="self" />\n  <link href="${escapeXml(rootUrl)}" />\n  <updated>${escapeXml(new Date().toISOString())}</updated>\n  <id>${escapeXml(options.feedUrl)}</id>\n  <subtitle>${escapeXml(options.description)}</subtitle>\n${entries}\n</feed>\n`;
+  const updatedAt = options.updatedAt ?? new Date().toISOString();
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">\n  <title>${escapeXml(options.title)}</title>\n  <link href="${escapeXml(options.feedUrl)}" rel="self" />\n  <link href="${escapeXml(rootUrl)}" />\n  <updated>${escapeXml(updatedAt)}</updated>\n  <id>${escapeXml(options.feedUrl)}</id>\n  <subtitle>${escapeXml(options.description)}</subtitle>\n${entries}\n</feed>\n`;
 }
 
 export function buildLlmsTxt(options: LlmsOptions): string {
@@ -113,9 +121,13 @@ export function isIndexableForRobots(robots: { index: boolean }): boolean {
   return robots.index;
 }
 
-export function shouldNoIndexForQueryState(_path: string, searchParams?: Record<string, string> | URLSearchParams): boolean {
+export function shouldNoIndexForQueryState(
+  _path: string,
+  searchParams?: Record<string, string> | URLSearchParams
+): boolean {
   if (!searchParams) return false;
-  const params = searchParams instanceof URLSearchParams ? searchParams : new URLSearchParams(searchParams);
+  const params =
+    searchParams instanceof URLSearchParams ? searchParams : new URLSearchParams(searchParams);
   return params.size > 0;
 }
 

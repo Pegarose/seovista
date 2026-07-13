@@ -1,6 +1,19 @@
 export type LocaleCode = string;
 
-export type OpenGraphType = "website" | "article" | "profile" | "book" | "video.movie" | "video.episode" | "video.tv_show" | "video.other" | "music.song" | "music.album" | "music.playlist" | "music.radio_station" | "product";
+export type OpenGraphType =
+  | "website"
+  | "article"
+  | "profile"
+  | "book"
+  | "video.movie"
+  | "video.episode"
+  | "video.tv_show"
+  | "video.other"
+  | "music.song"
+  | "music.album"
+  | "music.playlist"
+  | "music.radio_station"
+  | "product";
 
 export type TwitterCard = "summary" | "summary_large_image" | "app" | "player";
 
@@ -73,7 +86,8 @@ export interface RobotsOptions {
 export interface SitemapUrl {
   readonly loc: string;
   readonly lastmod?: string | undefined;
-  readonly changefreq?: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never" | undefined;
+  readonly changefreq?:
+    "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never" | undefined;
   readonly priority?: number | undefined;
 }
 
@@ -92,6 +106,7 @@ export interface FeedOptions {
   readonly description: string;
   readonly feedUrl: string;
   readonly entries?: readonly FeedEntry[];
+  readonly updatedAt?: string | undefined;
   readonly language?: string | undefined;
 }
 

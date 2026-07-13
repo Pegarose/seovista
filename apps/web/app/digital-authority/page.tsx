@@ -4,11 +4,7 @@ import { pageMetadataFrom } from "../../src/lib/metadata";
 import { buildServicePageGraph } from "../../src/lib/jsonld";
 import { JsonLd } from "../../src/components/json-ld";
 
-export const metadata = pageMetadataFrom({
-  title: digitalAuthorityPage.title,
-  description: digitalAuthorityPage.description,
-  canonicalPath: digitalAuthorityPage.canonical.path,
-});
+export const metadata = pageMetadataFrom(digitalAuthorityPage);
 
 export default function DigitalAuthorityPage(): React.ReactElement {
   const service = findServiceByPath("/digital-authority/");
@@ -26,9 +22,7 @@ export default function DigitalAuthorityPage(): React.ReactElement {
             <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               {service.name}
             </h1>
-            <p className="mt-4 max-w-2xl text-lg text-muted">
-              {service.description}
-            </p>
+            <p className="mt-4 max-w-2xl text-lg text-muted">{service.description}</p>
           </Container>
         </Section>
 

@@ -10,6 +10,7 @@ import type {
   DomainEntity,
   MapOptions,
   ReadMode,
+  ContentProjection,
   Provenance,
   CollectionName,
   IndexationInfo,
@@ -47,13 +48,7 @@ function indexation(includeInSitemap = true, includeInFeed = false): IndexationI
   };
 }
 
-function page(
-  slug: string,
-  path: string,
-  title: string,
-  description: string,
-  body: string,
-): Page {
+function page(slug: string, path: string, title: string, description: string, body: string): Page {
   return {
     kind: "page",
     id: `page-${slug}`,
@@ -75,7 +70,7 @@ function service(
   path: string,
   name: string,
   description: string,
-  body: string,
+  body: string
 ): Service {
   return {
     kind: "service",
@@ -129,7 +124,7 @@ export const homePage = page(
   "/",
   "SeoVista — GEO & Search Visibility Intelligence",
   "Identify your positioning across generative engine optimization and traditional search visibility.",
-  "SeoVista is an editorial intelligence lab that helps teams understand where they stand in generative answers and search results. We connect content quality, technical health, and earned authority to build a clearer picture of visibility without promising rankings or citations that cannot be guaranteed.",
+  "SeoVista is an editorial intelligence lab that helps teams understand where they stand in generative answers and search results. We connect content quality, technical health, and earned authority to build a clearer picture of visibility without promising rankings or citations that cannot be guaranteed."
 );
 
 export const geoPage = page(
@@ -137,7 +132,7 @@ export const geoPage = page(
   "/geo/",
   "Generative Engine Optimization — SeoVista",
   "What GEO means, how it differs from traditional SEO, and why quality signals matter more than any guaranteed outcome.",
-  "Generative Engine Optimization (GEO) is the practice of improving the likelihood that your brand, content, and expertise are surfaced by generative search and answer systems. GEO is not a guarantee of inclusion. It is a discipline of earning relevance through clear information, credible sourcing, and consistent topical authority.",
+  "Generative Engine Optimization (GEO) is the practice of improving the likelihood that your brand, content, and expertise are surfaced by generative search and answer systems. GEO is not a guarantee of inclusion. It is a discipline of earning relevance through clear information, credible sourcing, and consistent topical authority."
 );
 
 export const seoPage = page(
@@ -145,7 +140,7 @@ export const seoPage = page(
   "/seo/",
   "Search Engine Optimization — SeoVista",
   "Technical crawlability, content structure, and index health for sustainable organic visibility.",
-  "Our SEO work focuses on the fundamentals that make a site discoverable and trustworthy: crawlable architecture, structured content, useful metadata, and healthy indexation. We do not rely on shortcuts or fabricated ranking signals.",
+  "Our SEO work focuses on the fundamentals that make a site discoverable and trustworthy: crawlable architecture, structured content, useful metadata, and healthy indexation. We do not rely on shortcuts or fabricated ranking signals."
 );
 
 export const digitalAuthorityPage = page(
@@ -153,7 +148,7 @@ export const digitalAuthorityPage = page(
   "/digital-authority/",
   "Digital Authority — SeoVista",
   "Earned visibility through editorial reputation, credible mentions, and genuine subject authority.",
-  "Digital authority is built on consistent, attributable expertise and references from trustworthy sources. We do not sell links, operate link schemes, or fabricate mentions. Authority is earned where your content genuinely helps a specific audience.",
+  "Digital authority is built on consistent, attributable expertise and references from trustworthy sources. We do not sell links, operate link schemes, or fabricate mentions. Authority is earned where your content genuinely helps a specific audience."
 );
 
 export const toolsPage = page(
@@ -161,7 +156,7 @@ export const toolsPage = page(
   "/tools/",
   "Free Tools — SeoVista",
   "A growing library of free tools for GEO and SEO readiness. Only the GEO Readiness Checker is linked during Sprint 0.",
-  "SeoVista is building a set of free tools to help teams audit their readiness for generative and search visibility. In Sprint 0 only the GEO Readiness Checker foundation page is available. Additional tools are planned for later phases.",
+  "SeoVista is building a set of free tools to help teams audit their readiness for generative and search visibility. In Sprint 0 only the GEO Readiness Checker foundation page is available. Additional tools are planned for later phases."
 );
 
 export const geoReadinessChecker: Tool = {
@@ -169,14 +164,16 @@ export const geoReadinessChecker: Tool = {
   id: "tool-geo-readiness-checker",
   slug: "geo-readiness-checker",
   locale: defaultLocale,
-  canonical: { path: "/tools/geo-readiness-checker/", absolute: `${siteUrl}/tools/geo-readiness-checker/` },
+  canonical: {
+    path: "/tools/geo-readiness-checker/",
+    absolute: `${siteUrl}/tools/geo-readiness-checker/`,
+  },
   indexation: indexation(),
   provenance: provenance("tools"),
   name: "GEO Readiness Checker",
   description:
     "A non-operational foundation page for the GEO Readiness Checker. No Sprint 0 audit is available yet.",
-  body:
-    "The GEO Readiness Checker is planned as a free diagnostic that will review content clarity, technical signals, and authority indicators relevant to generative engine optimization. During Sprint 0 the checker is not operational. There is no submission, no score, and no report. We will share updates as the tool moves into development.",
+  body: "The GEO Readiness Checker is planned as a free diagnostic that will review content clarity, technical signals, and authority indicators relevant to generative engine optimization. During Sprint 0 the checker is not operational. There is no submission, no score, and no report. We will share updates as the tool moves into development.",
   isFunctioning: false,
   sources: [],
   relatedEntities: [],
@@ -187,7 +184,7 @@ export const checkerPage = page(
   "/tools/geo-readiness-checker/",
   "GEO Readiness Checker — SeoVista",
   "A non-operational foundation page for the GEO Readiness Checker. No Sprint 0 audit is available yet.",
-  geoReadinessChecker.body ?? "",
+  geoReadinessChecker.body ?? ""
 );
 
 export const aboutPage = page(
@@ -195,7 +192,7 @@ export const aboutPage = page(
   "/about/",
   "About SeoVista",
   "SeoVista is an editorial intelligence lab focused on GEO and search visibility. A GMedya Group company.",
-  "SeoVista helps teams understand how they appear in generative answers and traditional search results. We are a GMedya Group company, built on a foundation of editorial quality, technical rigor, and transparent methodology. Our Sprint 0 release is a foundation; live audits, dashboards, and integrations will follow in later phases.",
+  "SeoVista helps teams understand how they appear in generative answers and traditional search results. We are a GMedya Group company, built on a foundation of editorial quality, technical rigor, and transparent methodology. Our Sprint 0 release is a foundation; live audits, dashboards, and integrations will follow in later phases."
 );
 
 export const contactPage = page(
@@ -203,7 +200,7 @@ export const contactPage = page(
   "/contact/",
   "Contact SeoVista",
   "Reach out to SeoVista. We are currently in foundation stage and respond as availability allows.",
-  "We are in foundation stage and do not yet operate a public support desk. If you have questions about SeoVista, GEO, or search visibility, email hello@seovista.com. We read every message and respond when capacity allows.",
+  "We are in foundation stage and do not yet operate a public support desk. If you have questions about SeoVista, GEO, or search visibility, email hello@seovista.com. We read every message and respond when capacity allows."
 );
 
 export const insightsPage = page(
@@ -211,7 +208,7 @@ export const insightsPage = page(
   "/insights/",
   "Insights — SeoVista",
   "Research and guides on generative engine optimization, search visibility, and digital authority.",
-  "Insights will host original research, practical guides, and method notes on GEO, SEO, and digital authority. Sprint 0 does not publish any articles; this page is a foundation index that will be populated once genuine research is ready.",
+  "Insights will host original research, practical guides, and method notes on GEO, SEO, and digital authority. Sprint 0 does not publish any articles; this page is a foundation index that will be populated once genuine research is ready."
 );
 
 export const privacyPage = page(
@@ -219,7 +216,7 @@ export const privacyPage = page(
   "/privacy/",
   "Privacy Policy — SeoVista",
   "How SeoVista handles data and privacy during the foundation stage.",
-  "SeoVista respects your privacy. During Sprint 0 we do not collect personal data through forms, accounts, or tracking beyond standard server logs. This policy explains our current practices and will be updated as the platform matures.",
+  "SeoVista respects your privacy. During Sprint 0 we do not collect personal data through forms, accounts, or tracking beyond standard server logs. This policy explains our current practices and will be updated as the platform matures."
 );
 
 export const cookiesPage = page(
@@ -227,7 +224,7 @@ export const cookiesPage = page(
   "/cookies/",
   "Cookie Policy — SeoVista",
   "How SeoVista uses cookies and similar technologies during the foundation stage.",
-  "During Sprint 0 SeoVista does not use marketing or analytics cookies. Any first-party cookies are limited to technical or preference purposes. This policy describes our cookie practices and will be updated if additional technologies are introduced.",
+  "During Sprint 0 SeoVista does not use marketing or analytics cookies. Any first-party cookies are limited to technical or preference purposes. This policy describes our cookie practices and will be updated if additional technologies are introduced."
 );
 
 export const termsPage = page(
@@ -235,7 +232,7 @@ export const termsPage = page(
   "/terms/",
   "Terms of Service — SeoVista",
   "The terms that govern use of the SeoVista website during the foundation stage.",
-  "By using seovista.com, you agree to these terms. SeoVista is provided in foundation stage without warranties or guarantees of availability. The checker and other tools are not operational in Sprint 0. Please contact us if you have questions.",
+  "By using seovista.com, you agree to these terms. SeoVista is provided in foundation stage without warranties or guarantees of availability. The checker and other tools are not operational in Sprint 0. Please contact us if you have questions."
 );
 
 export const services: Service[] = [
@@ -244,21 +241,15 @@ export const services: Service[] = [
     "/geo/",
     "Generative Engine Optimization",
     geoPage.description,
-    geoPage.body ?? "",
+    geoPage.body ?? ""
   ),
-  service(
-    "seo",
-    "/seo/",
-    "Search Engine Optimization",
-    seoPage.description,
-    seoPage.body ?? "",
-  ),
+  service("seo", "/seo/", "Search Engine Optimization", seoPage.description, seoPage.body ?? ""),
   service(
     "digital-authority",
     "/digital-authority/",
     "Digital Authority",
     digitalAuthorityPage.description,
-    digitalAuthorityPage.body ?? "",
+    digitalAuthorityPage.body ?? ""
   ),
 ];
 
@@ -306,6 +297,18 @@ export function allPublicContent(): readonly ContentEntity[] {
   return adapter.readContent("html");
 }
 
-export function allSitemapPages(): readonly Page[] {
-  return pages.filter((p) => p.indexation.includeInSitemap);
+export function publicContentFor(projection: ContentProjection): readonly ContentEntity[] {
+  return adapter.readContent(projection);
+}
+
+export function publicSitemapContent(): readonly Page[] {
+  return publicContentFor("sitemap").filter((entity): entity is Page => entity.kind === "page");
+}
+
+export function publicFeedContent(): readonly ContentEntity[] {
+  return publicContentFor("feed");
+}
+
+export function publicLlmsContent(): readonly Page[] {
+  return publicContentFor("llms").filter((entity): entity is Page => entity.kind === "page");
 }

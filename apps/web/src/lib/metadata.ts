@@ -3,19 +3,26 @@ import "server-only";
 import type { Metadata } from "next";
 import { buildMetadata } from "@seovista/seo-core";
 import type { MetadataInput } from "@seovista/seo-core";
+import type { Page } from "@seovista/content-models";
 import { siteUrl } from "../content/site";
 
 export function pageMetadata(input: MetadataInput): Metadata {
   return toNextMetadata(buildMetadata(siteUrl, input));
 }
 
-export function pageMetadataFrom(input: { title: string; description: string; canonicalPath: string }): Metadata {
+export function pageMetadataFrom(page: Page): Metadata {
   return toNextMetadata(
     buildMetadata(siteUrl, {
-      title: input.title,
-      description: input.description,
-      canonicalPath: input.canonicalPath,
-    }),
+      title: page.title,
+      description: page.description,
+      canonicalPath: page.canonical.path,
+      locale: page.locale,
+      socialImage: page.socialImage,
+      publishedAt: page.publishedAt,
+      modifiedAt: page.modifiedAt,
+      indexable: page.indexation.indexable,
+      followLinks: page.indexation.followLinks,
+    })
   );
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildSitemapXml, buildSitemapUrl } from "@seovista/seo-core";
-import { allSitemapPages, siteUrl } from "../../src/content/site";
+import { publicSitemapContent, siteUrl } from "../../src/content/site";
 
 const securityHeaders = {
   "Content-Type": "application/xml; charset=utf-8",
@@ -8,9 +8,11 @@ const securityHeaders = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
 };
 
-function buildSitemapBody(): string {
-  const pages = allSitemapPages();
-  const urls = pages.map((page) => buildSitemapUrl(siteUrl, page.canonical.path));
+export function buildSitemapBody(): string {
+  const urls = publicSitemapContent().map((entity) => ({
+    ...buildSitemapUrl(siteUrl, entity.canonical.path),
+    lastmod: "modifiedAt" in entity ? entity.modifiedAt : entity.provenance.updatedAt,
+  }));
   return buildSitemapXml(urls);
 }
 
