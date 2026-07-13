@@ -70,6 +70,48 @@ describe("OpenSEO adoption record verification", () => {
     await expect(verifyOpenSeoAdoptionRecord(root)).rejects.toThrow(/license digest/i);
   });
 
+  it("rejects a duplicate row number in a seven-heading inventory", async () => {
+    const root = await createValidFixture();
+    const adoptionPath = join(root, "docs/open-seo-adoption.md");
+    const record = await (await import("node:fs/promises")).readFile(adoptionPath, "utf8");
+    await writeFile(adoptionPath, record.replace("### 7. Fixture adaptation", "### 6. Fixture adaptation"));
+
+    await expect(verifyOpenSeoAdoptionRecord(root)).rejects.toThrow(/ordered sequence/i);
+  });
+
+  it("rejects an inventory missing an expected row number", async () => {
+    const root = await createValidFixture();
+    const adoptionPath = join(root, "docs/open-seo-adoption.md");
+    const record = await (await import("node:fs/promises")).readFile(adoptionPath, "utf8");
+    await writeFile(adoptionPath, record.replace("### 7. Fixture adaptation", "### 8. Fixture adaptation"));
+
+    await expect(verifyOpenSeoAdoptionRecord(root)).rejects.toThrow(/ordered sequence/i);
+  });
+
+  it("rejects reordered row numbers in a seven-heading inventory", async () => {
+    const root = await createValidFixture();
+    const adoptionPath = join(root, "docs/open-seo-adoption.md");
+    const record = await (await import("node:fs/promises")).readFile(adoptionPath, "utf8");
+    await writeFile(
+      adoptionPath,
+      record
+        .replace("### 1. Fixture adaptation", "### 9. Fixture adaptation")
+        .replace("### 2. Fixture adaptation", "### 1. Fixture adaptation")
+        .replace("### 9. Fixture adaptation", "### 2. Fixture adaptation")
+    );
+
+    await expect(verifyOpenSeoAdoptionRecord(root)).rejects.toThrow(/ordered sequence/i);
+  });
+
+  it("rejects a substituted out-of-bound row number", async () => {
+    const root = await createValidFixture();
+    const adoptionPath = join(root, "docs/open-seo-adoption.md");
+    const record = await (await import("node:fs/promises")).readFile(adoptionPath, "utf8");
+    await writeFile(adoptionPath, record.replace("### 1. Fixture adaptation", "### 8. Fixture adaptation"));
+
+    await expect(verifyOpenSeoAdoptionRecord(root)).rejects.toThrow(/ordered sequence/i);
+  });
+
   it("rejects an unresolved adaptation destination", async () => {
     const root = await createValidFixture();
     const adoptionPath = join(root, "docs/open-seo-adoption.md");

@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 
 const SHA256_PATTERN = /\b[A-F0-9]{64}\b/g;
 const ADAPTATION_HEADING_PATTERN = /^### (\d+)\. .+$/gm;
-const EXPECTED_ADAPTATION_ROWS = 7;
+const EXPECTED_ADAPTATION_ROW_NUMBERS = [1, 2, 3, 4, 5, 6, 7] as const;
 const CONSOLIDATED_ADAPTER_TEST = "packages/open-seo-adapter/src/__tests__/index.test.ts";
 
 type AdaptationRow = {
@@ -69,11 +69,13 @@ function adaptationRows(markdown: string): readonly AdaptationRow[] {
   const inventory = sectionAfter(markdown, "## Adaptation Inventory");
   const headings = [...inventory.matchAll(ADAPTATION_HEADING_PATTERN)];
 
-  if (headings.length !== EXPECTED_ADAPTATION_ROWS) {
-    fail(`OpenSEO adoption inventory must contain exactly ${EXPECTED_ADAPTATION_ROWS} rows.`);
+  if (headings.length !== EXPECTED_ADAPTATION_ROW_NUMBERS.length) {
+    fail(
+      `OpenSEO adoption inventory must contain exactly ${EXPECTED_ADAPTATION_ROW_NUMBERS.length} rows.`
+    );
   }
 
-  return headings.map((heading, index) => {
+  const rows = headings.map((heading, index) => {
     const sectionStart = heading.index! + heading[0].length;
     const sectionEnd = headings[index + 1]?.index ?? inventory.length;
     return {
@@ -81,6 +83,18 @@ function adaptationRows(markdown: string): readonly AdaptationRow[] {
       section: inventory.slice(sectionStart, sectionEnd),
     };
   });
+
+  if (
+    !rows.every(
+      (row, index) => row.number === EXPECTED_ADAPTATION_ROW_NUMBERS[index]
+    )
+  ) {
+    fail(
+      `OpenSEO adoption inventory row numbers must be the ordered sequence [${EXPECTED_ADAPTATION_ROW_NUMBERS.join(", ")}].`
+    );
+  }
+
+  return rows;
 }
 
 function valueFor(row: AdaptationRow, field: string): string {
