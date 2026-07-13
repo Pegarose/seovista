@@ -1,20 +1,43 @@
 import { z } from "zod";
 
-const finitePositive = z
-  .number({
-    required_error: "limit is required",
-    invalid_type_error: "limit must be a finite number",
-  })
-  .positive("limit must be positive")
-  .finite("limit must be finite");
+export const AUDIT_CRAWL_POLICY_LIMITS = [
+  "maxRedirects",
+  "maxPages",
+  "maxResponseBytes",
+  "maxDecodedResponseBytes",
+  "perPhaseTimeoutMs",
+  "totalExecutionTimeMs",
+] as const;
+
+const limitBounds = {
+  maxRedirects: 20,
+  maxPages: 10_000,
+  maxResponseBytes: 64 * 1024 * 1024,
+  maxDecodedResponseBytes: 128 * 1024 * 1024,
+  perPhaseTimeoutMs: 120_000,
+  totalExecutionTimeMs: 900_000,
+} as const;
+
+function finitePositiveInteger(limit: number) {
+  return z
+    .number({
+      required_error: "limit is required",
+      invalid_type_error: "limit must be a finite number",
+    })
+    .finite("limit must be finite")
+    .int("limit must be an integer")
+    .positive("limit must be positive")
+    .max(limit, `limit must not exceed ${limit}`);
+}
 
 export const crawlPolicySchema = z.object({
-  maxRedirects: finitePositive,
-  maxPages: finitePositive,
-  maxResponseBytes: finitePositive,
-  perPhaseTimeoutMs: finitePositive,
-  totalExecutionTimeMs: finitePositive,
-});
+  maxRedirects: finitePositiveInteger(limitBounds.maxRedirects),
+  maxPages: finitePositiveInteger(limitBounds.maxPages),
+  maxResponseBytes: finitePositiveInteger(limitBounds.maxResponseBytes),
+  maxDecodedResponseBytes: finitePositiveInteger(limitBounds.maxDecodedResponseBytes),
+  perPhaseTimeoutMs: finitePositiveInteger(limitBounds.perPhaseTimeoutMs),
+  totalExecutionTimeMs: finitePositiveInteger(limitBounds.totalExecutionTimeMs),
+}).strict();
 
 export type CrawlPolicy = z.infer<typeof crawlPolicySchema>;
 

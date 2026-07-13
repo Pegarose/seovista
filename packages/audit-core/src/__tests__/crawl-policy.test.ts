@@ -1,79 +1,84 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUDIT_CRAWL_POLICY_LIMITS,
   crawlPolicySchema,
   parseCrawlPolicy,
   safeParseCrawlPolicy,
 } from "../policy/crawl.js";
 
+const validPolicy = {
+  maxRedirects: 10,
+  maxPages: 100,
+  maxResponseBytes: 10_000_000,
+  maxDecodedResponseBytes: 10_000_000,
+  perPhaseTimeoutMs: 30_000,
+  totalExecutionTimeMs: 300_000,
+};
+
 describe("crawlPolicySchema", () => {
   it("accepts a complete valid policy", () => {
-    const policy = crawlPolicySchema.parse({
-      maxRedirects: 10,
-      maxPages: 100,
-      maxResponseBytes: 10_000_000,
-      perPhaseTimeoutMs: 30_000,
-      totalExecutionTimeMs: 300_000,
-    });
+    const policy = crawlPolicySchema.parse(validPolicy);
     expect(policy.maxPages).toBe(100);
+    expect(policy.maxDecodedResponseBytes).toBe(10_000_000);
   });
 
-  it("rejects a missing limit", () => {
-    expect(() =>
-      crawlPolicySchema.parse({
-        maxRedirects: 10,
-        maxPages: 100,
-        maxResponseBytes: 10_000_000,
-        perPhaseTimeoutMs: 30_000,
-      }),
-    ).toThrow();
+  it("requires every declared audit-crawl limit", () => {
+    expect(AUDIT_CRAWL_POLICY_LIMITS).toEqual([
+      "maxRedirects",
+      "maxPages",
+      "maxResponseBytes",
+      "maxDecodedResponseBytes",
+      "perPhaseTimeoutMs",
+      "totalExecutionTimeMs",
+    ]);
+
+    for (const limit of AUDIT_CRAWL_POLICY_LIMITS) {
+      const incompletePolicy: Record<string, unknown> = { ...validPolicy };
+      delete incompletePolicy[limit];
+      expect(crawlPolicySchema.safeParse(incompletePolicy).success).toBe(false);
+    }
   });
 
-  it("rejects a non-finite limit", () => {
-    expect(() =>
-      crawlPolicySchema.parse({
-        maxRedirects: 10,
-        maxPages: Infinity,
-        maxResponseBytes: 10_000_000,
-        perPhaseTimeoutMs: 30_000,
-        totalExecutionTimeMs: 300_000,
-      }),
-    ).toThrow();
-  });
+  it("rejects non-finite, negative, zero, and out-of-range limits", () => {
+    for (const invalidValue of [Infinity, -1, 0, "10", 10.5] as const) {
+      expect(
+        crawlPolicySchema.safeParse({
+          ...validPolicy,
+          maxRedirects: invalidValue,
+        }).success,
+      ).toBe(false);
+    }
 
-  it("rejects a negative limit", () => {
-    expect(() =>
-      crawlPolicySchema.parse({
-        maxRedirects: -1,
-        maxPages: 100,
-        maxResponseBytes: 10_000_000,
-        perPhaseTimeoutMs: 30_000,
-        totalExecutionTimeMs: 300_000,
-      }),
-    ).toThrow();
-  });
-
-  it("rejects a zero limit", () => {
-    expect(() =>
-      crawlPolicySchema.parse({
-        maxRedirects: 0,
-        maxPages: 100,
-        maxResponseBytes: 10_000_000,
-        perPhaseTimeoutMs: 30_000,
-        totalExecutionTimeMs: 300_000,
-      }),
-    ).toThrow();
-  });
-
-  it("rejects a non-numeric limit", () => {
-    expect(() =>
-      crawlPolicySchema.parse({
-        maxRedirects: "10",
-        maxPages: 100,
-        maxResponseBytes: 10_000_000,
-        perPhaseTimeoutMs: 30_000,
-        totalExecutionTimeMs: 300_000,
-      }),
-    ).toThrow();
+    expect(
+      crawlPolicySchema.safeParse({
+        ...validPolicy,
+        maxPages: 10_001,
+      }).success,
+    ).toBe(false);
+    expect(
+      crawlPolicySchema.safeParse({
+        ...validPolicy,
+        maxResponseBytes: 67_108_865,
+      }).success,
+    ).toBe(false);
+    expect(
+      crawlPolicySchema.safeParse({
+        ...validPolicy,
+        maxDecodedResponseBytes: 134_217_729,
+      }).success,
+    ).toBe(false);
+    expect(
+      crawlPolicySchema.safeParse({
+        ...validPolicy,
+        perPhaseTimeoutMs: 120_001,
+      }).success,
+    ).toBe(false);
+    expect(
+      crawlPolicySchema.safeParse({
+        ...validPolicy,
+        totalExecutionTimeMs: 900_001,
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -83,6 +88,7 @@ describe("parseCrawlPolicy", () => {
       maxRedirects: 5,
       maxPages: 50,
       maxResponseBytes: 1_000_000,
+      maxDecodedResponseBytes: 2_000_000,
       perPhaseTimeoutMs: 10_000,
       totalExecutionTimeMs: 60_000,
     });

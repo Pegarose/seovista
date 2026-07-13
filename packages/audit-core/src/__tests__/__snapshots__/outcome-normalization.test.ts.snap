@@ -1,0 +1,61 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`audit outcome normalization > normalizes every finite failure class to a typed failure 1`] = `
+[
+  {
+    "correlationId": "audit-contract-123",
+    "durationMs": 125,
+    "errorClass": "timeout",
+    "outcome": "failure",
+    "phase": "request",
+  },
+  {
+    "correlationId": "audit-contract-123",
+    "durationMs": 125,
+    "errorClass": "response_size",
+    "outcome": "failure",
+    "phase": "response",
+  },
+  {
+    "correlationId": "audit-contract-123",
+    "durationMs": 125,
+    "errorClass": "content_type",
+    "outcome": "failure",
+    "phase": "response",
+  },
+  {
+    "correlationId": "audit-contract-123",
+    "durationMs": 125,
+    "errorClass": "redirect",
+    "outcome": "failure",
+    "phase": "redirect",
+  },
+  {
+    "correlationId": "audit-contract-123",
+    "durationMs": 125,
+    "errorClass": "cancellation",
+    "outcome": "failure",
+    "phase": "cancellation",
+  },
+  {
+    "correlationId": "audit-contract-123",
+    "durationMs": 125,
+    "errorClass": "execution",
+    "outcome": "failure",
+    "phase": "execution",
+  },
+  {
+    "correlationId": "audit-contract-123",
+    "durationMs": 125,
+    "errorClass": "partial_result",
+    "outcome": "failure",
+    "phase": "complete",
+  },
+  {
+    "durationMs": 0,
+    "errorClass": "invalid_result",
+    "outcome": "failure",
+    "phase": "normalization",
+  },
+]
+`;

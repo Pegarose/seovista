@@ -31,6 +31,7 @@ export {
 } from "./security/redirect.js";
 
 export {
+  AUDIT_CRAWL_POLICY_LIMITS,
   crawlPolicySchema,
   parseCrawlPolicy,
   safeParseCrawlPolicy,
@@ -46,3 +47,15 @@ export {
   DEFAULT_ALLOWLIST,
   type RedactionOptions,
 } from "./observability/redact.js";
+
+export {
+  auditFailureClassSchema,
+  auditOutcomeSchema,
+  normalizeAuditOutcome,
+  projectAuditOutcomeForLog,
+  serializeAuditOutcome,
+  AUDIT_OUTCOME_LOG_FIELDS,
+  type AuditFailureClass,
+  type AuditOutcome,
+  type AuditOutcomeLogProjection,
+} from "./outcomes/normalize.js";
