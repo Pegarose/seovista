@@ -25,7 +25,8 @@
     "react-dom": "^19.0.0",
     "@seovista/seo-core": "workspace:*",
     "@seovista/content-models": "workspace:*",
-    "@seovista/schema": "workspace:*"
+    "@seovista/schema": "workspace:*",
+    "@seovista/ui": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",

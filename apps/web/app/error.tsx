@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Container, Section, Button, Link } from "@/components/ui";
+import { Container, Section, Button, Link } from "@seovista/ui";
 
 export default function ErrorPage({
   error,

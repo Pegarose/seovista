@@ -1,4 +1,4 @@
-import { Container, Section } from "@/components/ui";
+import { Container, Section } from "@seovista/ui";
 import { geoPage, findServiceByPath } from "../../src/content/site";
 import { pageMetadataFrom } from "../../src/lib/metadata";
 import { buildServicePageGraph } from "../../src/lib/jsonld";

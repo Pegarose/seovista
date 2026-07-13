@@ -29,7 +29,8 @@
     },
     "./security/headers": {
       "import": "./dist/security/headers.js",
-      "types": "./dist/security/headers.d.ts"
+      "types": "./dist/security/headers.d.ts",
+      "default": "./dist/security/headers.js"
     },
     "./package.json": "./package.json"
   },

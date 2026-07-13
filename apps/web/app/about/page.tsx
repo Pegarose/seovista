@@ -1,4 +1,4 @@
-import { Container, Section } from "@/components/ui";
+import { Container, Section } from "@seovista/ui";
 import { aboutPage } from "../../src/content/site";
 import { pageMetadataFrom } from "../../src/lib/metadata";
 import { buildAboutPageGraph } from "../../src/lib/jsonld";

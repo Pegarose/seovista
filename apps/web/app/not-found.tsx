@@ -1,4 +1,4 @@
-import { Container, Section, Link } from "@/components/ui";
+import { Container, Section, Link } from "@seovista/ui";
 
 export default function NotFoundPage(): React.ReactElement {
   return (

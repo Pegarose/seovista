@@ -1,4 +1,4 @@
-import { Link } from "@/components/ui";
+import { Link } from "@seovista/ui";
 import { MobileNavToggle } from "./mobile-nav-toggle";
 
 interface NavItem {

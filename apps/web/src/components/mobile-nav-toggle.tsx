@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Link } from "@/components/ui";
+import { Link } from "@seovista/ui";
 
 interface NavItem {
   label: string;

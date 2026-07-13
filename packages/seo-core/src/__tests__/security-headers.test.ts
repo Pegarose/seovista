@@ -27,6 +27,10 @@ describe("buildCsp", () => {
     expect(csp).not.toContain("unsafe-eval");
   });
 
+  it("permits the inline bootstrap required by Next.js App Router", () => {
+    expect(buildCsp()).toContain("script-src 'self' 'unsafe-inline'");
+  });
+
   it("includes approved origins in connect-src", () => {
     const csp = buildCsp({ approvedOrigins: ["https://api.seovista.com"] });
     expect(csp).toContain("connect-src 'self' https://api.seovista.com");
