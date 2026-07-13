@@ -25,6 +25,11 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     teardownTimeout: 30000,
+    server: {
+      deps: {
+        inline: ['zod'],
+      },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

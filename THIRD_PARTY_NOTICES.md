@@ -10,14 +10,14 @@ This document lists the third-party software used in SeoVista and preserves requ
 - Version: v0.0.25
 - Commit: `3f2b4872caef809f0280a765f9eb469e8a6b523a`
 - License: MIT
-- License SHA-256: `08799D173D3DA2799CE36A9ABD691DFF62CAA778C718FF16C987B3AD83B76C93`
+- License SHA-256: `62DE25B254287E61E6026AC04A629FBFA88332D14E4175D408092229D80E0D3C`
 - Purpose: Reviewed source for selective adaptation of normalization, cost, robots, structured-data, and technical-check patterns.
 - Usage: Adapted only behind `packages/open-seo-adapter` into SeoVista-owned interfaces; no upstream shell, routes, branding, or AI Visibility claims are adopted.
 
 ```text
 MIT License
 
-Copyright (c) OpenSEO contributors
+Copyright (c) 2026 Ben Senescu
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
