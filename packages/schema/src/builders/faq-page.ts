@@ -1,9 +1,12 @@
-import { ensureString, rejectProhibitedClaims } from "../validate";
+import { SchemaValidationError, ensureString, rejectProhibitedClaims } from "../validate";
 import type { SchemaNode, FAQPageInput } from "../types";
 
 export function buildFAQPage(input: FAQPageInput): SchemaNode {
   if (input.faqs.length === 0) {
-    throw new Error("FAQPage requires at least one visible FAQ with exact content identity.");
+    throw new SchemaValidationError(
+      "faqs",
+      "FAQPage requires at least one visible FAQ with exact content identity.",
+    );
   }
 
   const mainEntity: SchemaNode[] = [];

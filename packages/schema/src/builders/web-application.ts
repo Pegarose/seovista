@@ -1,4 +1,4 @@
-import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
+import { SchemaValidationError, ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
 import type { SchemaNode, WebApplicationInput } from "../types";
 
 export function buildWebApplication(
@@ -9,7 +9,8 @@ export function buildWebApplication(
 
   const tool = input.tool;
   if (!tool.isFunctioning) {
-    throw new Error(
+    throw new SchemaValidationError(
+      "tool.isFunctioning",
       "Application schema may only be emitted for explicitly functioning tools.",
     );
   }

@@ -1,3 +1,9 @@
+import {
+  CanonicalError,
+  normalizePath,
+  parseSiteUrl,
+  resolveCanonical,
+} from "@seovista/seo-core";
 import type { ProhibitedClaimCheck } from "./types";
 
 export const PROHIBITED_CLAIMS: readonly ProhibitedClaimCheck[] = [
@@ -37,44 +43,27 @@ export function validateSiteUrl(siteUrl: string): {
   origin: string;
   hostname: string;
 } {
-  let url: URL;
   try {
-    url = new URL(siteUrl);
-  } catch {
-    throw new SchemaValidationError("siteUrl", "Site URL must be a valid URL.");
+    return parseSiteUrl(siteUrl);
+  } catch (error) {
+    throw translateCanonicalError(error);
   }
-  if (url.protocol !== "https:") {
-    throw new SchemaValidationError("siteUrl", "Site URL must use HTTPS.");
-  }
-  if (url.username || url.password || url.port || url.pathname !== "/" || url.search || url.hash) {
-    throw new SchemaValidationError(
-      "siteUrl",
-      "Site URL must be an origin with no userinfo, port, path, query, or fragment.",
-    );
-  }
-  return { origin: url.origin, hostname: url.hostname };
 }
 
 export function validatePath(path: string): string {
-  if (!path.startsWith("/")) {
-    throw new SchemaValidationError("path", "Canonical path must start with /.");
+  try {
+    return normalizePath(path);
+  } catch (error) {
+    throw translateCanonicalError(error);
   }
-  if (!path.endsWith("/")) {
-    throw new SchemaValidationError("path", "Canonical path must end with a trailing slash.");
-  }
-  if (path !== path.toLowerCase()) {
-    throw new SchemaValidationError("path", "Canonical path must be lowercase.");
-  }
-  if (/[^a-z0-9/-]/.test(path)) {
-    throw new SchemaValidationError("path", "Canonical path contains invalid characters.");
-  }
-  return path;
 }
 
 export function buildAbsoluteUrl(siteUrl: string, path: string): string {
-  const { origin } = validateSiteUrl(siteUrl);
-  const safePath = validatePath(path);
-  return `${origin}${safePath}`;
+  try {
+    return resolveCanonical(siteUrl, path);
+  } catch (error) {
+    throw translateCanonicalError(error);
+  }
 }
 
 export function ensureString(value: unknown, field: string): string {
@@ -82,4 +71,11 @@ export function ensureString(value: unknown, field: string): string {
     throw new SchemaValidationError(field, `${field} must be a non-empty string.`);
   }
   return value;
+}
+
+function translateCanonicalError(error: unknown): SchemaValidationError {
+  if (error instanceof CanonicalError) {
+    return new SchemaValidationError(error.field, error.reason);
+  }
+  return new SchemaValidationError("canonical", "Canonical validation failed.");
 }

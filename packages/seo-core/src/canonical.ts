@@ -33,17 +33,7 @@ export function parseSiteUrl(siteUrl: string): ParsedSiteUrl {
 }
 
 export function normalizePath(path: string): string {
-  if (!path.startsWith("/")) {
-    throw new CanonicalError("path", "Canonical path must start with /.");
-  }
-  if (!path.endsWith("/")) {
-    throw new CanonicalError("path", "Canonical path must end with a trailing slash.");
-  }
-  const normalized = path.toLowerCase();
-  if (/[^a-z0-9/-]/.test(normalized)) {
-    throw new CanonicalError("path", "Canonical path contains invalid characters.");
-  }
-  return normalized;
+  return normalizePathForField(path, "path");
 }
 
 export function parseTrustedUrl(url: string): { origin: string; pathname: string } {
@@ -67,8 +57,7 @@ export function parseTrustedUrl(url: string): { origin: string; pathname: string
 
 export function resolveCanonical(siteUrl: string, path: string): string {
   const { origin } = parseSiteUrl(siteUrl);
-  const safePath = normalizePath(path);
-  return `${origin}${safePath}`;
+  return `${origin}${normalizePath(path)}`;
 }
 
 export function resolveCanonicalFromOverride(siteUrl: string, overrideUrl: string): string {
@@ -88,5 +77,21 @@ export function resolveCanonicalFromOverride(siteUrl: string, overrideUrl: strin
       "Canonical override must not contain credentials, ports, query, or fragment.",
     );
   }
-  return resolveCanonical(siteUrl, url.pathname);
+  return `${origin}${normalizePathForField(url.pathname, "canonicalOverride")}`;
+}
+
+function normalizePathForField(path: string, field: string): string {
+  if (!path.startsWith("/")) {
+    throw new CanonicalError(field, "Canonical path must start with /.");
+  }
+  if (!path.endsWith("/")) {
+    throw new CanonicalError(field, "Canonical path must end with a trailing slash.");
+  }
+  if (path !== path.toLowerCase()) {
+    throw new CanonicalError(field, "Canonical path must be lowercase.");
+  }
+  if (!/^\/(?:[a-z0-9-]+\/)*$/.test(path)) {
+    throw new CanonicalError(field, "Canonical path contains invalid characters.");
+  }
+  return path;
 }

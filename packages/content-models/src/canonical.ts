@@ -1,11 +1,12 @@
+import {
+  CanonicalError,
+  parseSiteUrl,
+  parseTrustedUrl,
+  resolveCanonical as resolveSharedCanonical,
+  resolveCanonicalFromOverride,
+} from "@seovista/seo-core";
 import { z } from "zod";
-import type { MapFailure, CanonicalInfo } from "./types";
-
-const TRUSTED_PATH = /^\/(?:[a-z0-9-]+\/)*[a-z0-9-]*$/;
-const TRAILING_SLASH_PATH = /\/$/;
-const LOWERCASE_PATH = /^[a-z0-9/-]+$/;
-const FRAGMENT_OR_QUERY = /[#?]/;
-const USERINFO = /\/\/.*@/;
+import type { CanonicalInfo, MapFailure } from "./types";
 
 export interface TrustedSiteUrl {
   readonly origin: string;
@@ -15,12 +16,8 @@ export interface TrustedSiteUrl {
 
 export function parseTrustedSiteUrl(raw: string): TrustedSiteUrl | null {
   try {
-    const url = new URL(raw);
-    if (url.protocol !== "https:") return null;
-    if (url.username || url.password || url.port || url.pathname !== "/" || url.search || url.hash) {
-      return null;
-    }
-    return { origin: url.origin, hostname: url.hostname, isHttps: true };
+    const trusted = parseSiteUrl(raw);
+    return { ...trusted, isHttps: true };
   } catch {
     return null;
   }
@@ -33,95 +30,32 @@ export function resolveCanonical(
 ): { success: true; value: CanonicalInfo } | { success: false; value: MapFailure } {
   const trusted = parseTrustedSiteUrl(trustedSiteUrl);
   if (!trusted) {
-    return {
-      success: false,
-      value: {
-        success: false,
-        field: "trustedSiteUrl",
-        reason: "Trusted site URL must be an HTTPS origin with no path, port, query, or fragment.",
-        redacted: true,
-      },
-    };
+    return canonicalFailure("trustedSiteUrl", parseCanonicalFailure(trustedSiteUrl));
   }
 
-  if (canonicalOverride) {
-    try {
-      const overrideUrl = new URL(canonicalOverride);
-      if (overrideUrl.origin !== trusted.origin) {
-        return {
-          success: false,
-          value: {
-            success: false,
-            field: "canonicalOverride",
-            reason: "Canonical override must use the trusted site origin.",
-            redacted: true,
-          },
-        };
-      }
-      if (overrideUrl.username || overrideUrl.password || overrideUrl.port || overrideUrl.search || overrideUrl.hash) {
-        return {
-          success: false,
-          value: {
-            success: false,
-            field: "canonicalOverride",
-            reason: "Canonical override must not contain credentials, ports, query, or fragment.",
-            redacted: true,
-          },
-        };
-      }
-      const path = overrideUrl.pathname;
-      if (!TRUSTED_PATH.test(path) || !TRAILING_SLASH_PATH.test(path) || !LOWERCASE_PATH.test(path)) {
-        return {
-          success: false,
-          value: {
-            success: false,
-            field: "canonicalOverride",
-            reason: "Canonical override path must be lowercase, trailing-slash, and safe.",
-            redacted: true,
-          },
-        };
-      }
+  try {
+    if (canonicalOverride) {
+      const absolute = resolveCanonicalFromOverride(trusted.origin, canonicalOverride);
       return {
         success: true,
         value: {
-          path,
-          absolute: `${trusted.origin}${path}`,
+          path: new URL(absolute).pathname,
+          absolute,
           override: canonicalOverride,
         },
       };
-    } catch {
-      return {
-        success: false,
-        value: {
-          success: false,
-          field: "canonicalOverride",
-          reason: "Canonical override must be a valid HTTPS URL.",
-          redacted: true,
-        },
-      };
     }
-  }
 
-  const path = canonicalPath ?? "/";
-  if (!TRUSTED_PATH.test(path) || !TRAILING_SLASH_PATH.test(path) || !LOWERCASE_PATH.test(path)) {
+    const path = canonicalPath ?? "/";
+    const absolute = resolveSharedCanonical(trusted.origin, path);
     return {
-      success: false,
-      value: {
-        success: false,
-        field: "canonicalPath",
-        reason: "Canonical path must be lowercase, trailing-slash, and safe.",
-        redacted: true,
-      },
+      success: true,
+      value: { path, absolute },
     };
+  } catch (error) {
+    const failure = toCanonicalFailure(error);
+    return canonicalFailure(canonicalOverride ? "canonicalOverride" : "canonicalPath", failure.reason);
   }
-
-  return {
-    success: true,
-    value: {
-      path,
-      absolute: `${trusted.origin}${path}`,
-    },
-  };
 }
 
 export function validateRedirect(
@@ -130,124 +64,94 @@ export function validateRedirect(
 ): { success: true; value: { source: string; destination: string; permanent: boolean; statusCode: 301 | 302 } } | { success: false; value: MapFailure } {
   const trusted = parseTrustedSiteUrl(trustedSiteUrl);
   if (!trusted) {
-    return {
-      success: false,
-      value: {
-        success: false,
-        field: "trustedSiteUrl",
-        reason: "Trusted site URL must be an HTTPS origin.",
-        redacted: true,
-      },
-    };
+    return canonicalFailure("trustedSiteUrl", parseCanonicalFailure(trustedSiteUrl));
   }
 
   if (redirect.source === redirect.destination) {
-    return {
-      success: false,
-      value: {
-        success: false,
-        field: "redirect",
-        reason: "Redirect source and destination must not be identical.",
-        redacted: true,
-      },
-    };
+    return canonicalFailure("redirect", "Redirect source and destination must not be identical.");
   }
 
   let destinationUrl: URL;
   try {
     destinationUrl = new URL(redirect.destination, trusted.origin);
   } catch {
-    return {
-      success: false,
-      value: {
-        success: false,
-        field: "redirect.destination",
-        reason: "Redirect destination must be a valid URL.",
-        redacted: true,
-      },
-    };
+    return canonicalFailure("redirect.destination", "Redirect destination must be a valid URL.");
   }
 
   if (destinationUrl.origin !== trusted.origin) {
-    return {
-      success: false,
-      value: {
-        success: false,
-        field: "redirect.destination",
-        reason: "Redirect destination must stay within the trusted site origin.",
-        redacted: true,
-      },
-    };
-  }
-  if (destinationUrl.username || destinationUrl.password || destinationUrl.port || destinationUrl.search || destinationUrl.hash) {
-    return {
-      success: false,
-      value: {
-        success: false,
-        field: "redirect.destination",
-        reason: "Redirect destination must not contain credentials, ports, query, or fragment.",
-        redacted: true,
-      },
-    };
-  }
-  if (FRAGMENT_OR_QUERY.test(redirect.destination) || USERINFO.test(redirect.destination)) {
-    return {
-      success: false,
-      value: {
-        success: false,
-        field: "redirect.destination",
-        reason: "Redirect destination must not contain query, fragment, or credentials.",
-        redacted: true,
-      },
-    };
-  }
-  if (!TRAILING_SLASH_PATH.test(destinationUrl.pathname) || !LOWERCASE_PATH.test(destinationUrl.pathname)) {
-    return {
-      success: false,
-      value: {
-        success: false,
-        field: "redirect.destination",
-        reason: "Redirect destination path must be lowercase and trailing-slash.",
-        redacted: true,
-      },
-    };
+    return canonicalFailure(
+      "redirect.destination",
+      "Redirect destination must stay within the trusted site origin.",
+    );
   }
 
-  const statusCode = redirect.statusCode === 301 || redirect.statusCode === 302 ? redirect.statusCode : 301;
-  if (!redirect.permanent && statusCode === 301) {
+  try {
+    const destination = resolveSharedCanonical(trusted.origin, destinationUrl.pathname);
+    if (destinationUrl.username || destinationUrl.password || destinationUrl.port || destinationUrl.search || destinationUrl.hash) {
+      return canonicalFailure(
+        "redirect.destination",
+        "Redirect destination must not contain credentials, ports, query, or fragment.",
+      );
+    }
+
+    const statusCode = redirect.statusCode === 301 || redirect.statusCode === 302 ? redirect.statusCode : 301;
+    if (!redirect.permanent && statusCode === 301) {
+      return canonicalFailure("redirect.permanent", "Permanent redirect must use status code 301.");
+    }
+
     return {
-      success: false,
+      success: true,
       value: {
-        success: false,
-        field: "redirect.permanent",
-        reason: "Permanent redirect must use status code 301.",
-        redacted: true,
+        source: redirect.source,
+        destination,
+        permanent: statusCode === 301,
+        statusCode,
       },
     };
+  } catch (error) {
+    return canonicalFailure("redirect.destination", toCanonicalFailure(error).reason);
   }
-
-  return {
-    success: true,
-    value: {
-      source: redirect.source,
-      destination: `${trusted.origin}${destinationUrl.pathname}`,
-      permanent: statusCode === 301,
-      statusCode,
-    },
-  };
 }
 
 export function isTrustedUrl(trustedSiteUrl: string, candidate: string): boolean {
   const trusted = parseTrustedSiteUrl(trustedSiteUrl);
   if (!trusted) return false;
+
   try {
-    const url = new URL(candidate, trusted.origin);
-    return url.origin === trusted.origin && !url.username && !url.password && !url.port && !url.search && !url.hash;
+    const candidateUrl = new URL(candidate, trusted.origin);
+    const parsed = parseTrustedUrl(candidateUrl.toString());
+    return parsed.origin === trusted.origin;
   } catch {
     return false;
   }
 }
 
-export const siteUrlSchema = z.string().refine((val) => parseTrustedSiteUrl(val) !== null, {
+export const siteUrlSchema = z.string().refine((value) => parseTrustedSiteUrl(value) !== null, {
   message: "Site URL must be an HTTPS origin with no path, port, query, or fragment.",
 });
+
+function canonicalFailure(field: string, reason: string): { success: false; value: MapFailure } {
+  return {
+    success: false,
+    value: {
+      success: false,
+      field,
+      reason,
+      redacted: true,
+    },
+  };
+}
+
+function parseCanonicalFailure(siteUrl: string): string {
+  try {
+    parseSiteUrl(siteUrl);
+    return "Trusted site URL is invalid.";
+  } catch (error) {
+    return toCanonicalFailure(error).reason;
+  }
+}
+
+function toCanonicalFailure(error: unknown): CanonicalError {
+  if (error instanceof CanonicalError) return error;
+  return new CanonicalError("canonical", "Canonical validation failed.");
+}

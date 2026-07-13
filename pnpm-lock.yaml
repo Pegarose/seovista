@@ -193,6 +193,9 @@ importers:
 
   packages/content-models:
     dependencies:
+      '@seovista/seo-core':
+        specifier: workspace:*
+        version: link:../seo-core
       zod:
         specifier: 3.24.4
         version: 3.24.4
@@ -276,6 +279,9 @@ importers:
       '@seovista/content-models':
         specifier: workspace:*
         version: link:../content-models
+      '@seovista/seo-core':
+        specifier: workspace:*
+        version: link:../seo-core
       zod:
         specifier: 3.24.4
         version: 3.24.4

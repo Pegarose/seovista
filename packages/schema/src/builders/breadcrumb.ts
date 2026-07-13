@@ -1,9 +1,9 @@
-import { buildAbsoluteUrl } from "../validate";
+import { SchemaValidationError, buildAbsoluteUrl } from "../validate";
 import type { SchemaNode, BreadcrumbListInput } from "../types";
 
 export function buildBreadcrumbList(input: BreadcrumbListInput): SchemaNode {
   if (input.items.length === 0) {
-    throw new Error("BreadcrumbList must contain at least one item.");
+    throw new SchemaValidationError("items", "BreadcrumbList must contain at least one item.");
   }
 
   const itemListElement = input.items.map((item, index) => {

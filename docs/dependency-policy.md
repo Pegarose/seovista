@@ -113,6 +113,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
 | @seovista/content-models | packages/schema | Domain entity input for JSON-LD graph building | prod | server, build | workspace:* | MIT | Follow workspace releases |
+| @seovista/seo-core | packages/schema | Shared trusted-origin and canonical-path validation policy | prod | server, build | workspace:* | MIT | Follow workspace releases |
 | zod | packages/schema | Schema validation for graph builders | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/schema — devDependencies
@@ -127,6 +128,7 @@ This inventory records every direct dependency used in the SeoVista monorepo, it
 
 | Package | Workspace Owner | Purpose | Class | Impact | Resolved Version | SPDX License | Update Strategy |
 |---------|-----------------|---------|-------|--------|------------------|--------------|-----------------|
+| @seovista/seo-core | packages/content-models | Shared trusted-origin and canonical-path validation policy | prod | server, build | workspace:* | MIT | Follow workspace releases |
 | zod | packages/content-models | Schema validation for domain entities | prod | server, build | 3.24.4 | MIT | Follow stable releases |
 
 ### @seovista/content-models — devDependencies

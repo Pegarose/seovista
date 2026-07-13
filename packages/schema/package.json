@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@seovista/content-models": "workspace:*",
+    "@seovista/seo-core": "workspace:*",
     "zod": "3.24.4"
   },
   "devDependencies": {

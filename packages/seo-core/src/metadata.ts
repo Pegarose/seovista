@@ -1,12 +1,22 @@
 import { resolveCanonical, resolveCanonicalFromOverride, parseSiteUrl } from "./canonical";
 import type { MetadataInput, MetadataResult, OpenGraphType, RobotsValue, TwitterCard } from "./types";
 
+export class MetadataValidationError extends Error {
+  constructor(
+    public readonly field: string,
+    public readonly reason: string,
+  ) {
+    super(`Metadata validation failed: ${field} - ${reason}`);
+    this.name = "MetadataValidationError";
+  }
+}
+
 export function buildMetadata(siteUrl: string, input: MetadataInput): MetadataResult {
   if (!input.title || input.title.trim().length === 0) {
-    throw new Error("Metadata title must be a non-empty string.");
+    throw new MetadataValidationError("title", "Metadata title must be a non-empty string.");
   }
   if (!input.description || input.description.trim().length === 0) {
-    throw new Error("Metadata description must be a non-empty string.");
+    throw new MetadataValidationError("description", "Metadata description must be a non-empty string.");
   }
 
   const canonical = input.canonicalOverride

@@ -1,6 +1,6 @@
 import type { Organization } from "@seovista/content-models";
 import { organizationId } from "../ids";
-import { ensureString, rejectProhibitedClaims } from "../validate";
+import { SchemaValidationError, ensureString, rejectProhibitedClaims } from "../validate";
 import type { SchemaNode } from "../types";
 
 const EXPECTED_PARENT_NAME = "GMedya Group";
@@ -12,7 +12,8 @@ export function buildOrganization(siteUrl: string, organization: Organization): 
   const orgId = organizationId(siteUrl);
 
   if (organization.parentOrganization !== EXPECTED_PARENT_NAME) {
-    throw new Error(
+    throw new SchemaValidationError(
+      "organization.parentOrganization",
       `Organization parentOrganization must truthfully identify ${EXPECTED_PARENT_NAME}.`,
     );
   }

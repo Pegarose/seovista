@@ -1,4 +1,4 @@
-import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
+import { SchemaValidationError, ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
 import type { SchemaNode, ArticleInput } from "../types";
 
 export function buildArticle(
@@ -13,7 +13,7 @@ export function buildArticle(
   const url = buildAbsoluteUrl(input.siteUrl, article.canonical.path);
 
   if (!input.authorPerson && !article.author) {
-    throw new Error("Article requires visible authorship evidence.");
+    throw new SchemaValidationError("article.author", "Article requires visible authorship evidence.");
   }
 
   const node: SchemaNode = {

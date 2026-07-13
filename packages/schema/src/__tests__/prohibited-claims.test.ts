@@ -7,6 +7,8 @@ import {
   buildWebApplication,
   buildFAQPage,
   buildGraph,
+  buildBreadcrumbList,
+  buildBlogPosting,
   SchemaValidationError,
 } from "../index";
 import {
@@ -14,6 +16,7 @@ import {
   makeService,
   makeTool,
   makeFAQ,
+  makeArticle,
   makeOrganization,
 } from "./fixtures";
 
@@ -26,6 +29,12 @@ describe("schema prohibited-claim rejection", () => {
       aggregateRating: { ratingValue: 5, reviewCount: 100 },
     };
     expect(() => buildOrganization(siteUrl, org)).toThrow(SchemaValidationError);
+  });
+
+  it("rejects an organization without the truthful parent with SchemaValidationError", () => {
+    expect(() =>
+      buildOrganization(siteUrl, makeOrganization({ parentOrganization: "Other Group" })),
+    ).toThrow(SchemaValidationError);
   });
 
   it("rejects Organization with fabricated review", () => {
@@ -72,7 +81,7 @@ describe("schema prohibited-claim rejection", () => {
     expect(() => buildWebPage({ page, siteUrl })).toThrow(SchemaValidationError);
   });
 
-  it("rejects non-functioning tool as WebApplication", () => {
+  it("rejects non-functioning tool as WebApplication with SchemaValidationError", () => {
     const tool = makeTool({ isFunctioning: false });
     expect(() =>
       buildWebApplication({
@@ -80,13 +89,22 @@ describe("schema prohibited-claim rejection", () => {
         siteUrl,
         organizationId: "https://seovista.com/#organization",
       }),
-    ).toThrow(/functioning/);
+    ).toThrow(SchemaValidationError);
   });
 
-  it("rejects empty FAQ list for FAQPage", () => {
+  it("rejects empty FAQ list for FAQPage with SchemaValidationError", () => {
     expect(() =>
       buildFAQPage({ faqs: [], pageUrl: "https://seovista.com/faq/", siteUrl }),
-    ).toThrow();
+    ).toThrow(SchemaValidationError);
+  });
+
+  it("rejects articles without visible authorship with SchemaValidationError", () => {
+    const article = makeArticle({ author: "" });
+    expect(() => buildBlogPosting({ article, siteUrl })).toThrow(SchemaValidationError);
+  });
+
+  it("rejects empty breadcrumbs with SchemaValidationError", () => {
+    expect(() => buildBreadcrumbList({ items: [], siteUrl })).toThrow(SchemaValidationError);
   });
 
   it("rejects FAQPage with hidden FAQ content", () => {
