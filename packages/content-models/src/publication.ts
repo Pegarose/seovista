@@ -4,7 +4,7 @@ import type {
   ContentProjection,
   ContentEntity,
   MapFailure,
-} from "./types.js";
+} from "./types";
 
 export interface IndexationFlags {
   readonly indexable: boolean;

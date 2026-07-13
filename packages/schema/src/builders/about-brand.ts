@@ -1,6 +1,6 @@
-import { aboutBrandId } from "../ids.js";
-import { ensureString, rejectProhibitedClaims } from "../validate.js";
-import type { SchemaNode, AboutBrandInput } from "../types.js";
+import { aboutBrandId } from "../ids";
+import { ensureString, rejectProhibitedClaims } from "../validate";
+import type { SchemaNode, AboutBrandInput } from "../types";
 
 export function buildAboutBrand(input: AboutBrandInput): SchemaNode {
   rejectProhibitedClaims(input.organization as unknown as Record<string, unknown>);

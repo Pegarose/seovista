@@ -21,7 +21,7 @@ import type {
   CanonicalInfo,
   Provenance,
   IndexationInfo,
-} from "./types.js";
+} from "./types";
 import {
   rawPageSchema,
   rawServiceSchema,
@@ -36,10 +36,10 @@ import {
   rawRedirectSchema,
   rawLocaleEntitySchema,
   rawAuditLeadSchema,
-} from "./raw.js";
-import { resolveCanonical, validateRedirect, parseTrustedSiteUrl } from "./canonical.js";
-import { validateLocale } from "./locale.js";
-import { normalizeIndexation, validateIndexationCombination } from "./publication.js";
+} from "./raw";
+import { resolveCanonical, validateRedirect, parseTrustedSiteUrl } from "./canonical";
+import { validateLocale } from "./locale";
+import { normalizeIndexation, validateIndexationCombination } from "./publication";
 
 export function toMapFailure(field: string, reason: string): MapFailure {
   return { success: false, field, reason, redacted: true };

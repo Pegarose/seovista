@@ -5,7 +5,8 @@
     "outDir": "./dist",
     "declarationMap": true,
     "rootDir": "./src",
-    "declaration": true
+    "declaration": true,
+    "jsx": "react"
   },
   "exclude": [
     "node_modules",

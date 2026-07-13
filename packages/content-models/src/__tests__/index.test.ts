@@ -14,7 +14,7 @@ import {
   type Page,
   type Article,
   type ContentEntity,
-} from "../index.js";
+} from "../index";
 
 const trustedSiteUrl = "https://seovista.com";
 const publicMode: MapOptions["mode"] = { kind: "public", now: new Date("2026-07-01T00:00:00Z") };

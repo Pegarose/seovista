@@ -4,7 +4,7 @@ import {
   buildHsts,
   buildSecurityHeaders,
   nextSecurityHeaders,
-} from "../security/headers.js";
+} from "../security/headers";
 
 describe("buildCsp", () => {
   it("disables objects", () => {

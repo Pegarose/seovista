@@ -6,7 +6,7 @@ import {
   parseSiteUrl,
   normalizePath,
   CanonicalError,
-} from "../index.js";
+} from "../index";
 
 const siteUrl = "https://seovista.com";
 

@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 
 // @ts-expect-error Raw NextG payload modules and types are not exported from the public surface
-import { RawPage as _RawPage, rawPageSchema as _rawPageSchema, RawEntity as _RawEntity, rawBaseContentSchema as _rawBaseContentSchema } from "../index.js";
+import { RawPage as _RawPage, rawPageSchema as _rawPageSchema, RawEntity as _RawEntity, rawBaseContentSchema as _rawBaseContentSchema } from "../index";
 
 describe("content-models public boundary", () => {
   it("does not expose raw types at runtime", async () => {

@@ -1,4 +1,4 @@
-import type { ProhibitedClaimCheck } from "./types.js";
+import type { ProhibitedClaimCheck } from "./types";
 
 export const PROHIBITED_CLAIMS: readonly ProhibitedClaimCheck[] = [
   { field: "aggregateRating", reason: "AggregateRating must not be fabricated." },

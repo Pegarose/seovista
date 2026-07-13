@@ -1,4 +1,4 @@
-import type { MapFailure } from "./types.js";
+import type { MapFailure } from "./types";
 
 export function validateLocale(
   locale: string,

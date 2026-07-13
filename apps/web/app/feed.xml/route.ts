@@ -1,15 +1,25 @@
 import { NextResponse } from "next/server";
+import { buildFeedXml } from "@seovista/seo-core";
+import { siteUrl } from "../../src/content/site";
+
+const securityHeaders = {
+  "Content-Type": "application/atom+xml; charset=utf-8",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+};
 
 export function GET(): NextResponse {
-  const body = `<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-  <title>SeoVista Insights</title>
-  <link href="https://seovista.example/"/>
-  <updated>${new Date().toISOString()}</updated>
-  <id>https://seovista.example/</id>
-</feed>
-`;
-  return new NextResponse(body, {
-    headers: { "Content-Type": "application/atom+xml; charset=utf-8" },
+  const body = buildFeedXml({
+    siteUrl,
+    title: "SeoVista Insights",
+    description: "Research and guides on generative engine optimization, search visibility, and digital authority.",
+    feedUrl: `${siteUrl}/feed.xml`,
+    entries: [],
+    language: "en",
   });
+  return new NextResponse(body, { headers: securityHeaders });
+}
+
+export function HEAD(): NextResponse {
+  return new NextResponse(null, { headers: securityHeaders });
 }

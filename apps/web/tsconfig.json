@@ -12,7 +12,10 @@
     "jsx": "preserve",
     "incremental": true,
     "outDir": "./.next",
-    "rootDir": "./"
+    "rootDir": "./",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "exclude": [
     "node_modules",

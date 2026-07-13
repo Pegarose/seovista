@@ -1,5 +1,5 @@
-import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate.js";
-import type { SchemaNode, ServiceInput } from "../types.js";
+import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
+import type { SchemaNode, ServiceInput } from "../types";
 
 export function buildService(input: ServiceInput): SchemaNode {
   rejectProhibitedClaims(input.service as unknown as Record<string, unknown>);

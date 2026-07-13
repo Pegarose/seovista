@@ -1,5 +1,5 @@
-import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate.js";
-import type { SchemaNode, ArticleInput } from "../types.js";
+import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
+import type { SchemaNode, ArticleInput } from "../types";
 
 export function buildArticle(
   input: ArticleInput,

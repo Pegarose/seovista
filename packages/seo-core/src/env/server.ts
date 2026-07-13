@@ -1,8 +1,8 @@
 import "server-only";
 
-import { serverEnvSchema } from "./schema.js";
+import { serverEnvSchema } from "./schema";
 
-export type { ServerEnv } from "./types.js";
+export type { ServerEnv } from "./types";
 
 /**
  * Parse the server-only environment subset.

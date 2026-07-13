@@ -1,5 +1,5 @@
-import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate.js";
-import type { SchemaNode, PersonInput } from "../types.js";
+import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
+import type { SchemaNode, PersonInput } from "../types";
 
 export function buildPerson(input: PersonInput): SchemaNode {
   rejectProhibitedClaims(input.author as unknown as Record<string, unknown>);

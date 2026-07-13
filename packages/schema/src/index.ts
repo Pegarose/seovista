@@ -15,7 +15,7 @@ export type {
   BreadcrumbListInput,
   AboutBrandInput,
   ProhibitedClaimCheck,
-} from "./types.js";
+} from "./types";
 
 export {
   SchemaValidationError,
@@ -25,19 +25,19 @@ export {
   validatePath,
   buildAbsoluteUrl,
   ensureString,
-} from "./validate.js";
+} from "./validate";
 
-export { organizationId, websiteId, aboutBrandId } from "./ids.js";
+export { organizationId, websiteId, aboutBrandId } from "./ids";
 
-export { buildOrganization } from "./builders/organization.js";
-export { buildWebSite, buildWebSiteFromOrganization } from "./builders/website.js";
-export { buildWebPage } from "./builders/webpage.js";
-export { buildService } from "./builders/service.js";
-export { buildPerson } from "./builders/person.js";
-export { buildArticle, buildBlogPosting } from "./builders/article.js";
-export { buildBreadcrumbList } from "./builders/breadcrumb.js";
-export { buildWebApplication, buildSoftwareApplication } from "./builders/web-application.js";
-export { buildFAQPage } from "./builders/faq-page.js";
-export { buildDefinedTerm } from "./builders/defined-term.js";
-export { buildAboutBrand } from "./builders/about-brand.js";
-export { buildGraph, renderGraph } from "./graph.js";
+export { buildOrganization } from "./builders/organization";
+export { buildWebSite, buildWebSiteFromOrganization } from "./builders/website";
+export { buildWebPage } from "./builders/webpage";
+export { buildService } from "./builders/service";
+export { buildPerson } from "./builders/person";
+export { buildArticle, buildBlogPosting } from "./builders/article";
+export { buildBreadcrumbList } from "./builders/breadcrumb";
+export { buildWebApplication, buildSoftwareApplication } from "./builders/web-application";
+export { buildFAQPage } from "./builders/faq-page";
+export { buildDefinedTerm } from "./builders/defined-term";
+export { buildAboutBrand } from "./builders/about-brand";
+export { buildGraph, renderGraph } from "./graph";

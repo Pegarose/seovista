@@ -4,11 +4,11 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "SeoVista",
     short_name: "SeoVista",
-    description: "AI visibility and GEO readiness platform",
+    description: "GEO and search visibility intelligence by SeoVista.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#0f172a",
+    background_color: "#FCFBF7",
+    theme_color: "#0A1017",
     icons: [
       {
         src: "/icon.svg",

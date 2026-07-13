@@ -1,5 +1,5 @@
-import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate.js";
-import type { SchemaNode, DefinedTermInput } from "../types.js";
+import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
+import type { SchemaNode, DefinedTermInput } from "../types";
 
 export function buildDefinedTerm(input: DefinedTermInput): SchemaNode {
   rejectProhibitedClaims(input.definition as unknown as Record<string, unknown>);

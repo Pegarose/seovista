@@ -1,5 +1,5 @@
-import { buildAbsoluteUrl } from "../validate.js";
-import type { SchemaNode, BreadcrumbListInput } from "../types.js";
+import { buildAbsoluteUrl } from "../validate";
+import type { SchemaNode, BreadcrumbListInput } from "../types";
 
 export function buildBreadcrumbList(input: BreadcrumbListInput): SchemaNode {
   if (input.items.length === 0) {

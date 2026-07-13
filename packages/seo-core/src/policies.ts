@@ -1,5 +1,5 @@
-import { parseSiteUrl, parseTrustedUrl, resolveCanonical } from "./canonical.js";
-import type { FeedEntry, FeedOptions, LlmsOptions, RobotsGroup, RobotsOptions, SitemapUrl } from "./types.js";
+import { parseSiteUrl, parseTrustedUrl, resolveCanonical } from "./canonical";
+import type { FeedEntry, FeedOptions, LlmsOptions, RobotsGroup, RobotsOptions, SitemapUrl } from "./types";
 
 export const DEFAULT_DISALLOWED_PREFIXES: readonly string[] = [
   "/api/",

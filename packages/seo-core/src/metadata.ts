@@ -1,5 +1,5 @@
-import { resolveCanonical, resolveCanonicalFromOverride, parseSiteUrl } from "./canonical.js";
-import type { MetadataInput, MetadataResult, OpenGraphType, RobotsValue, TwitterCard } from "./types.js";
+import { resolveCanonical, resolveCanonicalFromOverride, parseSiteUrl } from "./canonical";
+import type { MetadataInput, MetadataResult, OpenGraphType, RobotsValue, TwitterCard } from "./types";
 
 export function buildMetadata(siteUrl: string, input: MetadataInput): MetadataResult {
   if (!input.title || input.title.trim().length === 0) {

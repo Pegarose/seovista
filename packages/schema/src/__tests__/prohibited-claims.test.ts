@@ -8,14 +8,14 @@ import {
   buildFAQPage,
   buildGraph,
   SchemaValidationError,
-} from "../index.js";
+} from "../index";
 import {
   makePage,
   makeService,
   makeTool,
   makeFAQ,
   makeOrganization,
-} from "./fixtures.js";
+} from "./fixtures";
 
 const siteUrl = "https://seovista.com";
 

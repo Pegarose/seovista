@@ -1,6 +1,6 @@
-import { organizationId, websiteId } from "../ids.js";
-import { ensureString, validateSiteUrl } from "../validate.js";
-import type { SchemaNode } from "../types.js";
+import { organizationId, websiteId } from "../ids";
+import { ensureString, validateSiteUrl } from "../validate";
+import type { SchemaNode } from "../types";
 
 export function buildWebSite(
   siteUrl: string,

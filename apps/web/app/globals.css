@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+@theme {
+  --color-ink: #0A1017;
+  --color-graphite: #121B24;
+  --color-mineral: #F3F1EB;
+  --color-paper: #FCFBF7;
+  --color-signal-green: #66E3B4;
+  --color-spectral-blue: #6C8CFF;
+  --color-muted: #697684;
+  --color-border-light: #D8DDD9;
+  --color-border-dark: rgba(255, 255, 255, 0.12);
+  --max-width-container: 1320px;
+  --transition-duration-fast: 200ms;
+  --transition-duration-base: 350ms;
+  --transition-duration-slow: 600ms;
+}
+
 @layer base {
   html {
     color-scheme: light dark;
@@ -7,5 +23,46 @@
 
   body {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  * {
+    transition-duration: var(--transition-duration-fast);
+    transition-property: opacity, transform, color, background-color, border-color;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
+
+@layer utilities {
+  .focus-outline-spectral:focus,
+  .focus-outline-spectral:focus-visible {
+    box-shadow: 0 0 0 2px #FCFBF7, 0 0 0 4px #6C8CFF !important;
+    outline: none !important;
+  }
+}
+
+@layer utilities {
+  .motion-fast {
+    transition-duration: var(--transition-duration-fast);
+  }
+
+  .motion-base {
+    transition-duration: var(--transition-duration-base);
+  }
+
+  .motion-slow {
+    transition-duration: var(--transition-duration-slow);
+  }
+}
+

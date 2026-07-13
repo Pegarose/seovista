@@ -1,4 +1,4 @@
-import type { SchemaGraph, SchemaNode } from "./types.js";
+import type { SchemaGraph, SchemaNode } from "./types";
 
 export function buildGraph(nodes: readonly SchemaNode[]): SchemaGraph {
   return {

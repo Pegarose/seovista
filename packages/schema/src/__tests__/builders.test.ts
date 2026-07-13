@@ -15,7 +15,7 @@ import {
   organizationId,
   websiteId,
   type SchemaGraph,
-} from "../index.js";
+} from "../index";
 import {
   makePage,
   makeService,
@@ -25,7 +25,7 @@ import {
   makeOrganization,
   makeDefinition,
   makeFAQ,
-} from "./fixtures.js";
+} from "./fixtures";
 
 const siteUrl = "https://seovista.com";
 

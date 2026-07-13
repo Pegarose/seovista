@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { MapFailure, CanonicalInfo } from "./types.js";
+import type { MapFailure, CanonicalInfo } from "./types";
 
 const TRUSTED_PATH = /^\/(?:[a-z0-9-]+\/)*[a-z0-9-]*$/;
 const TRAILING_SLASH_PATH = /\/$/;

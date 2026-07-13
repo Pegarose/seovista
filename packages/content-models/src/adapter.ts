@@ -24,8 +24,8 @@ import type {
   ResolvedFAQ,
   ResolvedContentEntity,
   Adapter,
-} from "./types.js";
-import { isContentEntityPubliclyEligible } from "./publication.js";
+} from "./types";
+import { isContentEntityPubliclyEligible } from "./publication";
 
 export function buildEntityIndex(entities: readonly ContentEntity[]): EntityIndex {
   const byId = new Map<string, ContentEntity>();

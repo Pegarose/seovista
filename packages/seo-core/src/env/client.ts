@@ -1,6 +1,6 @@
-import { publicEnvSchema } from "./schema.js";
+import { publicEnvSchema } from "./schema";
 
-export type { PublicEnv } from "./types.js";
+export type { PublicEnv } from "./types";
 
 /**
  * Parse the browser-exposable environment subset.

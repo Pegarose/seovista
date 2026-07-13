@@ -45,7 +45,7 @@ export type {
   ResolveOptions,
   EntityIndex,
   Adapter,
-} from "./types.js";
+} from "./types";
 
 export {
   mapEntity,
@@ -64,7 +64,7 @@ export {
   mapLocale,
   mapAuditLead,
   toMapFailure,
-} from "./mapper.js";
+} from "./mapper";
 
 export {
   createAdapter,
@@ -79,7 +79,7 @@ export {
   resolveDefinition,
   resolveFAQ,
   resolveContentEntity,
-} from "./adapter.js";
+} from "./adapter";
 
 export {
   normalizeIndexation,
@@ -93,9 +93,9 @@ export {
   isLocalePubliclyEligible,
   isRedirectPubliclyEligible,
   isAuditLeadPrivate,
-} from "./publication.js";
+} from "./publication";
 
-export { validateLocale, defaultLocale, isEnglish, isHreflangEligible } from "./locale.js";
+export { validateLocale, defaultLocale, isEnglish, isHreflangEligible } from "./locale";
 
 export {
   resolveCanonical,
@@ -104,6 +104,6 @@ export {
   isTrustedUrl,
   siteUrlSchema,
   type TrustedSiteUrl,
-} from "./canonical.js";
+} from "./canonical";
 
 export const name: string = "@seovista/content-models";
