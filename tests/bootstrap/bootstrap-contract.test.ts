@@ -53,6 +53,8 @@ describe("monorepo bootstrap contract", () => {
       "test:a11y",
       "test:seo",
       "lighthouse",
+      "release",
+      "verify-package-boundaries",
     ];
 
     expect(Object.keys(pkg.scripts ?? {})).toEqual(expectedScripts);
@@ -221,5 +223,149 @@ describe("monorepo bootstrap contract", () => {
       expect(content).toMatch(/## Supersedes/i);
       expect(content).toMatch(/## Superseded by/i);
     }
+  });
+
+  it("GitHub Actions CI workflows exist for PR and default-branch", () => {
+    const prWorkflow = read(".github/workflows/ci-pull-request.yml");
+    const defaultWorkflow = read(".github/workflows/ci-default-branch.yml");
+
+    // Both workflows must reference Node 24 and pnpm 10.30.1
+    for (const wf of [prWorkflow, defaultWorkflow]) {
+      expect(wf).toContain("node-version: '24'");
+      expect(wf).toContain("pnpm@10.30.1");
+      expect(wf).toContain("--frozen-lockfile");
+      expect(wf).toContain("pnpm lint");
+      expect(wf).toContain("pnpm typecheck");
+      expect(wf).toContain("pnpm test");
+      expect(wf).toContain("pnpm build");
+      expect(wf).toContain("pnpm test:e2e");
+      expect(wf).toContain("pnpm test:a11y");
+      expect(wf).toContain("pnpm test:seo");
+      expect(wf).toContain("pnpm lighthouse");
+      // Must NOT have continue-on-error or success bypasses
+      expect(wf).not.toMatch(/^\s*continue-on-error:\s*true/m);
+    }
+
+    // PR workflow triggers on pull_request
+    expect(prWorkflow).toMatch(/on:\s*\n\s*pull_request:/);
+    // Default branch triggers on push and schedule
+    expect(defaultWorkflow).toMatch(/on:\s*\n\s*push:/);
+  });
+
+  it("Lighthouse config contains required route set with assertions", () => {
+    const lhConfig = read("lighthouserc.js");
+
+    const requiredUrls = [
+      "http://localhost:3100/",
+      "http://localhost:3100/geo/",
+      "http://localhost:3100/tools/",
+      "http://localhost:3100/tools/geo-readiness-checker/",
+      "http://localhost:3100/contact/",
+      "http://localhost:3100/terms/",
+    ];
+
+    for (const url of requiredUrls) {
+      expect(lhConfig).toContain(url);
+    }
+
+    // Assertions present
+    expect(lhConfig).toContain('"categories:performance"');
+    expect(lhConfig).toContain('"categories:accessibility"');
+    expect(lhConfig).toContain('"categories:seo"');
+    expect(lhConfig).toContain('"largest-contentful-paint"');
+    expect(lhConfig).toContain('"cumulative-layout-shift"');
+    expect(lhConfig).toContain('"server-response-time"');
+    expect(lhConfig).toContain('"interaction-to-next-paint"');
+
+    // INP assertion present
+    expect(lhConfig).toContain("interaction-to-next-paint");
+    expect(lhConfig).toContain("200");
+
+    // Build before serve
+    expect(lhConfig).toContain("pnpm --filter @seovista/web build");
+    expect(lhConfig).toContain("startServerCommand");
+  });
+
+  it("Dependency policy reconciles one row per direct dependency", () => {
+    const policy = read("docs/dependency-policy.md");
+
+    // Must have inventory heading and structure
+    expect(policy).toMatch(/## Inventory/i);
+    expect(policy).toMatch(/## License Exception Policy/i);
+    expect(policy).toMatch(/## Lockfile Reconciliation/i);
+    expect(policy).toMatch(/## Package-Boundary Rules/i);
+
+    // Must reference all workspace owners
+    const workspaceOwners = [
+      "apps/web",
+      "apps/nextg",
+      "apps/worker",
+      "packages/ui",
+      "packages/seo-core",
+      "packages/schema",
+      "packages/content-models",
+      "packages/audit-core",
+      "packages/open-seo-adapter",
+      "packages/dataforseo",
+      "packages/geo-engine",
+      "packages/reports",
+      "packages/analytics",
+      "root",
+    ];
+
+    for (const owner of workspaceOwners) {
+      expect(policy).toContain(owner);
+    }
+
+    // Must cover key production dependencies
+    const keyDeps = ["next", "react", "bullmq", "ioredis", "pg", "zod", "ipaddr.js", "server-only"];
+    for (const dep of keyDeps) {
+      expect(policy).toContain(dep);
+    }
+
+    // Must NOT have wildcard, URL, or local-path entries
+    expect(policy).not.toMatch(/\|\s*\*\s*\|/);
+    expect(policy).not.toMatch(/https?:\/\/registry\./);
+    expect(policy).not.toMatch(/file:/);
+
+    // Must reference SPDX license and update strategy columns
+    expect(policy).toMatch(/SPDX License/i);
+    expect(policy).toMatch(/Update Strategy/i);
+  });
+
+  it("Release command is executable and references canonical gates", () => {
+    const releaseScript = read("scripts/release.js");
+
+    // Must invoke each canonical root command
+    expect(releaseScript).toContain("pnpm lint");
+    expect(releaseScript).toContain("pnpm typecheck");
+    expect(releaseScript).toContain("pnpm test");
+    expect(releaseScript).toContain("pnpm build");
+    expect(releaseScript).toContain("pnpm test:e2e");
+    expect(releaseScript).toContain("pnpm test:a11y");
+    expect(releaseScript).toContain("pnpm test:seo");
+    expect(releaseScript).toContain("pnpm lighthouse");
+
+    // Must handle cleanup and interruption
+    expect(releaseScript).toMatch(/SIGINT|SIGTERM|cleanup|interrupt/i);
+    expect(releaseScript).toMatch(/"docker"|docker compose|compose.*down|down.*volumes/i);
+
+    // Must produce redacted artifacts
+    expect(releaseScript).toMatch(/redact/i);
+  });
+
+  it("Package-boundary verifier exists and is runnable", () => {
+    const boundaryScript = read("scripts/verify-package-boundaries.js");
+
+    // Must check browser-side server-only deps
+    expect(boundaryScript).toContain("pg");
+    expect(boundaryScript).toContain("ioredis");
+    expect(boundaryScript).toContain("bullmq");
+
+    // Must detect duplicate-purpose deps
+    expect(boundaryScript).toMatch(/duplicate/i);
+
+    // Must exit with non-zero on violations
+    expect(boundaryScript).toContain("process.exit(1)");
   });
 });

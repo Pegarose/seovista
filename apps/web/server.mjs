@@ -42,7 +42,6 @@ app.prepare().then(() => {
 
     handle(req, res);
   }).listen(PORT, () => {
-    // eslint-disable-next-line no-console
     console.log(`> Ready on http://localhost:${PORT}`);
   });
 });

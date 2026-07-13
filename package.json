@@ -20,7 +20,9 @@
     "test:e2e": "pnpm run --filter @seovista/web --if-present test:e2e",
     "test:a11y": "pnpm run --filter @seovista/web --if-present test:a11y",
     "test:seo": "pnpm run --filter @seovista/web --if-present test:seo",
-    "lighthouse": "pnpm run --filter @seovista/web --if-present lighthouse"
+    "lighthouse": "pnpm run --filter @seovista/web --if-present lighthouse",
+    "release": "node scripts/release.js",
+    "verify-package-boundaries": "node scripts/verify-package-boundaries.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

@@ -22,7 +22,6 @@ export interface SsrfPolicy {
    * ordinary hostnames are not resolved and therefore only scheme, port, and
    * hostname policy are applied.
    */
-  // eslint-disable-next-line no-unused-vars
   resolver?: (hostname: string) => Promise<string[]> | string[];
 }
 
