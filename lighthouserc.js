@@ -34,7 +34,8 @@ module.exports = {
         "http://localhost:3100/contact/",
         "http://localhost:3100/terms/",
       ],
-      startServerCommand: "pnpm --filter @seovista/web build && pnpm --filter @seovista/web start",
+      startServerCommand:
+        "node ../../scripts/run-isolated-web-command.js lighthouse build && node ../../scripts/run-isolated-web-command.js lighthouse serve",
       startServerReadyPattern: "Ready on",
       startServerReadyTimeout: 120000,
       settings: {
@@ -77,4 +78,3 @@ module.exports = {
     // no orphaned resources.
   },
 };
-

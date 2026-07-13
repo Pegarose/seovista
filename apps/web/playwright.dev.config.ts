@@ -22,7 +22,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm --filter @seovista/web dev",
+    command: "node ../../scripts/run-isolated-web-command.js development dev",
     url: "http://localhost:3100",
     reuseExistingServer: false,
     timeout: 120000,
@@ -30,6 +30,7 @@ export default defineConfig({
       WEB_TEST_RUNTIME: "development",
       NEXT_PUBLIC_SITE_URL: "https://seovista.com",
       NEXTG_API_URL: "http://localhost:3101",
+      NEXT_DIST_DIR: ".next-development",
     },
   },
 });

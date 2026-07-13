@@ -5,12 +5,26 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  acquireBuildOwnership,
+  buildProfileEnvironment,
+  cleanPreviousProfileOutput,
+  cleanupOwnedOutput,
+  createBuildRun,
+  getBuildOutputDirectory,
+  initializeOwnedOutput,
+  preflightBuildHeadroom,
+  releaseBuildOwnership,
+} from "./web-build-isolation.js";
 
 const scriptDirectory = fileURLToPath(new URL(".", import.meta.url));
 const root = resolve(scriptDirectory, "..");
 
 export function buildSecretSentinelValues() {
-  const seed = createHash("sha256").update("seovista-production-sentinel").digest("hex").slice(0, 20);
+  const seed = createHash("sha256")
+    .update("seovista-production-sentinel")
+    .digest("hex")
+    .slice(0, 20);
   return Object.freeze({
     DATABASE_URL: `postgresql://sentinel-user:${seed}@sentinel.invalid:55432/sentinel`,
     REDIS_URL: `redis://:${seed}@sentinel.invalid:56379/0`,
@@ -46,11 +60,19 @@ export function getPublicScanPaths(nextOutputDirectory) {
 }
 
 export function getPublicResponsePaths() {
-  return ["/", "/robots.txt", "/sitemap.xml", "/llms.txt", "/feed.xml", "/manifest.webmanifest", "/api/health/"];
+  return [
+    "/",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/llms.txt",
+    "/feed.xml",
+    "/manifest.webmanifest",
+    "/api/health/",
+  ];
 }
 
 export function getSentinelDistDirectory(webDirectory) {
-  return resolve(webDirectory, ".next-sentinel");
+  return getBuildOutputDirectory(webDirectory, "sentinel");
 }
 
 function filesUnder(directory) {
@@ -64,7 +86,12 @@ function filesUnder(directory) {
 
 function run(command, args, environment) {
   return new Promise((resolveRun, reject) => {
-    const child = spawn(command, args, { cwd: root, env: environment, stdio: "pipe", windowsHide: true });
+    const child = spawn(command, args, {
+      cwd: root,
+      env: environment,
+      stdio: "pipe",
+      windowsHide: true,
+    });
     let output = "";
     child.stdout.on("data", (chunk) => {
       output += chunk.toString();
@@ -78,7 +105,9 @@ function run(command, args, environment) {
         resolveRun(output);
         return;
       }
-      reject(new Error(`Command failed with exit ${exitCode ?? "unknown"}: ${output.slice(-2000)}`));
+      reject(
+        new Error(`Command failed with exit ${exitCode ?? "unknown"}: ${output.slice(-2000)}`)
+      );
     });
   });
 }
@@ -137,33 +166,52 @@ async function scanPublicResponses(environment, sentinels) {
 
 export async function runProductionSentinel() {
   const webDirectory = resolve(root, "apps/web");
+  const runContext = createBuildRun("sentinel", { webDirectory });
+  const environment = buildProfileEnvironment("sentinel", buildSentinelEnvironment());
   const sentinelDistDirectory = getSentinelDistDirectory(webDirectory);
-  const environment = {
-    ...buildSentinelEnvironment(),
-    NEXT_DIST_DIR: ".next-sentinel",
-    SEOVISTA_SENTINEL_BUILD: "true",
-    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --max-old-space-size=1536`.trim(),
-  };
-  await run(process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "corepack", process.platform === "win32" ? ["/d", "/s", "/c", "corepack pnpm --filter @seovista/web build"] : ["pnpm", "--filter", "@seovista/web", "build"], environment);
-
-  const artifactRoots = getPublicScanPaths(sentinelDistDirectory);
-  const files = artifactRoots.flatMap(filesUnder);
-  const findings = files.flatMap((path) => {
-    const matches = findSecretSentinels(readFileSync(path, "utf8"), environment);
-    return matches.map((name) => `${path}: ${name}`);
+  preflightBuildHeadroom({
+    minHeadroomMb: environment.SEOVISTA_BUILD_MIN_HEADROOM_MB,
+    heapMb: environment.SEOVISTA_BUILD_HEAP_MB,
   });
-  findings.push(...(await scanPublicResponses(environment, environment)));
+  const ownership = acquireBuildOwnership(runContext);
+  let initializedOutput = false;
 
-  if (findings.length > 0) {
-    throw new Error(`Public sentinel leak detected:\n${findings.join("\n")}`);
+  try {
+    cleanPreviousProfileOutput(ownership);
+    initializeOwnedOutput(ownership);
+    initializedOutput = true;
+    await run(
+      process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "corepack",
+      process.platform === "win32"
+        ? ["/d", "/s", "/c", "corepack pnpm --filter @seovista/web exec next build"]
+        : ["pnpm", "--filter", "@seovista/web", "exec", "next", "build"],
+      environment
+    );
+
+    const artifactRoots = getPublicScanPaths(sentinelDistDirectory);
+    const files = artifactRoots.flatMap(filesUnder);
+    const findings = files.flatMap((path) => {
+      const matches = findSecretSentinels(readFileSync(path, "utf8"), environment);
+      return matches.map((name) => `${path}: ${name}`);
+    });
+    findings.push(...(await scanPublicResponses(environment, environment)));
+
+    if (findings.length > 0) {
+      throw new Error(`Public sentinel leak detected:\n${findings.join("\n")}`);
+    }
+
+    process.stdout.write("Production sentinel build and runtime scan passed.\n");
+  } finally {
+    if (initializedOutput) cleanupOwnedOutput(ownership);
+    releaseBuildOwnership(ownership);
   }
-
-  process.stdout.write("Production sentinel build and runtime scan passed.\n");
 }
 
 if (process.argv[1] && process.argv[1].endsWith("production-sentinel.js")) {
   runProductionSentinel().catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.message : "production sentinel failure"}\n`);
+    process.stderr.write(
+      `${error instanceof Error ? error.message : "production sentinel failure"}\n`
+    );
     process.exitCode = 1;
   });
 }

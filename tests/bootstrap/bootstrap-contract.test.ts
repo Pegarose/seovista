@@ -57,7 +57,13 @@ describe("monorepo bootstrap contract", () => {
       "verify-package-boundaries",
     ];
 
-    expect(Object.keys(pkg.scripts ?? {})).toEqual(expectedScripts);
+    expect(Object.keys(pkg.scripts ?? {})).toEqual([
+      ...expectedScripts.slice(0, 9),
+      "infrastructure:start",
+      "infrastructure:teardown",
+      "verify:production-sentinels",
+      ...expectedScripts.slice(9),
+    ]);
     expect(pkg.packageManager).toBe("pnpm@10.30.1");
     expect(pkg.engines?.node).toBe(">=24.0.0 <25.0.0");
     expect(pkg.engines?.pnpm).toBe("10.30.1");
@@ -298,8 +304,9 @@ describe("monorepo bootstrap contract", () => {
     expect(lhConfig).toContain("interaction-to-next-paint");
     expect(lhConfig).toContain("200");
 
-    // Build before serve
-    expect(lhConfig).toContain("pnpm --filter @seovista/web build");
+    // Build before serve through the Lighthouse-owned output profile.
+    expect(lhConfig).toContain("run-isolated-web-command.js lighthouse build");
+    expect(lhConfig).toContain("run-isolated-web-command.js lighthouse serve");
     expect(lhConfig).toContain("startServerCommand");
   });
 

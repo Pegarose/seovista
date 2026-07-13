@@ -44,13 +44,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm --filter @seovista/web build && pnpm --filter @seovista/web start",
+    command:
+      "node ../../scripts/run-isolated-web-command.js playwright build && node ../../scripts/run-isolated-web-command.js playwright serve",
     url: "http://localhost:3100",
     reuseExistingServer: false,
     timeout: 120000,
     env: {
       NEXT_PUBLIC_SITE_URL: "https://seovista.com",
       NEXTG_API_URL: "http://localhost:3101",
+      NEXT_DIST_DIR: ".next-playwright",
     },
   },
 });
