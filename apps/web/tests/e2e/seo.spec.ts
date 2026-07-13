@@ -371,16 +371,22 @@ for (const route of launchRoutes) {
 }
 
 for (const svcPath of serviceRoutes) {
-  test(`jsonld: ${svcPath} Service node matches visible content`, async ({ page }) => {
-    await page.goto(svcPath);
-    const graph = await parseJsonLd(page);
+  test(`jsonld: ${svcPath} Service node exactly matches first-response visible content`, async ({ page }) => {
+    const response = await page.goto(svcPath);
+    expect(response?.status()).toBe(200);
 
+    const firstResponseHtml = await response!.text();
+    const graph = await parseJsonLd(page);
     const service = graph["@graph"].find((n) => n["@type"] === "Service");
     expect(service).toBeDefined();
 
-    // Service name should be visible on the page
-    const bodyText = await page.locator("main").textContent();
-    expect(bodyText).toContain(service!["name"] as string);
+    const serviceName = service!["name"] as string;
+    const serviceDescription = service!["description"] as string;
+
+    await expect(page.locator("main h1")).toHaveText(serviceName);
+    await expect(page.locator("main")).toContainText(serviceDescription);
+    expect(firstResponseHtml).toContain(serviceName);
+    expect(firstResponseHtml).toContain(serviceDescription);
   });
 }
 

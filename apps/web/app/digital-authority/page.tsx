@@ -24,10 +24,10 @@ export default function DigitalAuthorityPage(): React.ReactElement {
         <Section padding="lg" className="bg-mineral">
           <Container>
             <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-              {digitalAuthorityPage.title}
+              {service.name}
             </h1>
             <p className="mt-4 max-w-2xl text-lg text-muted">
-              {digitalAuthorityPage.description}
+              {service.description}
             </p>
           </Container>
         </Section>
