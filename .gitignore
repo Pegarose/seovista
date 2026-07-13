@@ -13,6 +13,8 @@ build/
 # Testing
 coverage/
 *.log
+e2e-results/
+test-results/
 
 # Environment variables
 .env

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..", "..");
@@ -124,15 +124,32 @@ describe("monorepo bootstrap contract", () => {
     expect(workers).toBeGreaterThan(0);
   });
 
+  it("ignores Playwright result directories while retaining CI artifact paths", () => {
+    const gitignore = read(".gitignore");
+    const workflows = [
+      read(".github/workflows/ci-pull-request.yml"),
+      read(".github/workflows/ci-default-branch.yml"),
+    ];
+
+    expect(gitignore).toMatch(/^e2e-results\/$/m);
+    expect(gitignore).toMatch(/^test-results\/$/m);
+
+    for (const workflow of workflows) {
+      expect(workflow).toContain("apps/web/tests/e2e-results/");
+      expect(workflow).toContain("apps/web/test-results/");
+    }
+  });
+
+  it("uses prettier.config.js as the sole Prettier configuration", () => {
+    expect(existsSync(resolve(root, "prettier.config.js"))).toBe(true);
+    expect(existsSync(resolve(root, ".prettierrc"))).toBe(false);
+  });
+
   it("AGENTS.md states PRD is product authority, Brief is engineering authority, and PRD wins conflicts", () => {
     const agents = read("AGENTS.md");
 
-    expect(agents).toMatch(
-      /SeoVista PRD.*is the authoritative source for product behavior/i,
-    );
-    expect(agents).toMatch(
-      /Implementation Brief.*is the authoritative source for engineering/i,
-    );
+    expect(agents).toMatch(/SeoVista PRD.*is the authoritative source for product behavior/i);
+    expect(agents).toMatch(/Implementation Brief.*is the authoritative source for engineering/i);
     expect(agents).toMatch(/the PRD wins/i);
   });
 
