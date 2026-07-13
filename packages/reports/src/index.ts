@@ -3,6 +3,7 @@ export type {
   ProviderScenario,
   ProviderOutcome,
   ProviderError,
+  ProviderSideEffectCounts,
   UtmParams,
   ConsentState,
 } from "./types.js";
@@ -41,6 +42,7 @@ export {
   type OAuthTokenResult,
   type OAuthRefreshRequest,
   type MockOAuthOptions,
+  OAuthConfigurationError,
 } from "./oauth.js";
 
 export {

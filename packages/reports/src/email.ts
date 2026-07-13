@@ -39,17 +39,21 @@ export interface EmailResult {
 export interface EmailProvider {
   readonly capability: ProviderCapability;
   send(payload: EmailPayload): Promise<ProviderOutcome<EmailResult>>;
+  getSideEffectCounts(): { attempted: number; successful: number };
 }
 
 export interface MockEmailOptions {
   readonly capability?: ProviderCapability;
-  readonly now?: Date;
+  readonly now?: Date | (() => Date);
 }
 
 export function createMockEmail(options: MockEmailOptions = {}): EmailProvider {
-  const capability = options.capability ?? "mock";
-  const now = options.now ?? new Date();
+  const capability: ProviderCapability = options.capability === undefined || options.capability === "mock" ? "mock" : "unconfigured";
+  const configuredNow = options.now;
+  const now: () => Date = typeof configuredNow === "function" ? configuredNow : () => configuredNow ?? new Date("2026-07-01T00:00:00.000Z");
   const sent = new Set<string>();
+  let attempted = 0;
+  let successful = 0;
 
   function redactIntent(intent: string | undefined): string | undefined {
     if (intent === undefined) return undefined;
@@ -94,6 +98,7 @@ export function createMockEmail(options: MockEmailOptions = {}): EmailProvider {
   }
 
   async function send(payload: EmailPayload): Promise<ProviderOutcome<EmailResult>> {
+    attempted += 1;
     if (capability === "unconfigured") {
       return { capability, scenario: payload.scenario, success: false, error: { code: "UNCONFIGURED", message: "Email provider is not configured.", retryable: false } };
     }
@@ -111,6 +116,7 @@ export function createMockEmail(options: MockEmailOptions = {}): EmailProvider {
     if (!deduplicated) {
       sent.add(key);
     }
+    successful += deduplicated ? 0 : 1;
     return {
       capability,
       scenario: payload.scenario,
@@ -119,7 +125,7 @@ export function createMockEmail(options: MockEmailOptions = {}): EmailProvider {
         accepted: deduplicated ? [] : [payload.to.email],
         rejected: [],
         deduplicated,
-        messageId: `mock-email-${now.toISOString()}-${key}`,
+        messageId: `mock-email-${now().toISOString()}-${key}`,
         redactedIntent: redactIntent(payload.intent),
       },
     };
@@ -128,6 +134,7 @@ export function createMockEmail(options: MockEmailOptions = {}): EmailProvider {
   return {
     capability,
     send,
+    getSideEffectCounts: () => ({ attempted, successful }),
   };
 }
 

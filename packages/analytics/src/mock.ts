@@ -1,48 +1,50 @@
-import type { AnalyticsCapability, AnalyticsEventPayload, AnalyticsProvider, AnalyticsResult, AnalyticsRejection } from "./types.js";
-import { validateAnalyticsEvent, checkProhibitedPayload, redactProperties } from "./events.js";
+import type { AnalyticsCapability, AnalyticsOutcome, AnalyticsProvider, AnalyticsRejection } from "./types.js";
+import { validateAnalyticsEvent, checkProhibitedPayload } from "./events.js";
 
 export interface MockAnalyticsOptions {
   readonly capability?: AnalyticsCapability;
-  readonly now?: Date;
+  readonly now?: () => Date;
 }
 
 export function createMockAnalytics(options: MockAnalyticsOptions = {}): AnalyticsProvider {
-  const capability = options.capability ?? "mock";
-  const now = options.now ?? new Date();
+  const capability: AnalyticsCapability = options.capability === undefined || options.capability === "mock" ? "mock" : "unconfigured";
+  const now = options.now ?? (() => new Date("2026-07-01T00:00:00.000Z"));
   let sequence = 0;
+  let attempted = 0;
+  let accepted = 0;
+  let rejected = 0;
 
-  async function track(event: AnalyticsEventPayload): Promise<AnalyticsResult> {
-    if (capability === "unconfigured") {
-      return { accepted: false, event: event.name, messageId: "mock-unconfigured", redacted: false };
-    }
-    if (capability !== "mock") {
-      return { accepted: false, event: event.name, messageId: "mock-unsupported", redacted: false };
-    }
+  function reject(reason: string, field?: string): AnalyticsRejection {
+    rejected += 1;
+    return { success: false, accepted: false, capability, messageId: capability === "mock" ? "mock-rejected" : "mock-unconfigured", reason, field, redacted: true, serialized: false };
+  }
+
+  async function track(event: unknown): Promise<AnalyticsOutcome> {
+    attempted += 1;
+    if (capability === "unconfigured") return reject("Analytics provider is not configured.");
 
     const validation = validateAnalyticsEvent(event);
-    if (!validation.success) {
-      return { accepted: false, event: event.name, messageId: "mock-rejected", redacted: true };
-    }
+    if (!validation.success) return reject(validation.reason, validation.field);
 
     const prohibited = checkProhibitedPayload(validation.payload);
-    if (prohibited) {
-      return { accepted: false, event: event.name, messageId: "mock-rejected", redacted: true };
-    }
+    if (prohibited) return reject(prohibited.reason, prohibited.field);
 
     sequence += 1;
-    const redacted = redactProperties(validation.payload.properties);
-    const hasRedaction = Object.entries(redacted).some(([key]) => redacted[key] !== validation.payload.properties[key]);
+    accepted += 1;
     return {
       accepted: true,
-      event: event.name,
-      messageId: `mock-analytics-${now.toISOString()}-${sequence}`,
-      redacted: hasRedaction,
+      capability: "mock",
+      event: validation.payload.name,
+      messageId: `mock-analytics-${now().toISOString()}-${sequence}`,
+      redacted: false,
+      serialized: true,
     };
   }
 
   return {
     capability,
     track,
+    getSideEffectCounts: () => ({ attempted, accepted, rejected }),
   };
 }
 

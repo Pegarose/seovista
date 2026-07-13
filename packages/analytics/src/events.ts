@@ -21,12 +21,40 @@ const analyticsEventNameSchema = z.enum([
   "api_cost_recorded",
 ]);
 
+const propertySchemas = {
+  tool_start: z.object({ tool: z.string().min(1) }).strict(),
+  tool_complete: z.object({ tool: z.string().min(1), status: z.literal("success") }).strict(),
+  audit_request: z.object({ source: z.string().min(1) }).strict(),
+  report_request: z.object({ source: z.string().min(1) }).strict(),
+  qualified_lead: z.object({ source: z.string().min(1) }).strict(),
+  audit_error: z.object({ code: z.string().min(1) }).strict(),
+  api_cost_recorded: z.object({
+    provider: z.literal("dataforseo"),
+    operation: z.string().min(1),
+    amount: z.number().finite().nonnegative(),
+    currency: z.string().regex(/^[A-Z]{3}$/),
+  }).strict(),
+} as const;
+
 const analyticsEventPayloadSchema = z.object({
   name: analyticsEventNameSchema,
   properties: z.record(z.unknown()),
   timestamp: z.string().datetime(),
-  correlationId: z.string().optional(),
-});
+  correlationId: z.string().min(1).optional(),
+}).strict();
+
+function rejection(reason: string, field?: string): AnalyticsRejection {
+  return {
+    success: false,
+    accepted: false,
+    capability: "mock",
+    messageId: "mock-rejected",
+    reason,
+    field,
+    redacted: true,
+    serialized: false,
+  };
+}
 
 export function isAnalyticsEventName(name: string): name is AnalyticsEventName {
   return ANALYTICS_EVENT_NAMES.includes(name as AnalyticsEventName);
@@ -35,9 +63,13 @@ export function isAnalyticsEventName(name: string): name is AnalyticsEventName {
 export function validateAnalyticsEvent(raw: unknown): { success: true; payload: AnalyticsEventPayload } | AnalyticsRejection {
   const parsed = analyticsEventPayloadSchema.safeParse(raw);
   if (!parsed.success) {
-    return { success: false, accepted: false, reason: `Invalid analytics event: ${parsed.error.message}`, field: "event" };
+    return rejection("Invalid analytics envelope.", "event");
   }
-  return { success: true, payload: parsed.data };
+  const properties = propertySchemas[parsed.data.name].safeParse(parsed.data.properties);
+  if (!properties.success) {
+    return rejection("Analytics properties do not match the declared event schema.", "properties");
+  }
+  return { success: true, payload: { ...parsed.data, properties: properties.data } };
 }
 
 const SENSITIVE_VALUE_PATTERNS = [
@@ -50,7 +82,6 @@ const SENSITIVE_VALUE_PATTERNS = [
 ];
 
 const SENSITIVE_KEY_NAMES = ["password", "token", "secret", "api_key", "apikey", "bearer"];
-
 const URL_PATTERN = /https?:\/\/[^\s"'<>]+/i;
 
 function containsSensitiveString(value: string): boolean {
@@ -60,39 +91,29 @@ function containsSensitiveString(value: string): boolean {
 }
 
 function containsSensitiveUrl(value: string): boolean {
-  if (!URL_PATTERN.test(value)) return false;
-  const urlMatch = URL_PATTERN.exec(value);
+  const urlMatch = value.match(URL_PATTERN);
   if (!urlMatch) return false;
-  const url = urlMatch[0];
   try {
-    const parsed = new URL(url);
-    if (parsed.search || parsed.hash || parsed.username || parsed.password) return true;
+    const parsed = new URL(urlMatch[0]);
+    return Boolean(parsed.search || parsed.hash || parsed.username || parsed.password);
   } catch {
     return true;
   }
-  return false;
 }
 
 function containsProhibitedContent(value: string): boolean {
-  if (containsSensitiveString(value)) return true;
-  if (containsSensitiveUrl(value)) return true;
-  if (value.includes("<html") || value.includes("</html>")) return true;
-  if (value.includes("<!DOCTYPE") || value.includes("<body")) return true;
-  if (value.includes("report content:") || value.includes("full audit report")) return true;
-  return false;
+  return containsSensitiveString(value)
+    || containsSensitiveUrl(value)
+    || /<\/?(?:html|body)\b|<!doctype/i.test(value)
+    || /report content:|full audit report/i.test(value);
 }
 
 function scanValue(value: unknown, path = "properties"): string | undefined {
   if (value === null || value === undefined) return undefined;
-  if (typeof value === "string") {
-    if (containsProhibitedContent(value)) {
-      return path;
-    }
-    return undefined;
-  }
+  if (typeof value === "string") return containsProhibitedContent(value) ? path : undefined;
   if (typeof value === "number" || typeof value === "boolean") return undefined;
   if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++) {
+    for (let i = 0; i < value.length; i += 1) {
       const result = scanValue(value[i], `${path}[${i}]`);
       if (result) return result;
     }
@@ -100,9 +121,7 @@ function scanValue(value: unknown, path = "properties"): string | undefined {
   }
   if (typeof value === "object") {
     for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-      if (containsProhibitedContent(key)) {
-        return `${path}.${key}`;
-      }
+      if (containsProhibitedContent(key)) return `${path}.${key}`;
       const result = scanValue(nested, `${path}.${key}`);
       if (result) return result;
     }
@@ -113,25 +132,12 @@ function scanValue(value: unknown, path = "properties"): string | undefined {
 
 export function checkProhibitedPayload(payload: AnalyticsEventPayload): AnalyticsRejection | undefined {
   if (!payload.correlationId && payload.name !== "api_cost_recorded") {
-    return { success: false, accepted: false, reason: "Correlation ID is required for this event.", field: "correlationId" };
+    return rejection("Correlation ID is required for this event.", "correlationId");
   }
   const field = scanValue(payload.properties);
-  if (field) {
-    return { success: false, accepted: false, reason: "Payload contains prohibited content (email, secrets, tokens, sensitive URL, HTML, or report content).", field };
-  }
-  return undefined;
+  return field ? rejection("Payload contains prohibited content.", field) : undefined;
 }
 
 export function redactProperties(properties: Record<string, unknown>): Record<string, unknown> {
-  const redacted: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(properties)) {
-    if (typeof value === "string" && containsProhibitedContent(value)) {
-      redacted[key] = "[redacted]";
-    } else if (typeof value === "object" && value !== null) {
-      redacted[key] = redactProperties(value as Record<string, unknown>);
-    } else {
-      redacted[key] = value;
-    }
-  }
-  return redacted;
+  return Object.fromEntries(Object.entries(properties).map(([key, value]) => [key, scanValue(value, key) || containsProhibitedContent(key) ? "[redacted]" : value]));
 }

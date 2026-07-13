@@ -3,7 +3,12 @@
  * deterministic mocks only; no live provider traffic is made.
  */
 
-export type ProviderCapability = "mock" | "unconfigured" | "live";
+export type ProviderCapability = "mock" | "unconfigured";
+
+export interface ProviderSideEffectCounts {
+  readonly attempted: number;
+  readonly successful: number;
+}
 
 export type ProviderScenario =
   | "success"

@@ -3,7 +3,7 @@
  * events and rejects unknown events and prohibited payloads.
  */
 
-export type AnalyticsCapability = "mock" | "unconfigured" | "live";
+export type AnalyticsCapability = "mock" | "unconfigured";
 
 export type AnalyticsEventName =
   | "tool_start"
@@ -22,22 +22,35 @@ export interface AnalyticsEventPayload {
 }
 
 export interface AnalyticsResult {
-  readonly accepted: boolean;
+  readonly accepted: true;
+  readonly capability: "mock";
   readonly event: AnalyticsEventName;
   readonly messageId: string;
-  readonly redacted: boolean;
-}
-
-export interface AnalyticsProvider {
-  readonly capability: AnalyticsCapability;
-  track(event: AnalyticsEventPayload): Promise<AnalyticsResult>;
+  readonly redacted: false;
+  readonly serialized: true;
 }
 
 export interface AnalyticsRejection {
   readonly success: false;
   readonly accepted: false;
+  readonly capability: AnalyticsCapability;
+  readonly messageId: "mock-rejected" | "mock-unconfigured";
   readonly reason: string;
   readonly field?: string | undefined;
+  readonly redacted: true;
+  readonly serialized: false;
+}
+
+export interface AnalyticsSideEffectCounts {
+  readonly attempted: number;
+  readonly accepted: number;
+  readonly rejected: number;
+}
+
+export interface AnalyticsProvider {
+  readonly capability: AnalyticsCapability;
+  track(event: unknown): Promise<AnalyticsOutcome>;
+  getSideEffectCounts(): AnalyticsSideEffectCounts;
 }
 
 export type AnalyticsOutcome = AnalyticsResult | AnalyticsRejection;

@@ -107,7 +107,7 @@ export function handleRequest(req: IncomingMessage, res: ServerResponse, provide
   const url = new URL(req.url ?? "/", "http://localhost");
 
   if (url.pathname === "/health" || url.pathname === "/health/live" || url.pathname === "/health/ready") {
-    const report = checkNextgHealth();
+    const report = checkNextgHealth(options.now);
     const isReady = url.pathname === "/health/ready" ? report.readiness === "ready" : true;
     const status = isReady ? 200 : 503;
     setJsonHeaders(res, status);
@@ -149,7 +149,7 @@ export function handleRequest(req: IncomingMessage, res: ServerResponse, provide
     return;
   }
   const mode = effectiveMode(requestedMode, req, options);
-  const response = buildCollectionResponse(collection, mode.kind, locale, STABLE_TIMESTAMP);
+  const response = buildCollectionResponse(collection, mode.kind, locale, options.now().toISOString());
   setJsonHeaders(res, 200);
   res.end(JSON.stringify(response));
 }

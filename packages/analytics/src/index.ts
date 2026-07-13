@@ -3,6 +3,7 @@ export type {
   AnalyticsEventName,
   AnalyticsEventPayload,
   AnalyticsResult,
+  AnalyticsSideEffectCounts,
   AnalyticsProvider,
   AnalyticsRejection,
   AnalyticsOutcome,

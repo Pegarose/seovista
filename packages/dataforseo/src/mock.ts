@@ -12,15 +12,18 @@ export interface MockDataForSeoOptions {
   readonly capability?: DataForSeoCapability;
   readonly dailyLimit?: number;
   readonly currency?: string;
-  readonly now?: Date;
+  readonly now?: () => Date;
 }
 
 export function createMockDataForSeo(options: MockDataForSeoOptions = {}): DataForSeoProvider {
-  const capability = options.capability ?? "mock";
+  const capability: DataForSeoCapability = options.capability === undefined || options.capability === "mock" ? "mock" : "unconfigured";
   const dailyLimit = options.dailyLimit ?? 100;
   const currency = options.currency ?? "USD";
-  const now = options.now ?? new Date();
+  const now = options.now ?? (() => new Date("2026-07-01T00:00:00.000Z"));
   let spentToday = 0;
+  let attempted = 0;
+  let successful = 0;
+  let costRecords = 0;
 
   function getBudget(): BudgetState {
     return {
@@ -35,7 +38,7 @@ export function createMockDataForSeo(options: MockDataForSeoOptions = {}): DataF
     return {
       taskId: request.taskId,
       target: request.target,
-      completedAt: now.toISOString(),
+      completedAt: now().toISOString(),
       checks: [
         { name: "crawlable", category: "accessibility", passed: true, value: true, severity: "info", evidence: [] },
         { name: "canonical_present", category: "seo", passed: true, value: true, severity: "info", evidence: [] },
@@ -53,11 +56,12 @@ export function createMockDataForSeo(options: MockDataForSeoOptions = {}): DataF
       operation: request.operation,
       amount,
       currency,
-      recordedAt: now.toISOString(),
+      recordedAt: now().toISOString(),
     };
   }
 
   async function execute(request: DataForSeoRequest): Promise<DataForSeoOutcome> {
+    attempted += 1;
     if (capability === "unconfigured") {
       return {
         capability,
@@ -67,18 +71,19 @@ export function createMockDataForSeo(options: MockDataForSeoOptions = {}): DataF
       };
     }
 
-    if (capability !== "mock") {
+    if (request.scenario === "success" && spentToday + 0.05 > dailyLimit) {
       return {
         capability,
         scenario: request.scenario,
         success: false,
-        error: { code: "UNSUPPORTED_CAPABILITY", message: "Sprint 0 only supports mock or unconfigured capability.", retryable: false },
+        budget: getBudget(),
+        error: { code: "BUDGET_EXCEEDED", message: "Daily mock provider budget is exhausted.", retryable: false },
       };
     }
 
     switch (request.scenario) {
       case "success": {
-        return {
+        const result = {
           capability,
           scenario: request.scenario,
           success: true,
@@ -86,6 +91,9 @@ export function createMockDataForSeo(options: MockDataForSeoOptions = {}): DataF
           cost: buildCost(request),
           budget: getBudget(),
         };
+        successful += 1;
+        costRecords += 1;
+        return result;
       }
       case "unavailable":
         return {
@@ -152,6 +160,7 @@ export function createMockDataForSeo(options: MockDataForSeoOptions = {}): DataF
     capability,
     execute,
     getBudget,
+    getSideEffectCounts: () => ({ attempted, successful, costRecords }),
   };
 }
 

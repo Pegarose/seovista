@@ -42,21 +42,25 @@ export interface StorageProvider {
   readonly capability: ProviderCapability;
   signedPut(request: SignedPutRequest): Promise<ProviderOutcome<SignedPutResult, StorageScenario>>;
   signedGet(request: SignedGetRequest): Promise<ProviderOutcome<SignedGetResult, StorageScenario>>;
+  getSideEffectCounts(): { attempted: number; successful: number };
 }
 
 export interface MockStorageOptions {
   readonly capability?: ProviderCapability;
   readonly endpoint?: string;
   readonly bucket?: string;
-  readonly now?: Date;
+  readonly now?: Date | (() => Date);
 }
 
 export function createMockStorage(options: MockStorageOptions = {}): StorageProvider {
-  const capability = options.capability ?? "mock";
+  const capability: ProviderCapability = options.capability === undefined || options.capability === "mock" ? "mock" : "unconfigured";
   const endpoint = options.endpoint ?? "https://storage.seovista.local";
   const bucket = options.bucket ?? "seovista-reports";
-  const now = options.now ?? new Date();
+  const configuredNow = options.now;
+  const now: () => Date = typeof configuredNow === "function" ? configuredNow : () => configuredNow ?? new Date("2026-07-01T00:00:00.000Z");
   const store = new Set<string>();
+  let attempted = 0;
+  let successful = 0;
 
   function errorFor(scenario: StorageScenario): ProviderError {
     switch (scenario) {
@@ -89,6 +93,7 @@ export function createMockStorage(options: MockStorageOptions = {}): StorageProv
   }
 
   async function signedPut(request: SignedPutRequest): Promise<ProviderOutcome<SignedPutResult, StorageScenario>> {
+    attempted += 1;
     if (capability === "unconfigured") {
       return { capability, scenario: request.scenario, success: false, error: { code: "UNCONFIGURED", message: "Storage provider is not configured.", retryable: false } };
     }
@@ -98,8 +103,9 @@ export function createMockStorage(options: MockStorageOptions = {}): StorageProv
     if (request.scenario !== "success") {
       return { capability, scenario: request.scenario, success: false, error: errorFor(request.scenario) };
     }
-    const expiresAt = new Date(now.getTime() + request.expiresInSeconds * 1000).toISOString();
+    const expiresAt = new Date(now().getTime() + request.expiresInSeconds * 1000).toISOString();
     store.add(request.key);
+    successful += 1;
     return {
       capability,
       scenario: request.scenario,
@@ -113,6 +119,7 @@ export function createMockStorage(options: MockStorageOptions = {}): StorageProv
   }
 
   async function signedGet(request: SignedGetRequest): Promise<ProviderOutcome<SignedGetResult, StorageScenario>> {
+    attempted += 1;
     if (capability === "unconfigured") {
       return { capability, scenario: request.scenario, success: false, error: { code: "UNCONFIGURED", message: "Storage provider is not configured.", retryable: false } };
     }
@@ -128,7 +135,8 @@ export function createMockStorage(options: MockStorageOptions = {}): StorageProv
     if (request.scenario !== "success") {
       return { capability, scenario: request.scenario, success: false, error: errorFor(request.scenario) };
     }
-    const expiresAt = new Date(now.getTime() + request.expiresInSeconds * 1000).toISOString();
+    const expiresAt = new Date(now().getTime() + request.expiresInSeconds * 1000).toISOString();
+    successful += 1;
     return {
       capability,
       scenario: request.scenario,
@@ -145,6 +153,7 @@ export function createMockStorage(options: MockStorageOptions = {}): StorageProv
     capability,
     signedPut,
     signedGet,
+    getSideEffectCounts: () => ({ attempted, successful }),
   };
 }
 

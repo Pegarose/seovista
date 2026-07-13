@@ -10,6 +10,9 @@ import {
   createUnconfiguredSignedLinkProvider,
 } from "../index.js";
 
+let identitySequence = 0;
+const fixedIdentity = (): string => `existing-test-identity-${++identitySequence}`;
+
 describe("reports storage mock", () => {
   it("returns signed put URL for success", async () => {
     const storage = createMockStorage();
@@ -102,7 +105,7 @@ describe("reports email mock", () => {
 
 describe("reports OAuth mock", () => {
   it("creates state and exchanges code", async () => {
-    const oauth = createMockOAuth();
+    const oauth = createMockOAuth({ identity: fixedIdentity });
     const state = await oauth.createState({
       provider: "google",
       redirectUri: "https://seovista.com/auth/callback/",
@@ -121,7 +124,7 @@ describe("reports OAuth mock", () => {
   });
 
   it("rejects exchange with mismatched redirect URI", async () => {
-    const oauth = createMockOAuth();
+    const oauth = createMockOAuth({ identity: fixedIdentity });
     const state = await oauth.createState({
       provider: "google",
       redirectUri: "https://seovista.com/auth/callback/",
@@ -138,7 +141,7 @@ describe("reports OAuth mock", () => {
   });
 
   it("refreshes tokens with encrypted boundary", async () => {
-    const oauth = createMockOAuth();
+    const oauth = createMockOAuth({ identity: fixedIdentity });
     const state = await oauth.createState({
       provider: "google",
       redirectUri: "https://seovista.com/auth/callback/",

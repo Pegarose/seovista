@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { ProviderCapability, ProviderOutcome, ProviderError } from "./types.js";
 
 export type OAuthScenario =
@@ -48,20 +48,37 @@ export interface OAuthProvider {
   createState(request: OAuthStateRequest): Promise<ProviderOutcome<OAuthStateResult>>;
   exchange(request: OAuthTokenRequest): Promise<ProviderOutcome<OAuthTokenResult>>;
   refresh(request: OAuthRefreshRequest): Promise<ProviderOutcome<OAuthTokenResult>>;
+  getSideEffectCounts(): { attempted: number; successful: number };
 }
 
 export interface MockOAuthOptions {
   readonly capability?: ProviderCapability;
   readonly encryptionKey?: string;
-  readonly now?: Date;
+  readonly now?: Date | (() => Date);
+  /** Required to make the source of every OAuth state and token explicit. */
+  readonly identity: () => string;
 }
 
-export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
-  const capability = options.capability ?? "mock";
+export class OAuthConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OAuthConfigurationError";
+  }
+}
+
+export function createMockOAuth(options: MockOAuthOptions): OAuthProvider {
+  if (typeof options.identity !== "function") {
+    throw new OAuthConfigurationError("Mock OAuth requires an injected identity source.");
+  }
+  const capability: ProviderCapability = options.capability === undefined || options.capability === "mock" ? "mock" : "unconfigured";
   const encryptionKey = options.encryptionKey ?? "mock-encryption-key-not-for-production";
-  const now = options.now ?? new Date();
+  const configuredNow = options.now;
+  const now: () => Date = typeof configuredNow === "function" ? configuredNow : () => configuredNow ?? new Date("2026-07-01T00:00:00.000Z");
+  const identity = options.identity;
   const states = new Map<string, { expiresAt: Date; redirectUri: string }>();
   const tokens = new Map<string, OAuthTokenResult>();
+  let attempted = 0;
+  let successful = 0;
 
   function encrypt(token: string): string {
     const hmac = createHash("sha256").update(`${encryptionKey}:${token}`).digest("hex").slice(0, 32);
@@ -69,7 +86,7 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
   }
 
   function generateToken(): string {
-    return randomBytes(16).toString("hex");
+    return identity();
   }
 
   function errorFor(scenario: OAuthScenario): ProviderError {
@@ -98,6 +115,7 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
   }
 
   async function createState(request: OAuthStateRequest): Promise<ProviderOutcome<OAuthStateResult>> {
+    attempted += 1;
     if (capability === "unconfigured") {
       return { capability, scenario: request.scenario, success: false, error: { code: "UNCONFIGURED", message: "OAuth provider is not configured.", retryable: false } };
     }
@@ -108,8 +126,9 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
       return { capability, scenario: request.scenario, success: false, error: errorFor(request.scenario) };
     }
     const state = generateToken();
-    const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
+    const expiresAt = new Date(now().getTime() + 10 * 60 * 1000);
     states.set(state, { expiresAt, redirectUri: request.redirectUri });
+    successful += 1;
     return {
       capability,
       scenario: request.scenario,
@@ -119,6 +138,7 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
   }
 
   async function exchange(request: OAuthTokenRequest): Promise<ProviderOutcome<OAuthTokenResult>> {
+    attempted += 1;
     if (capability === "unconfigured") {
       return { capability, scenario: request.scenario, success: false, error: { code: "UNCONFIGURED", message: "OAuth provider is not configured.", retryable: false } };
     }
@@ -126,7 +146,7 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
       return { capability, scenario: request.scenario, success: false, error: { code: "UNSUPPORTED_CAPABILITY", message: "Sprint 0 only supports mock or unconfigured OAuth.", retryable: false } };
     }
     const stateEntry = states.get(request.state);
-    if (!stateEntry || stateEntry.expiresAt.getTime() < now.getTime()) {
+    if (!stateEntry || stateEntry.expiresAt.getTime() < now().getTime()) {
       return { capability, scenario: request.scenario, success: false, error: { code: "INVALID_STATE", message: "State is missing or expired.", retryable: false } };
     }
     if (stateEntry.redirectUri !== request.redirectUri) {
@@ -138,7 +158,7 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
     const accessToken = generateToken();
     const refreshToken = generateToken();
     const encryptedToken = encrypt(accessToken);
-    const expiresAt = new Date(now.getTime() + 3600 * 1000);
+    const expiresAt = new Date(now().getTime() + 3600 * 1000);
     const result: OAuthTokenResult = {
       accessToken,
       refreshToken,
@@ -148,10 +168,12 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
     };
     tokens.set(refreshToken, result);
     states.delete(request.state);
+    successful += 1;
     return { capability, scenario: request.scenario, success: true, value: result };
   }
 
   async function refresh(request: OAuthRefreshRequest): Promise<ProviderOutcome<OAuthTokenResult>> {
+    attempted += 1;
     if (capability === "unconfigured") {
       return { capability, scenario: request.scenario, success: false, error: { code: "UNCONFIGURED", message: "OAuth provider is not configured.", retryable: false } };
     }
@@ -167,9 +189,10 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
     }
     const accessToken = generateToken();
     const encryptedToken = encrypt(accessToken);
-    const expiresAt = new Date(now.getTime() + 3600 * 1000);
+    const expiresAt = new Date(now().getTime() + 3600 * 1000);
     const result: OAuthTokenResult = { ...existing, accessToken, encryptedToken, expiresAt: expiresAt.toISOString() };
     tokens.set(existing.refreshToken, result);
+    successful += 1;
     return { capability, scenario: request.scenario, success: true, value: result };
   }
 
@@ -178,9 +201,10 @@ export function createMockOAuth(options: MockOAuthOptions = {}): OAuthProvider {
     createState,
     exchange,
     refresh,
+    getSideEffectCounts: () => ({ attempted, successful }),
   };
 }
 
-export function createUnconfiguredOAuth(options: Omit<MockOAuthOptions, "capability"> = {}): OAuthProvider {
-  return createMockOAuth({ ...options, capability: "unconfigured" });
+export function createUnconfiguredOAuth(options: Omit<MockOAuthOptions, "capability" | "identity"> = {}): OAuthProvider {
+  return createMockOAuth({ ...options, capability: "unconfigured", identity: () => "unconfigured" });
 }

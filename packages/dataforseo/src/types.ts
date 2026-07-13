@@ -3,7 +3,7 @@
  * deterministic mocks only; no live provider traffic is made.
  */
 
-export type DataForSeoCapability = "mock" | "unconfigured" | "live";
+export type DataForSeoCapability = "mock" | "unconfigured";
 
 export type DataForSeoScenario =
   | "success"
@@ -65,8 +65,15 @@ export interface DataForSeoOutcome {
   readonly error?: { code: string; message: string; retryable: boolean } | undefined;
 }
 
+export interface DataForSeoSideEffectCounts {
+  readonly attempted: number;
+  readonly successful: number;
+  readonly costRecords: number;
+}
+
 export interface DataForSeoProvider {
   readonly capability: DataForSeoCapability;
   execute(request: DataForSeoRequest): Promise<DataForSeoOutcome>;
   getBudget(): BudgetState;
+  getSideEffectCounts(): DataForSeoSideEffectCounts;
 }

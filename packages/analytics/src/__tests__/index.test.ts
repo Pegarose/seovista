@@ -1,18 +1,28 @@
 import { describe, it, expect } from "vitest";
 import { createMockAnalytics, createUnconfiguredAnalytics, ANALYTICS_EVENT_NAMES, validateAnalyticsEvent, checkProhibitedPayload } from "../index.js";
 
+const validProperties = {
+  tool_start: { tool: "geo-readiness-checker" },
+  tool_complete: { tool: "geo-readiness-checker", status: "success" },
+  audit_request: { source: "website" },
+  report_request: { source: "website" },
+  qualified_lead: { source: "website" },
+  audit_error: { code: "TIMEOUT" },
+  api_cost_recorded: { provider: "dataforseo", operation: "audit", amount: 0.05, currency: "USD" },
+} as const;
+
 describe("analytics event contracts", () => {
   it("accepts all seven declared events", async () => {
     const analytics = createMockAnalytics();
     for (const name of ANALYTICS_EVENT_NAMES) {
       const result = await analytics.track({
         name,
-        properties: { foo: "bar" },
+        properties: validProperties[name],
         timestamp: "2026-07-01T00:00:00.000Z",
-        correlationId: "corr-1",
+        ...(name === "api_cost_recorded" ? {} : { correlationId: "corr-1" }),
       });
       expect(result.accepted).toBe(true);
-      expect(result.event).toBe(name);
+      if (result.accepted) expect(result.event).toBe(name);
     }
   });
 
@@ -98,8 +108,9 @@ describe("analytics event contracts", () => {
   it("validates event schema", () => {
     const valid = validateAnalyticsEvent({
       name: "tool_start",
-      properties: {},
+      properties: validProperties.tool_start,
       timestamp: "2026-07-01T00:00:00.000Z",
+      correlationId: "corr-1",
     });
     expect(valid.success).toBe(true);
     const invalid = validateAnalyticsEvent({ name: "unknown" });
