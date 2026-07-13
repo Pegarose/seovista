@@ -3,9 +3,10 @@ import next from "next";
 import { buildSecurityHeaders } from "@seovista/seo-core/security/headers";
 
 const PORT = Number(process.env.PORT ?? 3100);
+const DIST_DIR = process.env.NEXT_DIST_DIR ?? ".next";
 
 const dev = false;
-const app = next({ dev });
+const app = next({ dev, conf: { distDir: DIST_DIR } });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {

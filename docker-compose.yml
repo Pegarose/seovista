@@ -3,16 +3,18 @@
 # project data to the local network. Ports 5433, 5434 and 6379 are off-limits
 # and are never used by this project.
 
-name: seovista
+# Compose project identity is supplied per run with `docker compose -p <identity>`.
+# Never add fixed container, network, or volume names here. Compose prefixes every
+# generated resource with that project identity, so an owned lifecycle can clean
+# up only the resources it created.
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: seovista-postgres
     environment:
       POSTGRES_USER: seovista
       POSTGRES_PASSWORD: seovista
-      POSTGRES_DB: seovista
+      POSTGRES_DB: ${SEOVISTA_DATABASE_NAME:-seovista}
     ports:
       - "127.0.0.1:55432:5432"
     volumes:
@@ -26,7 +28,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: seovista-redis
     ports:
       - "127.0.0.1:56379:6379"
     volumes:
@@ -47,7 +48,5 @@ services:
       - allkeys-lru
 
 volumes:
-  seovista-postgres-data:
-    name: seovista-postgres-data
-  seovista-redis-data:
-    name: seovista-redis-data
+  seovista-postgres-data: {}
+  seovista-redis-data: {}

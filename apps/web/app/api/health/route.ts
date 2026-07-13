@@ -11,14 +11,14 @@ export interface WebHealthReport {
 
 async function checkNextgMock(): Promise<{ name: string; status: "up" | "down" | "unknown"; error?: string }> {
   const nextgUrl = env.NEXTG_API_URL ?? "http://localhost:3101";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(`${nextgUrl}/health/live`, {
+    const response = await fetch(`${nextgUrl}/health/ready`, {
       signal: controller.signal,
       cache: "no-store",
     });
-    clearTimeout(timeout);
     return { name: "nextg-mock", status: response.ok ? "up" : "down" };
   } catch (error) {
     return {
@@ -26,6 +26,8 @@ async function checkNextgMock(): Promise<{ name: string; status: "up" | "down" |
       status: "down",
       error: error instanceof Error ? error.name : "unknown",
     };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

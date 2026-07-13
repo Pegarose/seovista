@@ -21,6 +21,9 @@
     "test:a11y": "pnpm run --filter @seovista/web --if-present test:a11y",
     "test:seo": "pnpm run --filter @seovista/web --if-present test:seo",
     "lighthouse": "pnpm run --filter @seovista/web --if-present lighthouse",
+    "infrastructure:start": "node scripts/infrastructure-lifecycle.js start",
+    "infrastructure:teardown": "node scripts/infrastructure-lifecycle.js teardown",
+    "verify:production-sentinels": "node scripts/run-production-sentinel.js",
     "release": "node scripts/release.js",
     "verify-package-boundaries": "node scripts/verify-package-boundaries.js"
   },
