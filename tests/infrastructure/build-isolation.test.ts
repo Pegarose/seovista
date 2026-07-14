@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import {
   BUILD_PROFILES,
   BuildOwnershipError,
@@ -9,8 +9,12 @@ import {
   buildProfileEnvironment,
   cleanupOwnedOutput,
   createBuildRun,
+  getActiveOutputDirectory,
   getBuildOutputDirectory,
+  getRunsDirectory,
+  initializeOwnedOutput,
   preflightBuildHeadroom,
+  publishActiveOutput,
   releaseBuildOwnership,
 } from "../../scripts/web-build-isolation.js";
 
@@ -43,7 +47,7 @@ describe("web build isolation policy", () => {
     ]);
   });
 
-  it("records the run creator, command class, cleanup authority, and stale-owner policy before a writer can mutate output", () => {
+  it("records the run creator, command class, exact relative output path, cleanup authority, and stale-owner policy before a writer can mutate output", () => {
     const root = mkdtempSync(join(tmpdir(), "seovista-build-isolation-"));
     const webDirectory = join(root, "apps", "web");
     mkdirSync(webDirectory, { recursive: true });
@@ -60,14 +64,20 @@ describe("web build isolation policy", () => {
     >;
 
     expect(record).toMatchObject({
+      schemaVersion: 2,
       runId: run.runId,
       creatorProcessId: 4242,
       commandClass: "canonical",
       createdAt: "2026-07-14T00:00:00.000Z",
       cleanupAuthority: run.cleanupAuthority,
+      outputRelativePath: run.outputRelativePath,
       staleOwnerHandling: "reclaim-dead-owner-only",
     });
-    expect(ownership.outputOwnerPath).toContain(".next-canonical");
+    expect(ownership.outputOwnerPath).toContain(".next-runs");
+    expect(ownership.outputOwnerPath).toContain(run.runId);
+    expect(relative(webDirectory, ownership.outputDirectory).replaceAll("\\", "/")).toBe(
+      run.outputRelativePath
+    );
 
     releaseBuildOwnership(ownership);
   });
@@ -151,15 +161,7 @@ describe("web build isolation policy", () => {
       now: new Date("2026-07-14T00:00:00.000Z"),
     });
     const ownership = acquireBuildOwnership(run, { isProcessAlive: () => false });
-    mkdirSync(ownership.outputDirectory, { recursive: true });
-    writeFileSync(
-      ownership.outputOwnerPath,
-      JSON.stringify({
-        ...run,
-        profile: run.profile,
-        cleanupAuthority: run.cleanupAuthority,
-      })
-    );
+    initializeOwnedOutput(ownership);
     writeFileSync(join(ownership.outputDirectory, "owned.txt"), "remove");
     const foreignOutput = join(webDirectory, ".next-browser-artifact");
     mkdirSync(foreignOutput, { recursive: true });
@@ -182,7 +184,11 @@ describe("web build isolation policy", () => {
       }
     );
 
-    expect(environment.NEXT_DIST_DIR).toBe(".next-canonical");
+    // The base build environment does not pin a fixed profile directory;
+    // the run wrapper sets NEXT_DIST_DIR to the run-unique path at invocation time.
+    expect(environment.NEXT_DIST_DIR).toBeUndefined();
+    expect(environment.SEOVISTA_BUILD_PROFILE).toBe("canonical");
+    expect(environment.SEOVISTA_BUILD_MAX_CONCURRENCY).toBe("1");
     expect(environment.NODE_OPTIONS).toContain("--max-old-space-size=1536");
     expect(() =>
       preflightBuildHeadroom({ availableMemoryBytes: 512 * 1024 * 1024, minHeadroomMb: 1024 })
@@ -205,5 +211,110 @@ describe("web build isolation policy", () => {
     expect(read("lighthouserc.js")).toContain("run-isolated-web-command.js lighthouse build");
     expect(read("scripts/production-sentinel.js")).toContain("acquireBuildOwnership");
     expect(read("scripts/production-sentinel.js")).toContain('buildProfileEnvironment("sentinel"');
+  });
+
+  it("creates truly distinct run paths for two immediate clean canonical builds", () => {
+    const root = mkdtempSync(join(tmpdir(), "seovista-build-isolation-"));
+    const webDirectory = join(root, "apps", "web");
+    mkdirSync(webDirectory, { recursive: true });
+
+    const first = createBuildRun("canonical", { webDirectory, processId: 101 });
+    const second = createBuildRun("canonical", { webDirectory, processId: 102 });
+
+    expect(first.outputDirectory).not.toBe(second.outputDirectory);
+    expect(first.outputDirectory).toContain(".next-runs");
+    expect(second.outputDirectory).toContain(".next-runs");
+    expect(getRunsDirectory(webDirectory)).toBe(resolve(webDirectory, ".next-runs"));
+  });
+
+  it("atomically publishes a successful owned output to the active directory", () => {
+    const root = mkdtempSync(join(tmpdir(), "seovista-build-isolation-"));
+    const webDirectory = join(root, "apps", "web");
+    mkdirSync(webDirectory, { recursive: true });
+
+    const run = createBuildRun("canonical", { webDirectory, processId: 101 });
+    const ownership = acquireBuildOwnership(run, { isProcessAlive: () => false });
+    initializeOwnedOutput(ownership);
+    writeFileSync(join(ownership.outputDirectory, "BUILD_ID"), "owned-build");
+
+    const activeDirectory = publishActiveOutput(ownership);
+    expect(activeDirectory).toBe(getActiveOutputDirectory(webDirectory, "canonical"));
+    expect(existsSync(activeDirectory)).toBe(true);
+    expect(readFileSync(join(activeDirectory, "BUILD_ID"), "utf8")).toBe("owned-build");
+
+    releaseBuildOwnership(ownership);
+  });
+
+  it("refuses to publish when the ownership record does not match", () => {
+    const root = mkdtempSync(join(tmpdir(), "seovista-build-isolation-"));
+    const webDirectory = join(root, "apps", "web");
+    mkdirSync(webDirectory, { recursive: true });
+
+    const run = createBuildRun("canonical", { webDirectory, processId: 101 });
+    const ownership = acquireBuildOwnership(run, { isProcessAlive: () => false });
+    mkdirSync(ownership.outputDirectory, { recursive: true });
+    // Deliberately omit writing the ownership record.
+
+    expect(() => publishActiveOutput(ownership)).toThrow(BuildOwnershipError);
+    expect(existsSync(getActiveOutputDirectory(webDirectory, "canonical"))).toBe(false);
+
+    releaseBuildOwnership(ownership);
+  });
+
+  it("preserves legacy and foreign output directories during cleanup and publication", () => {
+    const root = mkdtempSync(join(tmpdir(), "seovista-build-isolation-"));
+    const webDirectory = join(root, "apps", "web");
+    const legacySentinel = join(webDirectory, ".next-sentinel");
+    const foreign = join(webDirectory, ".next-foreign");
+    mkdirSync(legacySentinel, { recursive: true });
+    mkdirSync(foreign, { recursive: true });
+    writeFileSync(join(legacySentinel, "legacy.txt"), "legacy");
+    writeFileSync(join(foreign, "foreign.txt"), "foreign");
+
+    const run = createBuildRun("canonical", { webDirectory, processId: 101 });
+    const ownership = acquireBuildOwnership(run, { isProcessAlive: () => false });
+    initializeOwnedOutput(ownership);
+    publishActiveOutput(ownership);
+    cleanupOwnedOutput(ownership);
+
+    expect(existsSync(join(legacySentinel, "legacy.txt"))).toBe(true);
+    expect(existsSync(join(foreign, "foreign.txt"))).toBe(true);
+    expect(existsSync(ownership.outputDirectory)).toBe(false);
+
+    releaseBuildOwnership(ownership);
+  });
+
+  it("removes the active directory only when it points to the current run output", () => {
+    const root = mkdtempSync(join(tmpdir(), "seovista-build-isolation-"));
+    const webDirectory = join(root, "apps", "web");
+    mkdirSync(webDirectory, { recursive: true });
+
+    const first = createBuildRun("canonical", { webDirectory, processId: 101 });
+    const firstOwnership = acquireBuildOwnership(first, { isProcessAlive: () => false });
+    initializeOwnedOutput(firstOwnership);
+    publishActiveOutput(firstOwnership);
+
+    const second = createBuildRun("canonical", { webDirectory, processId: 102 });
+    const secondOwnership = acquireBuildOwnership(second, { isProcessAlive: () => false });
+    initializeOwnedOutput(secondOwnership);
+    cleanupOwnedOutput(secondOwnership);
+
+    // The active directory must remain because it points to the first run,
+    // not the second run that was cleaned up.
+    expect(existsSync(getActiveOutputDirectory(webDirectory, "canonical"))).toBe(true);
+    expect(existsSync(firstOwnership.outputDirectory)).toBe(true);
+    expect(existsSync(secondOwnership.outputDirectory)).toBe(false);
+
+    releaseBuildOwnership(firstOwnership);
+    releaseBuildOwnership(secondOwnership);
+  });
+
+  it("sets NEXT_DIST_DIR to run-unique for writers and to active directory for runtimes", () => {
+    const root = resolve(import.meta.dirname, "..", "..");
+    const source = readFileSync(resolve(root, "scripts/run-isolated-web-command.js"), "utf8");
+
+    expect(source).toContain("environment.NEXT_DIST_DIR = runContext.outputRelativePath");
+    expect(source).toContain("environment.NEXT_DIST_DIR = BUILD_PROFILES[profile]");
+    expect(source).toContain("publishActiveOutput(ownership)");
   });
 });

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { resolve } from "node:path";
-import { spawn } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
+import { execSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import {
   acquireBuildOwnership,
   buildProfileEnvironment,
@@ -19,6 +20,10 @@ import {
 
 const scriptDirectory = fileURLToPath(new URL(".", import.meta.url));
 const root = resolve(scriptDirectory, "..");
+const webDirectory = resolve(root, "apps", "web");
+const webTsconfigPath = resolve(webDirectory, "tsconfig.json");
+const requireFromWeb = createRequire(resolve(webDirectory, "package.json"));
+const nextBinary = requireFromWeb.resolve("next/dist/bin/next");
 
 export function buildSecretSentinelValues() {
   const seed = createHash("sha256")
@@ -84,10 +89,10 @@ function filesUnder(directory) {
   });
 }
 
-function run(command, args, environment) {
+function run(command, args, environment, cwd = root) {
   return new Promise((resolveRun, reject) => {
     const child = spawn(command, args, {
-      cwd: root,
+      cwd,
       env: environment,
       stdio: "pipe",
       windowsHide: true,
@@ -112,89 +117,63 @@ function run(command, args, environment) {
   });
 }
 
-async function waitForResponse(url, timeoutMs = 30_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url, { cache: "no-store" });
-      if (response.ok) return response;
-    } catch {
-      // The standalone server may still be starting.
-    }
-    await new Promise((resolveWait) => setTimeout(resolveWait, 250));
-  }
-  throw new Error(`Timed out waiting for ${url}`);
-}
-
-async function scanPublicResponses(environment, sentinels) {
-  const child = spawn("node", ["apps/web/server.mjs"], {
+function scanPublicResponses(environment, sentinels, distDir) {
+  const scanEnv = {
+    ...environment,
+    NEXT_DIST_DIR: distDir,
+    SENTINEL_VALUES: JSON.stringify(sentinels),
+  };
+  execSync(`node ${resolve(root, "scripts/sentinel-scan.mjs")}`, {
     cwd: root,
-    env: { ...environment, PORT: "3100" },
-    stdio: "pipe",
+    env: scanEnv,
+    stdio: "inherit",
+    timeout: 60_000,
     windowsHide: true,
   });
-  let output = "";
-  child.stdout.on("data", (chunk) => {
-    output += chunk.toString();
-  });
-  child.stderr.on("data", (chunk) => {
-    output += chunk.toString();
-  });
-
-  try {
-    await waitForResponse("http://127.0.0.1:3100/");
-    const findings = [];
-    for (const path of getPublicResponsePaths()) {
-      const response = await fetch(`http://127.0.0.1:3100${path}`, { cache: "no-store" });
-      const body = await response.text();
-      for (const name of findSecretSentinels(body, sentinels)) {
-        findings.push(`${path}: ${name}`);
-      }
-    }
-    for (const name of findSecretSentinels(output, sentinels)) {
-      findings.push(`server-log: ${name}`);
-    }
-    return findings;
-  } finally {
-    if (!child.killed) child.kill("SIGTERM");
-    await new Promise((resolveExit) => {
-      child.once("close", () => resolveExit());
-      setTimeout(resolveExit, 5_000).unref();
-    });
-  }
 }
 
 export async function runProductionSentinel() {
-  const webDirectory = resolve(root, "apps/web");
   const runContext = createBuildRun("sentinel", { webDirectory });
-  const environment = buildProfileEnvironment("sentinel", buildSentinelEnvironment());
-  const sentinelDistDirectory = getSentinelDistDirectory(webDirectory);
+  const baseEnvironment = buildSentinelEnvironment();
+  const environment = buildProfileEnvironment("sentinel", baseEnvironment);
+  // The sentinel build differs from canonical only in its run-owned output path
+  // and injected sentinel environment. It never reads or writes the legacy
+  // .next-sentinel directory.
+  environment.NEXT_DIST_DIR = runContext.outputRelativePath;
+  const sentinels = buildSecretSentinelValues();
+
   preflightBuildHeadroom({
     minHeadroomMb: environment.SEOVISTA_BUILD_MIN_HEADROOM_MB,
     heapMb: environment.SEOVISTA_BUILD_HEAP_MB,
   });
   const ownership = acquireBuildOwnership(runContext);
   let initializedOutput = false;
+  let originalTsconfig = null;
 
   try {
     cleanPreviousProfileOutput(ownership);
     initializeOwnedOutput(ownership);
     initializedOutput = true;
-    await run(
-      process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "corepack",
-      process.platform === "win32"
-        ? ["/d", "/s", "/c", "corepack pnpm --filter @seovista/web exec next build"]
-        : ["pnpm", "--filter", "@seovista/web", "exec", "next", "build"],
-      environment
-    );
+    if (existsSync(webTsconfigPath)) {
+      originalTsconfig = readFileSync(webTsconfigPath, "utf8");
+    }
 
-    const artifactRoots = getPublicScanPaths(sentinelDistDirectory);
+    await run(process.execPath, [nextBinary, "build"], environment, webDirectory);
+
+    // Next.js may have removed the run directory record during build cleanup,
+    // so rewrite it before we verify ownership and scan.
+    initializeOwnedOutput(ownership);
+
+    const artifactRoots = getPublicScanPaths(runContext.outputDirectory);
     const files = artifactRoots.flatMap(filesUnder);
     const findings = files.flatMap((path) => {
-      const matches = findSecretSentinels(readFileSync(path, "utf8"), environment);
-      return matches.map((name) => `${path}: ${name}`);
+      const matches = findSecretSentinels(readFileSync(path, "utf8"), sentinels);
+      return matches.map((name) => `${relative(root, path)}: ${name}`);
     });
-    findings.push(...(await scanPublicResponses(environment, environment)));
+    // Runtime scan runs synchronously in a helper subprocess; it throws on
+    // timeout or on any sentinel leak, so the parent never needs async I/O
+    // that could let the process exit before cleanup.
+    scanPublicResponses(environment, sentinels, runContext.outputRelativePath);
 
     if (findings.length > 0) {
       throw new Error(`Public sentinel leak detected:\n${findings.join("\n")}`);
@@ -202,12 +181,15 @@ export async function runProductionSentinel() {
 
     process.stdout.write("Production sentinel build and runtime scan passed.\n");
   } finally {
+    if (originalTsconfig !== null) {
+      writeFileSync(webTsconfigPath, originalTsconfig);
+    }
     if (initializedOutput) cleanupOwnedOutput(ownership);
     releaseBuildOwnership(ownership);
   }
 }
 
-if (process.argv[1] && process.argv[1].endsWith("production-sentinel.js")) {
+if (process.argv[1] && process.argv[1].endsWith("scripts/production-sentinel.js")) {
   runProductionSentinel().catch((error) => {
     process.stderr.write(
       `${error instanceof Error ? error.message : "production sentinel failure"}\n`

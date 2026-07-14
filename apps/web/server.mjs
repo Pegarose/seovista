@@ -4,9 +4,10 @@ import { buildSecurityHeaders } from "@seovista/seo-core/security/headers";
 
 const PORT = Number(process.env.PORT ?? 3100);
 const DIST_DIR = process.env.NEXT_DIST_DIR ?? ".next";
+const PROJECT_DIR = process.env.NEXT_PROJECT_DIR ?? ".";
 
 const dev = false;
-const app = next({ dev, conf: { distDir: DIST_DIR } });
+const app = next({ dev, dir: PROJECT_DIR, conf: { distDir: DIST_DIR } });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {

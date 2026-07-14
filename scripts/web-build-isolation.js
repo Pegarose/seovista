@@ -6,17 +6,21 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  realpathSync,
+  renameSync,
   rmSync,
+  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { availableParallelism, freemem } from "node:os";
-import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
 const SCRIPT_DIRECTORY = resolve(import.meta.dirname);
 const DEFAULT_WEB_DIRECTORY = resolve(SCRIPT_DIRECTORY, "..", "apps", "web");
 const OWNERSHIP_DIRECTORY_NAME = ".next-build-ownership";
+const RUNS_DIRECTORY_NAME = ".next-runs";
 const OUTPUT_OWNER_FILE = ".seovista-output-owner.json";
 const DEFAULT_HEAP_MB = 1536;
 const DEFAULT_MIN_HEADROOM_MB = 1024;
@@ -30,6 +34,15 @@ export const BUILD_PROFILES = Object.freeze({
   standalone: ".next-standalone",
 });
 
+export const RUN_PROFILES = Object.freeze([
+  "canonical",
+  "development",
+  "playwright",
+  "lighthouse",
+  "sentinel",
+  "standalone",
+]);
+
 export class BuildOwnershipError extends Error {
   constructor(message, record) {
     super(message);
@@ -39,9 +52,9 @@ export class BuildOwnershipError extends Error {
 }
 
 function assertProfile(profile) {
-  if (!(profile in BUILD_PROFILES)) {
+  if (!RUN_PROFILES.includes(profile)) {
     throw new BuildOwnershipError(
-      `Unknown build profile "${profile}". Allowed profiles: ${Object.keys(BUILD_PROFILES).join(", ")}.`
+      `Unknown build profile "${profile}". Allowed profiles: ${RUN_PROFILES.join(", ")}.`
     );
   }
 }
@@ -64,25 +77,31 @@ function withinDirectory(directory, candidate) {
   return relativePath !== "" && !relativePath.startsWith("..") && !isAbsolute(relativePath);
 }
 
-export function getBuildOutputDirectory(webDirectory, profile) {
+export function getActiveOutputDirectory(webDirectory, profile) {
   assertProfile(profile);
   const directory = canonicalWebDirectory(webDirectory);
-  const outputDirectory = resolve(directory, BUILD_PROFILES[profile]);
-  if (!withinDirectory(directory, outputDirectory)) {
-    throw new BuildOwnershipError("Build output must stay inside apps/web.");
+  const activeName = BUILD_PROFILES[profile];
+  const activeDirectory = resolve(directory, activeName);
+  if (!withinDirectory(directory, activeDirectory)) {
+    throw new BuildOwnershipError("Active output directory must stay inside apps/web.");
   }
-  return outputDirectory;
+  return activeDirectory;
+}
+
+export function getBuildOutputDirectory(webDirectory, profile) {
+  return getActiveOutputDirectory(webDirectory, profile);
+}
+
+export function getRunsDirectory(webDirectory = DEFAULT_WEB_DIRECTORY) {
+  return resolve(canonicalWebDirectory(webDirectory), RUNS_DIRECTORY_NAME);
 }
 
 export function getOwnershipDirectory(webDirectory = DEFAULT_WEB_DIRECTORY) {
   return resolve(canonicalWebDirectory(webDirectory), OWNERSHIP_DIRECTORY_NAME);
 }
 
-function buildOwnerRecordPath(webDirectory, profile) {
-  return resolve(
-    getOwnershipDirectory(webDirectory),
-    `${BUILD_PROFILES[profile]}.${OUTPUT_OWNER_FILE}`
-  );
+function buildOwnerRecordPath(run) {
+  return resolve(run.outputDirectory, OUTPUT_OWNER_FILE);
 }
 
 function processIsAlive(processId) {
@@ -115,13 +134,14 @@ function heavyLockPath(webDirectory) {
 
 function buildRecord(run) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     runId: run.runId,
     creatorProcessId: run.creatorProcessId,
     commandClass: run.commandClass,
     profile: run.profile,
     createdAt: run.createdAt,
     cleanupAuthority: run.cleanupAuthority,
+    outputRelativePath: run.outputRelativePath,
     staleOwnerHandling: "reclaim-dead-owner-only",
   };
 }
@@ -136,6 +156,11 @@ export function createBuildRun(profile, options = {}) {
   }
   const createdAt = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
   const runId = options.runId ?? `${profile}-${creatorProcessId}-${randomUUID()}`;
+  const outputRelativePath = `${RUNS_DIRECTORY_NAME}/${runId}`;
+  const outputDirectory = resolve(webDirectory, outputRelativePath);
+  if (!withinDirectory(webDirectory, outputDirectory)) {
+    throw new BuildOwnershipError("Build output must stay inside apps/web.");
+  }
   return Object.freeze({
     runId,
     profile,
@@ -144,7 +169,8 @@ export function createBuildRun(profile, options = {}) {
     createdAt,
     cleanupAuthority: `run:${runId}`,
     webDirectory,
-    outputDirectory: getBuildOutputDirectory(webDirectory, profile),
+    outputDirectory,
+    outputRelativePath,
   });
 }
 
@@ -167,7 +193,7 @@ function acquireLock(path, run, isProcessAlive) {
   const existingProcessId = existing?.creatorProcessId;
   if (Number.isInteger(existingProcessId) && isProcessAlive(existingProcessId)) {
     throw new BuildOwnershipError(
-      `Build ownership conflict for ${basename(path)}. Active ${String(existing.commandClass ?? "unknown")} run ${String(existing.runId ?? "unknown")} (pid ${existingProcessId}) owns this writer lock. Wait for it to finish or stop that owned process.`,
+      `Build ownership conflict for ${existing?.commandClass ?? "unknown"} profile. Active run ${String(existing.runId ?? "unknown")} (pid ${existingProcessId}) owns this writer lock. Wait for it to finish or stop that owned process.`,
       existing
     );
   }
@@ -175,17 +201,9 @@ function acquireLock(path, run, isProcessAlive) {
   try {
     unlinkSync(path);
   } catch (error) {
-    if (error && typeof error === "object" && error.code !== "ENOENT") throw error;
+    if (error && (typeof error !== "object" || error.code !== "ENOENT")) throw error;
   }
   return { reclaimedStaleOwner: true, previousRecord: existing };
-}
-
-function writeOutputOwner(run) {
-  mkdirSync(run.outputDirectory, { recursive: true });
-  writeFileSync(
-    buildOwnerRecordPath(run.webDirectory, run.profile),
-    JSON.stringify(buildRecord(run), null, 2)
-  );
 }
 
 export function acquireBuildOwnership(run, dependencies = {}) {
@@ -200,10 +218,12 @@ export function acquireBuildOwnership(run, dependencies = {}) {
     const heavyResult = serializeHeavyweight
       ? acquireLock(heavyweightLockPath, run, isProcessAlive)
       : { reclaimedStaleOwner: false };
+    const activeOutputDirectory = getActiveOutputDirectory(run.webDirectory, run.profile);
     return Object.freeze({
       run,
       outputDirectory: run.outputDirectory,
-      outputOwnerPath: buildOwnerRecordPath(run.webDirectory, run.profile),
+      outputOwnerPath: buildOwnerRecordPath(run),
+      activeOutputDirectory,
       profileLockPath: serializeHeavyweight ? profileLockPath : undefined,
       heavyweightLockPath: serializeHeavyweight ? heavyweightLockPath : undefined,
       reclaimedStaleOwner: profileResult.reclaimedStaleOwner || heavyResult.reclaimedStaleOwner,
@@ -221,42 +241,73 @@ export function acquireBuildOwnership(run, dependencies = {}) {
 function verifyOwnedOutput(ownership) {
   const record = readOwnershipRecord(ownership.outputOwnerPath);
   return (
+    record?.runId === ownership.run.runId &&
     record?.profile === ownership.run.profile &&
     record?.cleanupAuthority === ownership.run.cleanupAuthority
   );
 }
 
 export function cleanPreviousProfileOutput(ownership) {
-  const outputDirectory = ownership.outputDirectory;
-  if (!existsSync(outputDirectory)) return false;
-  const ownerPath = ownership.outputOwnerPath;
-  const record = readOwnershipRecord(ownerPath);
-  if (
-    !record ||
-    record.profile !== ownership.run.profile ||
-    record.staleOwnerHandling !== "reclaim-dead-owner-only"
-  ) {
+  const outputDirectory = ownership.run.outputDirectory;
+  if (existsSync(outputDirectory)) {
     throw new BuildOwnershipError(
-      `Refusing to clean ${outputDirectory}: it lacks a recognized owned-output record for profile ${ownership.run.profile}.`,
-      record
+      `Run-unique output directory ${outputDirectory} already exists. Each run must create a fresh directory.`
     );
   }
-  rmSync(outputDirectory, { recursive: true, force: false });
-  return true;
+  return false;
 }
 
 export function initializeOwnedOutput(ownership) {
-  writeOutputOwner(ownership.run);
+  mkdirSync(ownership.run.outputDirectory, { recursive: true });
+  writeFileSync(ownership.outputOwnerPath, JSON.stringify(buildRecord(ownership.run), null, 2));
+}
+
+function readActiveTarget(activeOutputDirectory) {
+  try {
+    return realpathSync(activeOutputDirectory);
+  } catch (error) {
+    if (error && typeof error === "object" && error.code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+function publishDirectory(activeOutputDirectory, targetDirectory) {
+  const newPath = `${activeOutputDirectory}.new`;
+  rmSync(newPath, { recursive: true, force: true });
+  mkdirSync(dirname(activeOutputDirectory), { recursive: true });
+  if (process.platform === "win32") {
+    symlinkSync(targetDirectory, newPath, "junction");
+  } else {
+    const linkTarget = relative(dirname(activeOutputDirectory), targetDirectory);
+    symlinkSync(linkTarget, newPath, "dir");
+  }
+  rmSync(activeOutputDirectory, { recursive: true, force: true });
+  renameSync(newPath, activeOutputDirectory);
+}
+
+export function publishActiveOutput(ownership) {
+  if (!verifyOwnedOutput(ownership)) {
+    throw new BuildOwnershipError(
+      `Refusing to publish ${ownership.run.outputRelativePath}: ownership record does not match.`
+    );
+  }
+  publishDirectory(ownership.activeOutputDirectory, ownership.run.outputDirectory);
+  return ownership.activeOutputDirectory;
 }
 
 export function cleanupOwnedOutput(ownership) {
-  if (!existsSync(ownership.outputDirectory)) return false;
+  const outputDirectory = ownership.run.outputDirectory;
+  if (!existsSync(outputDirectory)) return false;
   if (!verifyOwnedOutput(ownership)) {
     throw new BuildOwnershipError(
-      `Refusing to clean foreign or stale output at ${ownership.outputDirectory}.`
+      `Refusing to clean foreign or stale output at ${outputDirectory}.`
     );
   }
-  rmSync(ownership.outputDirectory, { recursive: true, force: false });
+  const activeTarget = readActiveTarget(ownership.activeOutputDirectory);
+  if (activeTarget === outputDirectory) {
+    rmSync(ownership.activeOutputDirectory, { recursive: true, force: true });
+  }
+  rmSync(outputDirectory, { recursive: true, force: false });
   return true;
 }
 
@@ -267,7 +318,7 @@ export function releaseBuildOwnership(ownership) {
     try {
       unlinkSync(path);
     } catch (error) {
-      if (!error || typeof error !== "object" || error.code !== "ENOENT") throw error;
+      if (error && (typeof error !== "object" || error.code !== "ENOENT")) throw error;
     }
   }
 }
@@ -294,7 +345,6 @@ export function buildProfileEnvironment(profile, base = process.env, options = {
   );
   return {
     ...base,
-    NEXT_DIST_DIR: BUILD_PROFILES[profile],
     NODE_OPTIONS: replaceHeapOption(base.NODE_OPTIONS ?? "", heapMb),
     SEOVISTA_BUILD_HEAP_MB: String(heapMb),
     SEOVISTA_BUILD_MIN_HEADROOM_MB: String(minHeadroomMb),
