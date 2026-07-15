@@ -14,10 +14,24 @@
     "outDir": "./.next",
     "rootDir": "./",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "exclude": ["node_modules", ".next", ".next-*"],
-  "include": ["next-env.d.ts", "./**/*.ts", "./**/*.tsx", ".next-canonical/types/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".next-*"
+  ],
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    ".next-canonical/types/**/*.ts",
+    ".next-runs/development-25684-646d4b3e-56bc-4a24-adbd-92bb6683002e/types/**/*.ts",
+    ".next-runs/development-42472-87875dc9-d7ed-4bbd-9377-f0b8945a09ed/types/**/*.ts",
+    "next-env.d.ts",
+    ".next-runs/development-46616-c9807aa2-12c2-4473-aa7a-d97e48caba9f/types/**/*.ts"
+  ],
   "extends": "../../tsconfig.base.json"
 }

@@ -8,7 +8,7 @@ import {
   validateSprintZeroRegistration,
   type ContentEntity,
   type MapOptions,
-} from "../index";
+} from "../index.js";
 
 const options: MapOptions = {
   trustedSiteUrl: "https://seovista.com",

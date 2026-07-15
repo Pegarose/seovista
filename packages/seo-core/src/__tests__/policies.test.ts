@@ -9,7 +9,7 @@ import {
   filterSitemapUrls,
   filterFeedEntries,
   DEFAULT_DISALLOWED_PREFIXES,
-} from "../index";
+} from "../index.js";
 
 const siteUrl = "https://seovista.com";
 

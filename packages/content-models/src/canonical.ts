@@ -6,7 +6,7 @@ import {
   resolveCanonicalFromOverride,
 } from "@seovista/seo-core";
 import { z } from "zod";
-import type { CanonicalInfo, MapFailure } from "./types";
+import type { CanonicalInfo, MapFailure } from "./types.js";
 
 export interface TrustedSiteUrl {
   readonly origin: string;

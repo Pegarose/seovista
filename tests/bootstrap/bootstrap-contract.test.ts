@@ -116,18 +116,40 @@ describe("monorepo bootstrap contract", () => {
     expect(maxThreads).toBeGreaterThan(0);
   });
 
-  it("Playwright config targets baseURL localhost:3100 and uses workers <= 2", () => {
+  it("Playwright config targets baseURL localhost:3200 and uses workers <= 2", () => {
     const configSource = read("playwright.config.ts");
 
     const baseURLMatch = /baseURL\s*:\s*"([^"]+)"/.exec(configSource);
     expect(baseURLMatch).not.toBeNull();
-    expect(baseURLMatch?.[1]).toBe("http://localhost:3100");
+    expect(baseURLMatch?.[1]).toBe("http://localhost:3200");
 
     const workersMatch = /workers\s*:\s*(\d+)/.exec(configSource);
     expect(workersMatch).not.toBeNull();
     const workers = Number(workersMatch?.[1]);
     expect(workers).toBeLessThanOrEqual(2);
     expect(workers).toBeGreaterThan(0);
+  });
+
+  it("uses port 3200 consistently across web runtime and validation surfaces", () => {
+    const webPortFiles = [
+      "services.yaml",
+      "scripts/dev.js",
+      "apps/web/server.mjs",
+      "scripts/run-isolated-web-command.js",
+      "scripts/sentinel-scan.mjs",
+      "playwright.config.ts",
+      "apps/web/playwright.config.ts",
+      "apps/web/playwright.dev.config.ts",
+      "lighthouserc.js",
+    ];
+
+    for (const file of webPortFiles) {
+      const source = read(file);
+      expect(source).toContain("3200");
+    }
+
+    expect(read("services.yaml")).toContain("port: 3101");
+    expect(read("scripts/dev.js")).toContain('PORT: "3101"');
   });
 
   it("ignores Playwright result directories while retaining CI artifact paths", () => {
@@ -279,12 +301,12 @@ describe("monorepo bootstrap contract", () => {
     const lhConfig = read("lighthouserc.js");
 
     const requiredUrls = [
-      "http://localhost:3100/",
-      "http://localhost:3100/geo/",
-      "http://localhost:3100/tools/",
-      "http://localhost:3100/tools/geo-readiness-checker/",
-      "http://localhost:3100/contact/",
-      "http://localhost:3100/terms/",
+      "http://localhost:3200/",
+      "http://localhost:3200/geo/",
+      "http://localhost:3200/tools/",
+      "http://localhost:3200/tools/geo-readiness-checker/",
+      "http://localhost:3200/contact/",
+      "http://localhost:3200/terms/",
     ];
 
     for (const url of requiredUrls) {

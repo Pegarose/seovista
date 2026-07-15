@@ -11,7 +11,7 @@ export default defineConfig({
     timeout: 15000,
   },
   use: {
-    baseURL: "http://localhost:3100",
+    baseURL: "http://localhost:3200",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -46,7 +46,7 @@ export default defineConfig({
   webServer: {
     command:
       "node ../../scripts/run-isolated-web-command.js playwright build && node ../../scripts/run-isolated-web-command.js playwright serve",
-    url: "http://localhost:3100",
+    url: "http://localhost:3200",
     reuseExistingServer: false,
     timeout: 120000,
     env: {

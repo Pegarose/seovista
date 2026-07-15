@@ -49,7 +49,6 @@ const LIFECYCLE_SCRIPT_PATH = resolve(PROJECT_ROOT, "scripts", "infrastructure-l
 const CONTAINER_NAME_CONFLICT_PATTERN = /Conflict\. The container name "\/[^"]+" is already in use by container/;
 const START_PARENT_STACK_MAX_RETRIES = 5;
 const START_PARENT_STACK_RETRY_DELAY_MS = 500;
-const DEFAULT_POSTGRES_PORT = 55432;
 let providedContextPath: string | undefined;
 
 export type ExecSyncFn = (command: string, options?: { cwd?: string; encoding?: "utf8" }) => string;
@@ -179,7 +178,7 @@ export async function waitForPostgres(
 
 export async function createDatabase(
   databaseName: string,
-  port = DEFAULT_POSTGRES_PORT,
+  port: number,
   createClient: CreateDbClientFn = (options) => createDbClient(options),
 ): Promise<void> {
   const adminDb = createClient({ connectionString: buildPostgresConnectionUrl(port), max: 1 });
@@ -192,7 +191,7 @@ export async function createDatabase(
 
 export async function dropDatabase(
   databaseName: string,
-  port = DEFAULT_POSTGRES_PORT,
+  port: number,
   createClient: CreateDbClientFn = (options) => createDbClient(options),
 ): Promise<void> {
   const adminDb = createClient({ connectionString: buildPostgresConnectionUrl(port), max: 1 });
@@ -225,10 +224,11 @@ type CleanupOperation = () => Promise<void>;
 type ProvisioningClient = Pick<DbClient, "close">;
 
 export interface TestDatabaseProvisioningDependencies {
-  createDatabase: (databaseName: string) => Promise<void>;
+  postgresPort: number;
+  createDatabase: (databaseName: string, port: number) => Promise<void>;
   createClient: (options: { connectionString: string; max: number }) => DbClient;
   applyMigrations: (client: DbClient) => Promise<void>;
-  dropDatabase: (databaseName: string) => Promise<void>;
+  dropDatabase: (databaseName: string, port: number) => Promise<void>;
 }
 
 function attachProvisioningCleanupFailure(provisioningError: unknown, cleanupFailures: unknown[]): void {
@@ -250,21 +250,14 @@ function attachProvisioningCleanupFailure(provisioningError: unknown, cleanupFai
 export async function provisionTestDatabase(
   databaseName: string,
   databaseUrl: string,
-  dependencies: TestDatabaseProvisioningDependencies = {
-    createDatabase,
-    createClient: (options) => createDbClient(options),
-    applyMigrations: async (client) => {
-      await createMigrationRunner(client, defaultMigrationsDir()).applyAll();
-    },
-    dropDatabase,
-  },
+  dependencies: TestDatabaseProvisioningDependencies,
 ): Promise<DbClient> {
   let databaseCreated = false;
   let client: ProvisioningClient | undefined;
 
   try {
     databaseCreated = true;
-    await dependencies.createDatabase(databaseName);
+    await dependencies.createDatabase(databaseName, dependencies.postgresPort);
     client = dependencies.createClient({ connectionString: databaseUrl, max: 5 });
     await dependencies.applyMigrations(client as DbClient);
     return client as DbClient;
@@ -279,7 +272,7 @@ export async function provisionTestDatabase(
     }
     if (databaseCreated) {
       try {
-        await dependencies.dropDatabase(databaseName);
+        await dependencies.dropDatabase(databaseName, dependencies.postgresPort);
       } catch (cleanupError) {
         cleanupFailures.push(cleanupError);
       }
@@ -349,12 +342,13 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
 
   await waitForPostgres(parent.context.hostPorts.postgres);
   const db = await provisionTestDatabase(databaseName, databaseUrl, {
-    createDatabase: (name) => createDatabase(name, parent.context.hostPorts.postgres),
+    postgresPort: parent.context.hostPorts.postgres,
+    createDatabase: (name, port) => createDatabase(name, port),
     createClient: (options) => createDbClient(options),
     applyMigrations: async (client) => {
       await createMigrationRunner(client, defaultMigrationsDir()).applyAll();
     },
-    dropDatabase: (name) => dropDatabase(name, parent.context.hostPorts.postgres),
+    dropDatabase: (name, port) => dropDatabase(name, port),
   });
   const cleanup = createTestEnvironmentCleanup(
     db,

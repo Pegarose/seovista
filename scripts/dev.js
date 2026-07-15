@@ -29,16 +29,16 @@ async function readiness(url, timeoutMs = 30000) {
 
 async function main() {
   const web = start("pnpm", ["--filter", "@seovista/web", "dev"], {
-    env: { ...process.env, PORT: "3100" },
+    env: { ...process.env, PORT: "3200" },
   });
   const nextg = start("pnpm", ["--filter", "@seovista/nextg", "dev"], {
     env: { ...process.env, PORT: "3101" },
   });
 
   await readiness("http://localhost:3101/health", 60000);
-  await readiness("http://localhost:3100/", 60000);
+  await readiness("http://localhost:3200/", 60000);
 
-  console.log("[dev] web (3100) and nextg mock (3101) are ready");
+  console.log("[dev] web (3200) and nextg mock (3101) are ready");
 
   await Promise.race([
     Promise.all([once(web, "exit"), once(nextg, "exit")]),

@@ -1,4 +1,4 @@
-import { parseTrustedUrl, resolveCanonical, resolveRootUrl } from "./canonical";
+import { parseTrustedUrl, resolveCanonical, resolveRootUrl } from "./canonical.js";
 import type {
   FeedEntry,
   FeedOptions,
@@ -6,7 +6,7 @@ import type {
   RobotsGroup,
   RobotsOptions,
   SitemapUrl,
-} from "./types";
+} from "./types.js";
 
 export const DEFAULT_DISALLOWED_PREFIXES: readonly string[] = [
   "/api/",

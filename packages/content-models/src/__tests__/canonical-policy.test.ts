@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveCanonical } from "../index";
+import { resolveCanonical } from "../index.js";
 
 const siteUrl = "https://seovista.com";
 

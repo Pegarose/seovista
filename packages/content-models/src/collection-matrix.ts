@@ -1,4 +1,4 @@
-import type { CollectionName, ContentEntity, RelationshipField } from "./types";
+import type { CollectionName, ContentEntity, RelationshipField } from "./types.js";
 
 export type CollectionVisibility = "public" | "private";
 export type RelationshipCardinality = "one" | "zero-or-one" | "zero-or-more" | "one-or-more";

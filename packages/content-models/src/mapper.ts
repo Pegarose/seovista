@@ -21,7 +21,7 @@ import type {
   CanonicalInfo,
   Provenance,
   IndexationInfo,
-} from "./types";
+} from "./types.js";
 import {
   rawPageSchema,
   rawServiceSchema,
@@ -37,11 +37,11 @@ import {
   rawLocaleEntitySchema,
   rawAuditLeadSchema,
   rawCollectionResponseSchema,
-} from "./raw";
-import { isSprintZeroCollection } from "./collection-matrix";
-import { resolveCanonical, validateRedirect, validateRedirectSet, parseTrustedSiteUrl } from "./canonical";
-import { validateLocale } from "./locale";
-import { normalizeIndexation, validateIndexationCombination } from "./publication";
+} from "./raw.js";
+import { isSprintZeroCollection } from "./collection-matrix.js";
+import { resolveCanonical, validateRedirect, validateRedirectSet, parseTrustedSiteUrl } from "./canonical.js";
+import { validateLocale } from "./locale.js";
+import { normalizeIndexation, validateIndexationCombination } from "./publication.js";
 
 export function toMapFailure(field: string, reason: string): MapFailure {
   return { success: false, field, reason, redacted: true };

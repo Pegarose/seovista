@@ -13,13 +13,13 @@ export type {
   FeedEntry,
   FeedOptions,
   LlmsOptions,
-} from "./types";
+} from "./types.js";
 
 export {
   buildMetadata,
   buildNoIndexMetadata,
   MetadataValidationError,
-} from "./metadata";
+} from "./metadata.js";
 
 export {
   parseSiteUrl,
@@ -29,9 +29,9 @@ export {
   resolveRootUrl,
   resolveCanonicalFromOverride,
   CanonicalError,
-} from "./canonical";
+} from "./canonical.js";
 
-export type { ParsedSiteUrl } from "./canonical";
+export type { ParsedSiteUrl } from "./canonical.js";
 
 export {
   buildRobotsTxt,
@@ -46,4 +46,4 @@ export {
   filterFeedEntries,
   DEFAULT_DISALLOWED_PREFIXES,
   DEFAULT_APPROVED_AI_CRAWLERS,
-} from "./policies";
+} from "./policies.js";

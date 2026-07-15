@@ -8,7 +8,7 @@ import {
   parseTrustedUrl,
   resolveCanonical,
   resolveCanonicalFromOverride,
-} from "../index";
+} from "../index.js";
 
 const siteUrl = "https://seovista.com";
 

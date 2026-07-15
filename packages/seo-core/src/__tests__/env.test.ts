@@ -12,8 +12,8 @@ import {
   validateWorkerEnv,
   EnvValidationError,
   ENV_VARIABLES,
-} from "../env/index";
-import { publicEnvSchema as clientPublicEnvSchema } from "../env/client";
+} from "../env/index.js";
+import { publicEnvSchema as clientPublicEnvSchema } from "../env/client.js";
 
 const completeEnv = {
   NEXT_PUBLIC_SITE_URL: "https://seovista.com",

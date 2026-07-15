@@ -1,5 +1,5 @@
-import { resolveCanonical, resolveCanonicalFromOverride, parseSiteUrl } from "./canonical";
-import type { MetadataInput, MetadataResult, OpenGraphType, RobotsValue, TwitterCard } from "./types";
+import { resolveCanonical, resolveCanonicalFromOverride, parseSiteUrl } from "./canonical.js";
+import type { MetadataInput, MetadataResult, OpenGraphType, RobotsValue, TwitterCard } from "./types.js";
 
 export class MetadataValidationError extends Error {
   constructor(

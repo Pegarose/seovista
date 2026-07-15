@@ -2,7 +2,7 @@ import { createServer } from "http";
 import next from "next";
 import { buildSecurityHeaders } from "@seovista/seo-core/security/headers";
 
-const PORT = Number(process.env.PORT ?? 3100);
+const PORT = Number(process.env.PORT ?? 3200);
 const DIST_DIR = process.env.NEXT_DIST_DIR ?? ".next";
 const PROJECT_DIR = process.env.NEXT_PROJECT_DIR ?? ".";
 

@@ -35,13 +35,13 @@ function commandFor(action) {
     case "dev":
       return {
         command: process.execPath,
-        args: [nextBinary, "dev", "--port", "3100"],
+        args: [nextBinary, "dev", "--port", "3200"],
         cwd: webDirectory,
       };
     case "start":
       return {
         command: process.execPath,
-        args: [nextBinary, "start", "--port", "3100"],
+        args: [nextBinary, "start", "--port", "3200"],
         cwd: webDirectory,
       };
     case "serve":

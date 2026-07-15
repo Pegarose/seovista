@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "../../packages/ui";
+@source "../src";
 
 @theme {
   --color-ink: #0A1017;

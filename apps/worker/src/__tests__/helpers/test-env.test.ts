@@ -330,6 +330,28 @@ describe("test environment cleanup", () => {
 });
 
 describe("test environment provisioning", () => {
+  it("passes a non-default lifecycle PostgreSQL port to provisioning create and cleanup drop", async () => {
+    const parentPort = 61234;
+    const databaseName = "seovista_test_provisioned_port";
+    const provisioningError = new Error("migration provisioning failed");
+    const createDatabase = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const dropDatabase = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const client = { close: vi.fn<() => Promise<void>>().mockResolvedValue(undefined) };
+
+    await expect(
+      provisionTestDatabase(databaseName, "test-database-url/seovista_test_provisioned_port", {
+        postgresPort: parentPort,
+        createDatabase,
+        createClient: vi.fn(() => client as never),
+        applyMigrations: vi.fn<() => Promise<void>>().mockRejectedValue(provisioningError),
+        dropDatabase,
+      }),
+    ).rejects.toBe(provisioningError);
+
+    expect(createDatabase).toHaveBeenCalledWith(databaseName, parentPort);
+    expect(dropDatabase).toHaveBeenCalledWith(databaseName, parentPort);
+  });
+
   it("closes the client and drops the database when migrations fail, preserving cleanup evidence", async () => {
     const provisioningError = new Error("migration provisioning failed");
     const client = { close: vi.fn<() => Promise<void>>().mockResolvedValue(undefined) };
@@ -337,6 +359,7 @@ describe("test environment provisioning", () => {
 
     await expect(
       provisionTestDatabase("seovista_test_failure", "test-database-url/seovista_test_failure", {
+        postgresPort: 55432,
         createDatabase: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
         createClient: vi.fn(() => client as never),
         applyMigrations: vi.fn<() => Promise<void>>().mockRejectedValue(provisioningError),
@@ -345,7 +368,7 @@ describe("test environment provisioning", () => {
     ).rejects.toBe(provisioningError);
 
     expect(client.close).toHaveBeenCalledTimes(1);
-    expect(dropDatabase).toHaveBeenCalledWith("seovista_test_failure");
+    expect(dropDatabase).toHaveBeenCalledWith("seovista_test_failure", 55432);
   });
 
   it("drops the database when client creation fails and attaches cleanup failure", async () => {
@@ -355,6 +378,7 @@ describe("test environment provisioning", () => {
 
     await expect(
       provisionTestDatabase("seovista_test_client_failure", "test-database-url/seovista_test_client_failure", {
+        postgresPort: 55432,
         createDatabase: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
         createClient: vi.fn(() => {
           throw provisioningError;
@@ -364,7 +388,7 @@ describe("test environment provisioning", () => {
       }),
     ).rejects.toMatchObject({ message: provisioningError.message, cleanupError });
 
-    expect(dropDatabase).toHaveBeenCalledWith("seovista_test_client_failure");
+    expect(dropDatabase).toHaveBeenCalledWith("seovista_test_client_failure", 55432);
   });
 
   it("attempts database cleanup even when database creation reports an error", async () => {
@@ -374,6 +398,7 @@ describe("test environment provisioning", () => {
 
     await expect(
       provisionTestDatabase("seovista_test_create_failure", "test-database-url/seovista_test_create_failure", {
+        postgresPort: 55432,
         createDatabase,
         createClient: vi.fn(() => ({ close: vi.fn() }) as never),
         applyMigrations: vi.fn<() => Promise<void>>(),
@@ -381,7 +406,7 @@ describe("test environment provisioning", () => {
       }),
     ).rejects.toBe(provisioningError);
 
-    expect(dropDatabase).toHaveBeenCalledWith("seovista_test_create_failure");
+    expect(dropDatabase).toHaveBeenCalledWith("seovista_test_create_failure", 55432);
   });
 });
 

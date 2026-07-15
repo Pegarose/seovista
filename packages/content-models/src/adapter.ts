@@ -25,9 +25,9 @@ import type {
   ResolvedContentEntity,
   Adapter,
   RelationshipDiagnostic,
-} from "./types";
-import { isContentEntityPubliclyEligible, isFeedEligible, isJsonLdEligible, isSitemapEligible } from "./publication";
-import { relationshipContractFor, type RelationshipContract } from "./collection-matrix";
+} from "./types.js";
+import { isContentEntityPubliclyEligible, isFeedEligible, isJsonLdEligible, isSitemapEligible } from "./publication.js";
+import { relationshipContractFor, type RelationshipContract } from "./collection-matrix.js";
 
 export function buildEntityIndex(entities: readonly ContentEntity[]): EntityIndex {
   const byId = new Map<string, ContentEntity>();

@@ -27,12 +27,12 @@ module.exports = {
     collect: {
       numberOfRuns: 1,
       url: [
-        "http://localhost:3100/",
-        "http://localhost:3100/geo/",
-        "http://localhost:3100/tools/",
-        "http://localhost:3100/tools/geo-readiness-checker/",
-        "http://localhost:3100/contact/",
-        "http://localhost:3100/terms/",
+        "http://localhost:3200/",
+        "http://localhost:3200/geo/",
+        "http://localhost:3200/tools/",
+        "http://localhost:3200/tools/geo-readiness-checker/",
+        "http://localhost:3200/contact/",
+        "http://localhost:3200/terms/",
       ],
       startServerCommand:
         "node ../../scripts/run-isolated-web-command.js lighthouse build && node ../../scripts/run-isolated-web-command.js lighthouse serve",

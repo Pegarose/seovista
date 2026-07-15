@@ -43,7 +43,7 @@ async function waitForResponse(url, timeoutMs) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 
-const childEnv = { ...process.env, PORT: "3100", NEXT_DIST_DIR: distDir };
+const childEnv = { ...process.env, PORT: "3200", NEXT_DIST_DIR: distDir };
 delete childEnv.NODE_OPTIONS;
 for (const key of Object.keys(sentinels)) {
   delete childEnv[key];
@@ -62,10 +62,10 @@ const child = spawn("node", ["node_modules/next/dist/bin/next", "start"], {
 let exitCode = 0;
 
 try {
-  await waitForResponse("http://127.0.0.1:3100/", 30_000);
+  await waitForResponse("http://127.0.0.1:3200/", 30_000);
   const findings = [];
   for (const path of publicPaths) {
-    const response = await fetch(`http://127.0.0.1:3100${path}`, { cache: "no-store" });
+    const response = await fetch(`http://127.0.0.1:3200${path}`, { cache: "no-store" });
     const body = await response.text();
     for (const [name, value] of Object.entries(sentinels)) {
       if (body.includes(value)) findings.push(`${path}: ${name}`);

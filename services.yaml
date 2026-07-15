@@ -35,8 +35,8 @@ services:
   web:
     start: pnpm --filter @seovista/web dev
     stop: node scripts/owned-service-lifecycle.js stop web
-    healthcheck: curl -sf http://localhost:3100/api/health/
-    port: 3100
+    healthcheck: curl -sf http://localhost:3200/api/health/
+    port: 3200
     depends_on: [nextg-mock]
 
   worker:

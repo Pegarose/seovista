@@ -47,7 +47,7 @@ export type {
   ResolveOptions,
   EntityIndex,
   Adapter,
-} from "./types";
+} from "./types.js";
 
 export {
   mapEntity,
@@ -67,7 +67,7 @@ export {
   mapLocale,
   mapAuditLead,
   toMapFailure,
-} from "./mapper";
+} from "./mapper.js";
 
 export {
   createAdapter,
@@ -82,7 +82,7 @@ export {
   resolveDefinition,
   resolveFAQ,
   resolveContentEntity,
-} from "./adapter";
+} from "./adapter.js";
 
 export {
   normalizeIndexation,
@@ -96,7 +96,7 @@ export {
   isLocalePubliclyEligible,
   isRedirectPubliclyEligible,
   isAuditLeadPrivate,
-} from "./publication";
+} from "./publication.js";
 
 export {
   SPRINT_ZERO_COLLECTION_MATRIX,
@@ -108,9 +108,9 @@ export {
   type RelationshipCardinality,
   type RelationshipContract,
   type CollectionContract,
-} from "./collection-matrix";
+} from "./collection-matrix.js";
 
-export { validateLocale, defaultLocale, isEnglish, isHreflangEligible } from "./locale";
+export { validateLocale, defaultLocale, isEnglish, isHreflangEligible } from "./locale.js";
 
 export {
   resolveCanonical,
@@ -122,6 +122,6 @@ export {
   type TrustedSiteUrl,
   type RedirectInput,
   type ValidatedRedirect,
-} from "./canonical";
+} from "./canonical.js";
 
 export const name: string = "@seovista/content-models";

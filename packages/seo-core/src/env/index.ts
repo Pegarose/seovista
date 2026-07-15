@@ -7,12 +7,12 @@ import {
   serverEnvSchema,
   webEnvSchema,
   workerEnvSchema,
-} from "./schema";
-import { parsePublicEnv } from "./client";
-import { parseServerEnv } from "./server";
-import { ENV_VARIABLES } from "./manifest";
+} from "./schema.js";
+import { parsePublicEnv } from "./client.js";
+import { parseServerEnv } from "./server.js";
+import { ENV_VARIABLES } from "./manifest.js";
 
-export type { PublicEnv, ServerEnv } from "./types";
+export type { PublicEnv, ServerEnv } from "./types.js";
 export {
   combinedEnvSchema,
   publicEnvSchema,
