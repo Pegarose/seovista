@@ -15,14 +15,22 @@ build/
 coverage/
 *.log
 .lifecycle-evidence/
+.lifecycle-registry/
 .next-sentinel/
 e2e-results/
 test-results/
 
-# Environment variables
+# Environment variables and local secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+*.secret
+*.secrets
+.secrets/
+secrets/
+credentials/
+*.pem
+*.key
 
 # IDE
 .idea/

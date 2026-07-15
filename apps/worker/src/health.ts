@@ -25,9 +25,12 @@ export interface WorkerHealthOptions {
 }
 
 export async function checkWorkerHealth(options?: WorkerHealthOptions): Promise<HealthReport> {
-  const env = getWorkerEnv();
-  const databaseUrl = options?.databaseUrl ?? env.DATABASE_URL;
-  const redisUrl = options?.redisUrl ?? env.REDIS_URL;
+  const env =
+    options?.databaseUrl && options.redisUrl && options.projectId
+      ? undefined
+      : getWorkerEnv();
+  const databaseUrl = options?.databaseUrl ?? env!.DATABASE_URL;
+  const redisUrl = options?.redisUrl ?? env!.REDIS_URL;
   const projectId = options?.projectId ?? getProjectId(env);
 
   const dependencies: DependencyHealth[] = [];

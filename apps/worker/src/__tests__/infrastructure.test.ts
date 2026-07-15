@@ -36,6 +36,7 @@ describe("infrastructure walking skeleton", () => {
 
     pingQueue = new Queue(createPingQueueName(env.projectId), {
       connection: { url: env.redisUrl },
+      prefix: env.queuePrefix,
     });
   }, 90_000);
 

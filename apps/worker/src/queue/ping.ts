@@ -23,6 +23,7 @@ export interface PingQueueOptions {
   projectId: string;
   redisUrl: string;
   db: DbClient;
+  queuePrefix?: string;
   attempts?: number;
   backoffDelayMs?: number;
   timeoutMs?: number;
@@ -69,6 +70,7 @@ export function createPingQueue(options: PingQueueOptions): Queue<PingJobData, P
   const queueName = createPingQueueName(options.projectId);
   return new Queue<PingJobData, PingJobResult>(queueName, {
     connection: { url: options.redisUrl },
+    ...(options.queuePrefix ? { prefix: options.queuePrefix } : {}),
     defaultJobOptions: {
       attempts: options.attempts ?? 3,
       backoff: {
@@ -148,6 +150,7 @@ export function createPingWorker(options: PingQueueOptions): Worker<PingJobData,
 
   const workerOptions: WorkerOptions = {
     connection: { url: options.redisUrl },
+    ...(options.queuePrefix ? { prefix: options.queuePrefix } : {}),
     concurrency: 1,
     lockDuration: 30000,
   };

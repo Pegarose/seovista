@@ -1,0 +1,47 @@
+commands:
+  install: corepack pnpm install --frozen-lockfile
+  dev: pnpm dev
+  build: pnpm build
+  typecheck: pnpm typecheck
+  lint: pnpm lint
+  test: pnpm test
+  test:e2e: pnpm test:e2e
+  test:a11y: pnpm test:a11y
+  test:seo: pnpm test:seo
+  lighthouse: pnpm lighthouse
+
+services:
+  postgres:
+    start: node scripts/infrastructure-service-coordinator.js start
+    stop: node scripts/infrastructure-service-coordinator.js stop
+    healthcheck: node scripts/infrastructure-service-coordinator.js health postgres
+    port: 55432
+    depends_on: []
+
+  redis:
+    start: node scripts/infrastructure-service-coordinator.js start
+    stop: node scripts/infrastructure-service-coordinator.js stop
+    healthcheck: node scripts/infrastructure-service-coordinator.js health redis
+    port: 56379
+    depends_on: [postgres]
+
+  nextg-mock:
+    start: pnpm --filter @seovista/nextg dev
+    stop: node scripts/owned-service-lifecycle.js stop nextg-mock
+    healthcheck: curl -sf http://localhost:3101/health
+    port: 3101
+    depends_on: []
+
+  web:
+    start: pnpm --filter @seovista/web dev
+    stop: node scripts/owned-service-lifecycle.js stop web
+    healthcheck: curl -sf http://localhost:3100/api/health/
+    port: 3100
+    depends_on: [nextg-mock]
+
+  worker:
+    start: pnpm --filter @seovista/worker dev
+    stop: node scripts/owned-service-lifecycle.js stop worker
+    healthcheck: pnpm --filter @seovista/worker healthcheck
+    port: -1
+    depends_on: [postgres, redis]

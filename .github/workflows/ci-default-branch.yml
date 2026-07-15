@@ -155,16 +155,22 @@ jobs:
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
 
-      - name: Start Docker services
-        run: docker compose up -d --wait postgres redis
+      - name: Start lifecycle-owned services
+        id: lifecycle
+        shell: bash
+        run: |
+          context_path="$(node scripts/infrastructure-lifecycle.js start seovista-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT})"
+          echo "context_path=${context_path}" >> "$GITHUB_OUTPUT"
         timeout-minutes: 2
 
       - name: Test
-        run: pnpm test
+        run: corepack pnpm test
+        env:
+          SEOVISTA_LIFECYCLE_CONTEXT_PATH: ${{ steps.lifecycle.outputs.context_path }}
 
-      - name: Stop Docker services
-        if: always()
-        run: docker compose down --volumes --remove-orphans
+      - name: Stop lifecycle-owned services
+        if: always() && steps.lifecycle.outputs.context_path != ''
+        run: node scripts/infrastructure-lifecycle.js teardown "${{ steps.lifecycle.outputs.context_path }}"
         timeout-minutes: 2
 
   # ── Build ───────────────────────────────────────────────────────

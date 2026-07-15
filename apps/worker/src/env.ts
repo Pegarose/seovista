@@ -5,6 +5,10 @@ export const workerEnvSchema = z.object({
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
   NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   SEOVISTA_PROJECT_ID: z.string().min(1).optional(),
+  SEOVISTA_REDIS_NAMESPACE: z.string().min(1).optional(),
+  SEOVISTA_QUEUE_PREFIX: z.string().min(1).optional(),
+  SEOVISTA_CORRELATION_ID_PREFIX: z.string().min(1).optional(),
+  SEOVISTA_LIFECYCLE_CONTEXT_PATH: z.string().min(1).optional(),
 });
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;

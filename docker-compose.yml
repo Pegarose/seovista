@@ -15,12 +15,15 @@ services:
       POSTGRES_USER: seovista
       POSTGRES_PASSWORD: seovista
       POSTGRES_DB: ${SEOVISTA_DATABASE_NAME:-seovista}
+      SEOVISTA_DATABASE_NAME: ${SEOVISTA_DATABASE_NAME:-seovista}
     ports:
-      - "127.0.0.1:55432:5432"
+      - "127.0.0.1:${SEOVISTA_POSTGRES_PORT:-55432}:5432"
+    labels:
+      com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}
     volumes:
       - seovista-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U seovista -d seovista"]
+      test: ["CMD-SHELL", "pg_isready -U seovista -d $${SEOVISTA_DATABASE_NAME:-seovista}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,7 +32,9 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "127.0.0.1:56379:6379"
+      - "127.0.0.1:${SEOVISTA_REDIS_PORT:-56379}:6379"
+    labels:
+      com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}
     volumes:
       - seovista-redis-data:/data
     healthcheck:
@@ -47,6 +52,15 @@ services:
       - --maxmemory-policy
       - allkeys-lru
 
+networks:
+  default:
+    labels:
+      com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}
+
 volumes:
-  seovista-postgres-data: {}
-  seovista-redis-data: {}
+  seovista-postgres-data:
+    labels:
+      com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}
+  seovista-redis-data:
+    labels:
+      com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}

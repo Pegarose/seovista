@@ -16,7 +16,7 @@
   "scripts": {
     "pretest": "pnpm run build",
     "test": "vitest run",
-    "lint": "eslint .",
+    "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "healthcheck": "node dist/healthcheck.js",
     "dev": "node dist/worker.js",

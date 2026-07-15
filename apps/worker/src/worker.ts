@@ -53,6 +53,7 @@ async function run(): Promise<void> {
   const queueOptions = {
     projectId,
     redisUrl: workerEnv.REDIS_URL,
+    ...(workerEnv.SEOVISTA_QUEUE_PREFIX ? { queuePrefix: workerEnv.SEOVISTA_QUEUE_PREFIX } : {}),
     db,
   };
 
