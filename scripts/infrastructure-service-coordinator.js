@@ -12,16 +12,91 @@ export function getInfrastructureServiceRecordPath(root) {
   return resolve(root, ".lifecycle-registry", "services-infrastructure.json");
 }
 
+export function getInfrastructureServiceStartingRecordPath(root) {
+  return resolve(root, ".lifecycle-registry", "services-infrastructure.starting.json");
+}
+
 function getInfrastructureServiceStartLockPath(root) {
   return resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
 }
 
-function readRecord(root) {
-  const path = getInfrastructureServiceRecordPath(root);
+function getStartingRecordPath(dependencies, root) {
+  return dependencies.fileSystem?.getStartingRecordPath?.(root) ?? getInfrastructureServiceStartingRecordPath(root);
+}
+
+function validateRecord(record) {
+  const state = record?.state ?? "active";
+  if (!record || !["active", "starting", "stopping", "retired"].includes(state)) {
+    throw new Error("Infrastructure service ownership record is invalid");
+  }
+  if (state !== "starting" && typeof record.contextPath !== "string") {
+    throw new Error("Infrastructure service ownership record is invalid");
+  }
+  if (state === "starting" && record.contextPath !== undefined && typeof record.contextPath !== "string") {
+    throw new Error("Infrastructure service ownership record is invalid");
+  }
+  return { ...record, state };
+}
+
+function readStartingRecordFromPath(path, dependencies = {}) {
+  const read = dependencies.fileSystem?.readFileSync ?? readFileSync;
   if (!existsSync(path)) return undefined;
-  const record = JSON.parse(readFileSync(path, "utf8"));
-  if (!record?.contextPath) throw new Error("Infrastructure service ownership record is invalid");
-  return record;
+  return validateRecord(JSON.parse(read(path, "utf8")));
+}
+
+function readStartingRecord(root, dependencies = {}) {
+  return readStartingRecordFromPath(getStartingRecordPath(dependencies, root), dependencies);
+}
+
+function readRecord(root, dependencies = {}) {
+  const activePath = getInfrastructureServiceRecordPath(root);
+  const read = dependencies.fileSystem?.readFileSync ?? readFileSync;
+  if (existsSync(activePath)) return validateRecord(JSON.parse(read(activePath, "utf8")));
+  return readStartingRecord(root, dependencies);
+}
+
+function removeStartingRecordIfOwned(root, operationToken, dependencies = {}) {
+  if (typeof operationToken !== "string") return false;
+  const startingPath = getStartingRecordPath(dependencies, root);
+  const quarantinePath = `${startingPath}.${randomUUID()}.cleanup`;
+  const rename = dependencies.fileSystem?.renameSync ?? renameSync;
+  try {
+    rename(startingPath, quarantinePath);
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+
+  const quarantinedRecord = readStartingRecordFromPath(quarantinePath, dependencies);
+  if (quarantinedRecord?.operationToken !== operationToken) {
+    const link = dependencies.fileSystem?.linkSync ?? linkSync;
+    try {
+      link(quarantinePath, startingPath);
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+    }
+    unlinkOwnQuarantine(quarantinePath, dependencies);
+    return false;
+  }
+
+  unlinkOwnQuarantine(quarantinePath, dependencies);
+  return true;
+}
+
+function processStartIdentity(processId) {
+  if (process.platform !== "linux" || !Number.isInteger(processId) || processId <= 0) return undefined;
+  try {
+    const stat = readFileSync(`/proc/${processId}/stat`, "utf8");
+    const commandEnd = stat.lastIndexOf(")");
+    if (commandEnd < 0) return undefined;
+    return stat.slice(commandEnd + 2).trim().split(/\s+/)[19] || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getProcessStartIdentity(processId, dependencies) {
+  return dependencies.getProcessStartIdentity?.(processId) ?? processStartIdentity(processId);
 }
 
 function processIsAlive(processId) {
@@ -38,18 +113,24 @@ function processIsAlive(processId) {
   }
 }
 
-function createLockPayload(processId, token) {
-  return `${JSON.stringify({ pid: processId, token })}\n`;
+function createLockPayload(processId, token, startIdentity) {
+  return `${JSON.stringify({ pid: processId, token, ...(startIdentity ? { startIdentity } : {}) })}\n`;
 }
 
 function readLockPayload(lockPath, dependencies = {}) {
   const read = dependencies.fileSystem?.readFileSync ?? readFileSync;
   try {
     const payload = JSON.parse(read(lockPath, "utf8"));
-    if (!Number.isSafeInteger(payload?.pid) || payload.pid <= 0 || typeof payload.token !== "string" || payload.token.length === 0) {
+    if (
+      !Number.isSafeInteger(payload?.pid) ||
+      payload.pid <= 0 ||
+      typeof payload.token !== "string" ||
+      payload.token.length === 0 ||
+      (payload.startIdentity !== undefined && typeof payload.startIdentity !== "string")
+    ) {
       return undefined;
     }
-    return { pid: payload.pid, token: payload.token };
+    return { pid: payload.pid, token: payload.token, startIdentity: payload.startIdentity };
   } catch {
     return undefined;
   }
@@ -64,10 +145,14 @@ function createLockToken(dependencies) {
 }
 
 function writeLock(lockPath, payload, dependencies) {
-  (dependencies.fileSystem?.writeFileSync ?? writeFileSync)(lockPath, createLockPayload(payload.pid, payload.token), {
-    encoding: "utf8",
-    flag: "wx",
-  });
+  (dependencies.fileSystem?.writeFileSync ?? writeFileSync)(
+    lockPath,
+    createLockPayload(payload.pid, payload.token, payload.startIdentity),
+    {
+      encoding: "utf8",
+      flag: "wx",
+    },
+  );
 }
 
 function unlinkOwnQuarantine(quarantinePath, dependencies) {
@@ -101,7 +186,11 @@ function restoreQuarantinedLock(lockPath, quarantinePath, dependencies) {
 
 function reclaimStaleStartLock(lockPath, observedPayload, isProcessAlive, dependencies) {
   if (observedPayload === undefined || isProcessAlive(observedPayload.pid) !== false) return false;
-  const quarantinePath = `${lockPath}.${observedPayload.token}.${randomUUID()}.stale`;
+  if (observedPayload.startIdentity !== undefined) {
+    const currentStartIdentity = getProcessStartIdentity(observedPayload.pid, dependencies);
+    if (currentStartIdentity === undefined || currentStartIdentity === observedPayload.startIdentity) return false;
+  }
+  const quarantinePath = `${lockPath}.${randomUUID()}.stale`;
   const rename = dependencies.fileSystem?.renameSync ?? renameSync;
   try {
     rename(lockPath, quarantinePath);
@@ -111,7 +200,12 @@ function reclaimStaleStartLock(lockPath, observedPayload, isProcessAlive, depend
   }
 
   const quarantinedPayload = readLockPayload(quarantinePath, dependencies);
-  if (!quarantinedPayload || quarantinedPayload.pid !== observedPayload.pid || quarantinedPayload.token !== observedPayload.token) {
+  if (
+    !quarantinedPayload ||
+    quarantinedPayload.pid !== observedPayload.pid ||
+    quarantinedPayload.token !== observedPayload.token ||
+    quarantinedPayload.startIdentity !== observedPayload.startIdentity
+  ) {
     restoreQuarantinedLock(lockPath, quarantinePath, dependencies);
     return false;
   }
@@ -122,7 +216,12 @@ function reclaimStaleStartLock(lockPath, observedPayload, isProcessAlive, depend
 
 function claimStartLock(root, isProcessAlive, dependencies) {
   const lockPath = getLockPath(dependencies, root);
-  const payload = { pid: dependencies.processId ?? process.pid, token: createLockToken(dependencies) };
+  const processId = dependencies.processId ?? process.pid;
+  const payload = {
+    pid: processId,
+    token: createLockToken(dependencies),
+    startIdentity: getProcessStartIdentity(processId, dependencies),
+  };
   mkdirSync(dirname(lockPath), { recursive: true });
   try {
     writeLock(lockPath, payload, dependencies);
@@ -162,7 +261,12 @@ function releaseStartLock(root, payload, dependencies) {
   }
 
   const movedPayload = readLockPayload(quarantinePath, dependencies);
-  if (!movedPayload || movedPayload.pid !== payload.pid || movedPayload.token !== payload.token) {
+  if (
+    !movedPayload ||
+    movedPayload.pid !== payload.pid ||
+    movedPayload.token !== payload.token ||
+    movedPayload.startIdentity !== payload.startIdentity
+  ) {
     restoreQuarantinedLock(lockPath, quarantinePath, dependencies);
     return;
   }
@@ -180,13 +284,60 @@ async function acquireOperationLock(root, timeoutMs = 30_000, isProcessAlive = p
   throw new Error("Timed out waiting for infrastructure service operation lock");
 }
 
-function writeRecord(root, contextPath) {
+function writeRecord(root, contextPath, dependencies = {}, lockPayload) {
   const path = getInfrastructureServiceRecordPath(root);
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify({ contextPath: resolve(contextPath), createdAt: new Date().toISOString() }, null, 2)}\n`, {
-    encoding: "utf8",
-    flag: "wx",
-  });
+  (dependencies.fileSystem?.writeFileSync ?? writeFileSync)(
+    path,
+    `${JSON.stringify(
+      {
+        state: "active",
+        contextPath: resolve(contextPath),
+        ...(lockPayload?.operationToken ? { operationToken: lockPayload.operationToken } : {}),
+        createdAt: new Date().toISOString(),
+      },
+      null,
+      2,
+    )}\n`,
+    {
+      encoding: "utf8",
+      flag: "wx",
+    },
+  );
+}
+
+function writeRecoverableRecord(root, record, dependencies = {}) {
+  const path = getStartingRecordPath(dependencies, root);
+  mkdirSync(dirname(path), { recursive: true });
+  const write = dependencies.fileSystem?.writeFileSync ?? writeFileSync;
+  write(path, `${JSON.stringify(record, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+}
+
+function updateRecord(root, record, dependencies = {}) {
+  const path = getInfrastructureServiceRecordPath(root);
+  const write = dependencies.fileSystem?.writeFileSync ?? writeFileSync;
+  write(path, `${JSON.stringify(record, null, 2)}\n`, { encoding: "utf8" });
+}
+
+function removeStartingRecord(root, dependencies = {}) {
+  const unlink = dependencies.fileSystem?.unlinkSync ?? unlinkSync;
+  try {
+    unlink(getStartingRecordPath(dependencies, root));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+
+function removeRecord(root, dependencies = {}) {
+  // Remove the recoverable marker first so a partial cleanup cannot strand a
+  // starting-only record after the active ownership record is gone.
+  removeStartingRecord(root, dependencies);
+  const unlink = dependencies.fileSystem?.unlinkSync ?? unlinkSync;
+  try {
+    unlink(getInfrastructureServiceRecordPath(root));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
 }
 
 export function createInfrastructureServiceCoordinator(root, runLifecycle, dependencies = {}) {
@@ -200,18 +351,55 @@ export function createInfrastructureServiceCoordinator(root, runLifecycle, depen
       startInFlight = (async () => {
         const lockPayload = await acquireOperationLock(root, 30_000, isProcessAlive, dependencies);
         try {
-          const existing = readRecord(root);
-          if (existing) return existing.contextPath;
+          const existing = readRecord(root, dependencies);
+          if (existing?.state === "starting" && existing.contextPath === undefined) {
+            throw new Error("Infrastructure service start is incomplete and requires recovery");
+          }
+          if (existing) {
+            if (existing.state === "active") {
+              removeStartingRecordIfOwned(root, existing.operationToken, dependencies);
+              return existing.contextPath;
+            }
+            if (existing.state === "retired") {
+              removeRecord(root, dependencies);
+            } else if (existing.state === "starting") {
+              throw new Error("Infrastructure service start is incomplete and requires recovery");
+            } else {
+              throw new Error(`Infrastructure service ownership record is ${existing.state} and requires recovery`);
+            }
+          }
 
-          const contextPath = resolve(await runLifecycle(["start", "seovista-dev"]));
+          const pendingRecord = {
+            state: "starting",
+            pid: lockPayload.pid,
+            ...(lockPayload.startIdentity ? { startIdentity: lockPayload.startIdentity } : {}),
+            operationToken: lockPayload.token,
+            createdAt: new Date().toISOString(),
+          };
+          writeRecoverableRecord(root, pendingRecord, dependencies);
+          let contextPath;
           try {
-            writeRecord(root, contextPath);
-            return contextPath;
-          } catch (error) {
-            await runLifecycle(["teardown", contextPath]).catch(() => undefined);
-            const winner = readRecord(root);
-            if (winner) return winner.contextPath;
-            throw error;
+            contextPath = resolve(await runLifecycle(["start", "seovista-dev"]));
+            try {
+              writeRecord(root, contextPath, dependencies, { operationToken: lockPayload.token });
+              return contextPath;
+            } catch (error) {
+              await runLifecycle(["teardown", contextPath]).catch(() => undefined);
+              const winner = readRecord(root, dependencies);
+              if (winner?.state === "active") {
+                removeStartingRecordIfOwned(root, lockPayload.token, dependencies);
+                return winner.contextPath;
+              }
+              throw error;
+            }
+          } finally {
+            try {
+              removeStartingRecordIfOwned(root, lockPayload.token, dependencies);
+            } catch (error) {
+              if (error?.code !== "ENOENT") {
+                process.stderr.write(`Infrastructure starting-record cleanup failed: ${String(error)}\n`);
+              }
+            }
           }
         } finally {
           releaseStartLock(root, lockPayload, dependencies);
@@ -226,8 +414,10 @@ export function createInfrastructureServiceCoordinator(root, runLifecycle, depen
     },
     async health(service) {
       if (!["postgres", "redis"].includes(service)) throw new Error(`Unknown infrastructure service: ${service}`);
-      const record = readRecord(root);
-      if (!record) throw new Error("Infrastructure service has no owned lifecycle context record");
+      const record = readRecord(root, dependencies);
+      if (!record || record.state !== "active") {
+        throw new Error("Infrastructure service has no active owned lifecycle context record");
+      }
       await runLifecycle(["health", record.contextPath, service]);
       return true;
     },
@@ -235,10 +425,19 @@ export function createInfrastructureServiceCoordinator(root, runLifecycle, depen
       if (startInFlight) await startInFlight.catch(() => undefined);
       const lockPayload = await acquireOperationLock(root, 30_000, isProcessAlive, dependencies);
       try {
-        const record = readRecord(root);
+        const record = readRecord(root, dependencies);
         if (!record) return true;
+        if (record.state === "starting") {
+          throw new Error("Infrastructure service start is incomplete and requires recovery");
+        }
+        if (record.state === "retired") {
+          removeRecord(root, dependencies);
+          return true;
+        }
+        updateRecord(root, { ...record, state: "stopping", stoppedAt: new Date().toISOString() }, dependencies);
         await runLifecycle(["teardown", record.contextPath]);
-        unlinkSync(getInfrastructureServiceRecordPath(root));
+        updateRecord(root, { ...record, state: "retired", retiredAt: new Date().toISOString() }, dependencies);
+        removeRecord(root, dependencies);
         return true;
       } finally {
         releaseStartLock(root, lockPayload, dependencies);
