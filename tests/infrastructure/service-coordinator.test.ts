@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
@@ -9,9 +10,20 @@ import {
   getInfrastructureServiceRecordPath,
   getInfrastructureServiceStartingRecordPath,
 } from "../../scripts/infrastructure-service-coordinator.js";
+import {
+  createRunContext,
+  getContextPath,
+  getDeterministicContextPath,
+  writeLifecycleContext,
+} from "../../scripts/infrastructure-lifecycle-core.js";
 
 function lockPayload(pid: number, token: string, startIdentity?: string) {
   return `${JSON.stringify({ pid, token, ...(startIdentity ? { startIdentity } : {}) })}\n`;
+}
+
+function deterministicContextPath(root: string, args: string[]) {
+  if (args[0] !== "start" || typeof args[2] !== "string") throw new Error("Expected lifecycle start arguments");
+  return getDeterministicContextPath(root, "seovista-dev", args[2]);
 }
 
 function waitForChild(child: ReturnType<typeof spawn>, timeoutMs = 5_000) {
@@ -38,11 +50,14 @@ function waitForChild(child: ReturnType<typeof spawn>, timeoutMs = 5_000) {
 describe("services infrastructure coordinator", () => {
   it("starts once, shares the exact emitted context across services, and retires its record after cleanup", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "exact-context.json");
+    let contextPath = "";
     const calls: string[][] = [];
     const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
       calls.push(args);
-      if (args[0] === "start") return contextPath;
+      if (args[0] === "start") {
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      }
       return "";
     });
 
@@ -52,7 +67,7 @@ describe("services infrastructure coordinator", () => {
     expect(await coordinator.health("redis")).toBe(true);
     expect(await coordinator.stop()).toBe(true);
     expect(calls).toEqual([
-      ["start", "seovista-dev"],
+      ["start", "seovista-dev", expect.any(String)],
       ["health", contextPath, "postgres"],
       ["health", contextPath, "redis"],
       ["teardown", contextPath],
@@ -62,7 +77,7 @@ describe("services infrastructure coordinator", () => {
 
   it("serializes concurrent starts and shares the exact context", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "exact-context.json");
+    let contextPath = "";
     const calls: string[][] = [];
     let releaseStart: (() => void) | undefined;
     const startBlocked = new Promise<void>((resolveStart) => {
@@ -72,6 +87,7 @@ describe("services infrastructure coordinator", () => {
       calls.push(args);
       if (args[0] === "start") {
         await startBlocked;
+        contextPath = deterministicContextPath(root, args);
         return contextPath;
       }
       return "";
@@ -81,14 +97,15 @@ describe("services infrastructure coordinator", () => {
     const secondStart = coordinator.start();
     releaseStart?.();
 
-    await expect(Promise.all([firstStart, secondStart])).resolves.toEqual([contextPath, contextPath]);
-    expect(calls).toEqual([["start", "seovista-dev"]]);
+    const results = await Promise.all([firstStart, secondStart]);
+    expect(results).toEqual([contextPath, contextPath]);
+    expect(calls).toEqual([["start", "seovista-dev", expect.any(String)]]);
   });
 
   it("tears down the loser when ownership is claimed after lifecycle start", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const winnerContextPath = resolve(root, ".lifecycle-evidence", "winner-context.json");
-    const loserContextPath = resolve(root, ".lifecycle-evidence", "loser-context.json");
+    let loserContextPath = "";
     const recordPath = getInfrastructureServiceRecordPath(root);
     const calls: string[][] = [];
     let claimRace = true;
@@ -111,6 +128,7 @@ describe("services infrastructure coordinator", () => {
         calls.push(args);
         if (args[0] === "start") {
           lifecycleStarted = true;
+          loserContextPath = deterministicContextPath(root, args);
           return loserContextPath;
         }
         return "";
@@ -120,7 +138,7 @@ describe("services infrastructure coordinator", () => {
 
     await expect(coordinator.start()).resolves.toBe(winnerContextPath);
     expect(calls).toEqual([
-      ["start", "seovista-dev"],
+      ["start", "seovista-dev", expect.any(String)],
       ["teardown", loserContextPath],
     ]);
     expect(JSON.parse(readFileSync(recordPath, "utf8")).contextPath).toBe(winnerContextPath);
@@ -177,15 +195,17 @@ describe("services infrastructure coordinator", () => {
 
   it("recovers when active cleanup removes the active record before starting-record cleanup fails", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const activeContextPath = resolve(root, ".lifecycle-evidence", "active-context.json");
-    const freshContextPath = resolve(root, ".lifecycle-evidence", "fresh-context.json");
+    let freshContextPath = "";
+    let lifecycleNonce = "";
     const activeRecordPath = getInfrastructureServiceRecordPath(root);
     const startingRecordPath = getInfrastructureServiceStartingRecordPath(root);
     let failStartingRemoval = false;
+    let startingRemovalAttempted = false;
     let startCount = 0;
     const fileSystem = {
       unlinkSync(path: string) {
-        if (path === startingRecordPath && failStartingRemoval) {
+        if (path.endsWith(".cleanup") && failStartingRemoval) {
+          startingRemovalAttempted = true;
           const error = new Error("starting record removal interrupted");
           Object.assign(error, { code: "EIO" });
           throw error;
@@ -198,7 +218,10 @@ describe("services infrastructure coordinator", () => {
       async (args) => {
         if (args[0] === "start") {
           startCount += 1;
-          return startCount === 1 ? activeContextPath : freshContextPath;
+          lifecycleNonce = args[2];
+          if (startCount === 1) return (freshContextPath = deterministicContextPath(root, args));
+          freshContextPath = deterministicContextPath(root, args);
+          return freshContextPath;
         }
         return "";
       },
@@ -207,27 +230,43 @@ describe("services infrastructure coordinator", () => {
 
     await coordinator.start();
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
-    writeFileSync(startingRecordPath, `${JSON.stringify({ state: "starting", operationToken: "stale" })}\n`, "utf8");
+    const activeRecord = JSON.parse(readFileSync(activeRecordPath, "utf8"));
+    const recoveryContext = createRunContext({ root, runId: "seovista-dev", nonce: lifecycleNonce });
+    const startingContextPath = getContextPath(recoveryContext, root);
+    writeFileSync(
+      startingRecordPath,
+      `${JSON.stringify({ state: "starting", contextPath: startingContextPath, operationToken: activeRecord.operationToken })}\n`,
+      "utf8",
+    );
     failStartingRemoval = true;
     await expect(coordinator.stop()).rejects.toThrow(/starting record removal interrupted/);
+    expect(startingRemovalAttempted).toBe(true);
     expect(existsSync(activeRecordPath)).toBe(true);
     expect(JSON.parse(readFileSync(activeRecordPath, "utf8")).state).toBe("retired");
     expect(existsSync(startingRecordPath)).toBe(true);
 
     failStartingRemoval = false;
-    await expect(coordinator.start()).resolves.toBe(freshContextPath);
+    mkdirSync(resolve(root, ".lifecycle-evidence"), { recursive: true });
+    writeLifecycleContext(recoveryContext, startingContextPath, { root });
+    await expect(coordinator.recover()).resolves.toBe(true);
+    expect(existsSync(activeRecordPath)).toBe(false);
+    const freshStart = await coordinator.start();
+    expect(freshStart).toBe(freshContextPath);
     expect(existsSync(activeRecordPath)).toBe(true);
     expect(existsSync(startingRecordPath)).toBe(false);
   });
 
   it("recovers stopping ownership after teardown failure by retrying teardown", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "stopping-context.json");
+    let contextPath = resolve(root, ".lifecycle-evidence", "stopping-context.json");
     const calls: string[][] = [];
     let teardownAttempts = 0;
     const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
       calls.push(args);
-      if (args[0] === "start") return contextPath;
+      if (args[0] === "start") {
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      }
       teardownAttempts += 1;
       if (teardownAttempts === 1) throw new Error("teardown interrupted");
       return "";
@@ -243,7 +282,7 @@ describe("services infrastructure coordinator", () => {
     await expect(coordinator.stop()).resolves.toBe(true);
     expect(existsSync(getInfrastructureServiceRecordPath(root))).toBe(false);
     expect(calls).toEqual([
-      ["start", "seovista-dev"],
+      ["start", "seovista-dev", expect.any(String)],
       ["teardown", contextPath],
       ["teardown", contextPath],
     ]);
@@ -253,12 +292,13 @@ describe("services infrastructure coordinator", () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const helper = resolve(root, "child-coordinator-race-helper.mjs");
     const coordinatorModule = pathToFileURL(resolve(process.cwd(), "scripts/infrastructure-service-coordinator.js")).href;
+    const lifecycleCoreModule = pathToFileURL(resolve(process.cwd(), "scripts/infrastructure-lifecycle-core.js")).href;
     writeFileSync(
       helper,
       `import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createInfrastructureServiceCoordinator } from ${JSON.stringify(coordinatorModule)};
+import { getDeterministicContextPath } from ${JSON.stringify(lifecycleCoreModule)};
 const [root, id, readyPath, startReleasePath, lifecycleReleasePath, resultPath] = process.argv.slice(2);
-const contextPath = root + "/.lifecycle-evidence/" + id + "-context.json";
 writeFileSync(readyPath, id);
 while (!existsSync(startReleasePath)) await new Promise((resolveWait) => setTimeout(resolveWait, 5));
 mkdirSync(root + "/.lifecycle-evidence", { recursive: true });
@@ -267,7 +307,7 @@ const coordinator = createInfrastructureServiceCoordinator(root, async (args) =>
   if (args[0] === "start") {
     writeFileSync(root + "/lifecycle-" + id + "-ready", id);
     while (!existsSync(lifecycleReleasePath)) await new Promise((resolveWait) => setTimeout(resolveWait, 5));
-    return contextPath;
+    return getDeterministicContextPath(root, "seovista-dev", args[2]);
   }
   return "";
 });
@@ -333,8 +373,8 @@ try {
 
   it("does not return a retired record after teardown completed before record removal", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const retiredContextPath = resolve(root, ".lifecycle-evidence", "retired-context.json");
-    const freshContextPath = resolve(root, ".lifecycle-evidence", "fresh-context.json");
+    let retiredContextPath = "";
+    let freshContextPath = "";
     const recordPath = getInfrastructureServiceRecordPath(root);
     let failRecordRemoval = true;
     const fileSystem = {
@@ -352,7 +392,14 @@ try {
       root,
       async (args) => {
         calls.push(args);
-        if (args[0] === "start") return calls.filter(([command]) => command === "start").length === 1 ? retiredContextPath : freshContextPath;
+        if (args[0] === "start") {
+          if (calls.filter(([command]) => command === "start").length === 1) {
+            retiredContextPath = deterministicContextPath(root, args);
+            return retiredContextPath;
+          }
+          freshContextPath = deterministicContextPath(root, args);
+          return freshContextPath;
+        }
         return "";
       },
       { fileSystem },
@@ -364,11 +411,12 @@ try {
     expect(JSON.parse(readFileSync(recordPath, "utf8")).state).toBe("retired");
 
     failRecordRemoval = false;
-    await expect(coordinator.start()).resolves.toBe(freshContextPath);
+    const freshStart = await coordinator.start();
+    expect(freshStart).toBe(freshContextPath);
     expect(calls).toEqual([
-      ["start", "seovista-dev"],
+      ["start", "seovista-dev", expect.any(String)],
       ["teardown", retiredContextPath],
-      ["start", "seovista-dev"],
+      ["start", "seovista-dev", expect.any(String)],
     ]);
   });
 
@@ -376,7 +424,7 @@ try {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const recordPath = getInfrastructureServiceRecordPath(root);
     const pendingContextPath = resolve(root, ".lifecycle-evidence", "pending-context.json");
-    const freshContextPath = resolve(root, ".lifecycle-evidence", "fresh-context.json");
+    let freshContextPath = "";
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
     writeFileSync(getInfrastructureServiceStartingRecordPath(root), `${JSON.stringify({ state: "starting", pid: 424242, contextPath: pendingContextPath })}\n`, "utf8");
     const calls: string[][] = [];
@@ -384,7 +432,10 @@ try {
       root,
       async (args) => {
         calls.push(args);
-        if (args[0] === "start") return freshContextPath;
+        if (args[0] === "start") {
+          freshContextPath = deterministicContextPath(root, args);
+          return freshContextPath;
+        }
         return "";
       },
       { isProcessAlive: () => false },
@@ -401,6 +452,7 @@ try {
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
     writeFileSync(lockPath, `${JSON.stringify({ pid: 424242, token: "unsafe/..\\\\token" })}\n`, "utf8");
     let attempted = false;
+    let contextPath = "";
     const fileSystem = {
       writeFileSync(path: string, content: string, options: { flag?: string }) {
         if (path === lockPath && options.flag === "wx" && existsSync(lockPath)) {
@@ -417,20 +469,24 @@ try {
     };
     const coordinator = createInfrastructureServiceCoordinator(
       root,
-      async () => resolve(root, ".lifecycle-evidence", "should-not-start.json"),
+      async (args) => {
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      },
       { isProcessAlive: () => false, fileSystem, getProcessStartIdentity: () => "different-process" },
     );
 
     const starting = coordinator.start();
     await new Promise((resolveWait) => setTimeout(resolveWait, 20));
     expect(attempted).toBe(true);
-    await expect(starting).resolves.toBe(resolve(root, ".lifecycle-evidence", "should-not-start.json"));
+    const result = await starting;
+    expect(result).toBe(contextPath);
   });
 
   it("does not reclaim a matching start identity when liveness is ambiguous", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
-    const contextPath = resolve(root, ".lifecycle-evidence", "identity-ambiguous.json");
+    let contextPath = "";
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
     writeFileSync(lockPath, lockPayload(424242, "same-owner", "identity-a"), "utf8");
     let claimAttempted = false;
@@ -447,7 +503,11 @@ try {
     };
     const coordinator = createInfrastructureServiceCoordinator(
       root,
-      async (args) => (args[0] === "start" ? contextPath : ""),
+      async (args) => {
+        if (args[0] !== "start") return "";
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      },
       { isProcessAlive: () => undefined, getProcessStartIdentity: () => undefined, fileSystem },
     );
 
@@ -457,14 +517,15 @@ try {
     expect(claimAttempted).toBe(true);
     expect(existsSync(`${lockPath}.identity-a.stale`)).toBe(false);
     unlinkSync(lockPath);
-    await expect(starting).resolves.toBe(contextPath);
+    const result = await starting;
+    expect(result).toBe(contextPath);
     rmSync(root, { recursive: true, force: true });
   });
 
   it("does not reclaim a matching start identity when the pid is not alive", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
-    const contextPath = resolve(root, ".lifecycle-evidence", "identity-matches.json");
+    let contextPath = "";
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
     writeFileSync(lockPath, lockPayload(424242, "same-owner", "identity-a"), "utf8");
     const quarantined: string[] = [];
@@ -476,7 +537,11 @@ try {
     };
     const coordinator = createInfrastructureServiceCoordinator(
       root,
-      async (args) => (args[0] === "start" ? contextPath : ""),
+      async (args) => {
+        if (args[0] !== "start") return "";
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      },
       { isProcessAlive: () => false, getProcessStartIdentity: () => "identity-a", fileSystem },
     );
 
@@ -484,14 +549,15 @@ try {
     await new Promise((resolveWait) => setTimeout(resolveWait, 25));
     expect(quarantined).toEqual([]);
     unlinkSync(lockPath);
-    await expect(starting).resolves.toBe(contextPath);
+    const result = await starting;
+    expect(result).toBe(contextPath);
     rmSync(root, { recursive: true, force: true });
   });
 
-  it("reclaims a differing start identity only after the pid is not alive", async () => {
+  it("reclaims a dead pid when its prior start identity can no longer be read", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
-    const contextPath = resolve(root, ".lifecycle-evidence", "identity-reclaimed.json");
+    let contextPath = "";
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
     writeFileSync(lockPath, lockPayload(424242, "old-owner", "identity-a"), "utf8");
     const quarantined: string[] = [];
@@ -503,11 +569,53 @@ try {
     };
     const coordinator = createInfrastructureServiceCoordinator(
       root,
-      async (args) => (args[0] === "start" ? contextPath : ""),
+      async (args) => {
+        if (args[0] !== "start") return "";
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      },
+      { isProcessAlive: () => false, getProcessStartIdentity: () => undefined, fileSystem },
+    );
+
+    try {
+      const starting = coordinator.start();
+      const deadline = Date.now() + 1_000;
+      while (!quarantined.some((path) => path.endsWith(".stale")) && Date.now() < deadline) {
+        await new Promise((resolveWait) => setTimeout(resolveWait, 5));
+      }
+      expect(quarantined.filter((path) => path.endsWith(".stale"))).toHaveLength(1);
+      const result = await starting;
+      expect(result).toBe(contextPath);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reclaims a differing start identity only after the pid is not alive", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
+    let contextPath = "";
+    mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
+    writeFileSync(lockPath, lockPayload(424242, "old-owner", "identity-a"), "utf8");
+    const quarantined: string[] = [];
+    const fileSystem = {
+      renameSync(source: string, destination: string) {
+        quarantined.push(destination);
+        renameSync(source, destination);
+      },
+    };
+    const coordinator = createInfrastructureServiceCoordinator(
+      root,
+      async (args) => {
+        if (args[0] !== "start") return "";
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      },
       { isProcessAlive: () => false, getProcessStartIdentity: () => "identity-b", fileSystem },
     );
 
-    await expect(coordinator.start()).resolves.toBe(contextPath);
+    const result = await coordinator.start();
+    expect(result).toBe(contextPath);
     expect(quarantined.filter((path) => path.endsWith(".stale"))).toHaveLength(1);
     expect(quarantined.find((path) => path.endsWith(".stale"))).toMatch(/\.stale$/);
     expect(existsSync(lockPath)).toBe(false);
@@ -517,12 +625,16 @@ try {
   it("does not reclaim a differing start identity while the pid is alive", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
-    const contextPath = resolve(root, ".lifecycle-evidence", "identity-live.json");
+    let contextPath = "";
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
     writeFileSync(lockPath, lockPayload(424242, "old-owner", "identity-a"), "utf8");
     const coordinator = createInfrastructureServiceCoordinator(
       root,
-      async (args) => (args[0] === "start" ? contextPath : ""),
+      async (args) => {
+        if (args[0] !== "start") return "";
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      },
       { isProcessAlive: () => true, getProcessStartIdentity: () => "identity-b" },
     );
 
@@ -530,7 +642,8 @@ try {
     await new Promise((resolveWait) => setTimeout(resolveWait, 25));
     expect(existsSync(lockPath)).toBe(true);
     unlinkSync(lockPath);
-    await expect(starting).resolves.toBe(contextPath);
+    const result = await starting;
+    expect(result).toBe(contextPath);
     rmSync(root, { recursive: true, force: true });
   });
 
@@ -543,6 +656,7 @@ try {
       helper,
       `import { existsSync, writeFileSync } from "node:fs";
 import { createInfrastructureServiceCoordinator, getInfrastructureServiceStartingRecordPath } from ${JSON.stringify(coordinatorModule)};
+import { getDeterministicContextPath } from ${JSON.stringify(pathToFileURL(resolve(process.cwd(), "scripts/infrastructure-lifecycle-core.js")).href)};
 const root = process.argv[2];
 const markerReadyPath = process.argv[3];
 const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
@@ -550,7 +664,7 @@ const coordinator = createInfrastructureServiceCoordinator(root, async (args) =>
     writeFileSync(markerReadyPath, getInfrastructureServiceStartingRecordPath(root));
     while (existsSync(markerReadyPath)) await new Promise((resolveWait) => setTimeout(resolveWait, 10));
   }
-  return root + "/.lifecycle-evidence/crashed-context.json";
+  return getDeterministicContextPath(root, "seovista-dev", args[2]);
 });
 await coordinator.start();
 `,
@@ -573,7 +687,7 @@ await coordinator.start();
       const freshCalls: string[][] = [];
       const fresh = createInfrastructureServiceCoordinator(root, async (args) => {
         freshCalls.push(args);
-        return resolve(root, ".lifecycle-evidence", "duplicate-context.json");
+        return deterministicContextPath(root, args);
       });
       await expect(fresh.start()).rejects.toThrow(/starting|recovery|ownership/i);
       expect(freshCalls).toEqual([]);
@@ -599,11 +713,16 @@ await coordinator.start();
     };
     const coordinator = createInfrastructureServiceCoordinator(
       root,
-      async (args) => (args[0] === "start" ? resolve(root, ".lifecycle-evidence", "recovered.json") : ""),
+      async (args) => {
+        if (args[0] !== "start") return "";
+        return deterministicContextPath(root, args);
+      },
       { isProcessAlive: () => false, fileSystem },
     );
 
-    await expect(coordinator.start()).resolves.toBe(resolve(root, ".lifecycle-evidence", "recovered.json"));
+    const result = await coordinator.start();
+    expect(result).toMatch(/^C:\\.*\\\.lifecycle-evidence\\seovista-dev-[0-9a-f]{12}-context\.json$/);
+    expect(result).not.toBe(resolve(root, ".lifecycle-evidence", "recovered.json"));
     const staleQuarantine = quarantined.find((path) => path.endsWith(".stale"));
     expect(staleQuarantine).toBeDefined();
     expect(resolve(staleQuarantine as string)).toBe(staleQuarantine);
@@ -616,7 +735,7 @@ await coordinator.start();
     const helper = resolve(root, "child-coordinator-helper.mjs");
     writeFileSync(
       helper,
-      `import { createInfrastructureServiceCoordinator } from ${JSON.stringify(pathToFileURL(resolve(process.cwd(), "scripts/infrastructure-service-coordinator.js")).href)};\nconst root = process.argv[2];\nconst coordinator = createInfrastructureServiceCoordinator(root, async (args) => args[0] === "start" ? root + "/child-context.json" : "");\nawait coordinator.start();\n`,
+      `import { createInfrastructureServiceCoordinator } from ${JSON.stringify(pathToFileURL(resolve(process.cwd(), "scripts/infrastructure-service-coordinator.js")).href)};\nimport { getDeterministicContextPath } from ${JSON.stringify(pathToFileURL(resolve(process.cwd(), "scripts/infrastructure-lifecycle-core.js")).href)};\nconst root = process.argv[2];\nconst coordinator = createInfrastructureServiceCoordinator(root, async (args) => args[0] === "start" ? getDeterministicContextPath(root, "seovista-dev", args[2]) : "");\nawait coordinator.start();\n`,
       "utf8",
     );
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
@@ -627,7 +746,7 @@ await coordinator.start();
 
   it("serializes same-process stop behind an in-progress start and tears down the record", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "same-process-context.json");
+    let contextPath = "";
     const calls: string[][] = [];
     let releaseStart: (() => void) | undefined;
     const startBlocked = new Promise<void>((resolveStart) => {
@@ -637,6 +756,7 @@ await coordinator.start();
       calls.push(args);
       if (args[0] === "start") {
         await startBlocked;
+        contextPath = deterministicContextPath(root, args);
         return contextPath;
       }
       return "";
@@ -647,9 +767,10 @@ await coordinator.start();
     await Promise.resolve();
     releaseStart?.();
 
-    await expect(Promise.all([starting, stopping])).resolves.toEqual([contextPath, true]);
+    const results = await Promise.all([starting, stopping]);
+    expect(results).toEqual([contextPath, true]);
     expect(calls).toEqual([
-      ["start", "seovista-dev"],
+      ["start", "seovista-dev", expect.any(String)],
       ["teardown", contextPath],
     ]);
     expect(() => readFileSync(getInfrastructureServiceRecordPath(root), "utf8")).toThrow();
@@ -657,7 +778,7 @@ await coordinator.start();
 
   it("serializes separate coordinator stop behind another instance's in-progress start", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "separate-instance-context.json");
+    let contextPath = "";
     const calls: string[][] = [];
     let releaseStart: (() => void) | undefined;
     const startBlocked = new Promise<void>((resolveStart) => {
@@ -667,6 +788,7 @@ await coordinator.start();
       calls.push(args);
       if (args[0] === "start") {
         await startBlocked;
+        contextPath = deterministicContextPath(root, args);
         return contextPath;
       }
       return "";
@@ -681,9 +803,10 @@ await coordinator.start();
     await Promise.resolve();
     releaseStart?.();
 
-    await expect(Promise.all([starting, stopping])).resolves.toEqual([contextPath, true]);
+    const results = await Promise.all([starting, stopping]);
+    expect(results).toEqual([contextPath, true]);
     expect(calls).toEqual([
-      ["start", "seovista-dev"],
+      ["start", "seovista-dev", expect.any(String)],
       ["teardown", contextPath],
     ]);
     expect(() => readFileSync(getInfrastructureServiceRecordPath(root), "utf8")).toThrow();
@@ -691,7 +814,7 @@ await coordinator.start();
 
   it("recovers a stale lock owned by a dead process", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "recovered-context.json");
+    let contextPath = "";
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
     const calls: string[][] = [];
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
@@ -700,20 +823,24 @@ await coordinator.start();
       root,
       async (args) => {
         calls.push(args);
-        if (args[0] === "start") return contextPath;
+        if (args[0] === "start") {
+          contextPath = deterministicContextPath(root, args);
+          return contextPath;
+        }
         return "";
       },
       { isProcessAlive: () => false }
     );
 
-    await expect(coordinator.start()).resolves.toBe(contextPath);
-    expect(calls).toEqual([["start", "seovista-dev"]]);
+    const result = await coordinator.start();
+    expect(result).toBe(contextPath);
+    expect(calls).toEqual([["start", "seovista-dev", expect.any(String)]]);
     expect(existsSync(lockPath)).toBe(false);
   });
 
   it("recovers a stale lock before tearing down an existing ownership record", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "stale-stop-context.json");
+    let contextPath = "";
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
     const calls: string[][] = [];
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
@@ -736,7 +863,7 @@ await coordinator.start();
 
   it("allows only one contender to recover a stale lock and preserves the winner during the race", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "race-winner-context.json");
+    let contextPath = "";
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
     const calls: string[][] = [];
     let releaseWinner: (() => void) | undefined;
@@ -770,6 +897,7 @@ await coordinator.start();
         if (args[0] === "start") {
           resolveWinnerStarted?.();
           await winnerRelease;
+          contextPath = deterministicContextPath(root, args);
           return contextPath;
         }
         return "";
@@ -784,7 +912,7 @@ await coordinator.start();
       root,
       async (args) => {
         calls.push(args);
-        if (args[0] === "start") return resolve(root, ".lifecycle-evidence", "loser-context.json");
+        if (args[0] === "start") return deterministicContextPath(root, args);
         return "";
       },
       {
@@ -801,19 +929,21 @@ await coordinator.start();
     await winnerStarted;
     await quarantineCleaned;
     expect(JSON.parse(readFileSync(lockPath, "utf8"))).toMatchObject({ pid: 1002 });
-    expect(calls).toEqual([["start", "seovista-dev"]]);
+    expect(calls).toEqual([["start", "seovista-dev", expect.any(String)]]);
 
     releaseWinner?.();
-    await expect(loserStart).resolves.toBe(contextPath);
-    await expect(contenderStart).resolves.toBe(contextPath);
-    expect(calls).toEqual([["start", "seovista-dev"]]);
+    const loserResult = await loserStart;
+    expect(loserResult).toBe(contextPath);
+    const contenderResult = await contenderStart;
+    expect(contenderResult).toBe(contextPath);
+    expect(calls).toEqual([["start", "seovista-dev", expect.any(String)]]);
     expect(existsSync(lockPath)).toBe(false);
   });
 
   it("does not overwrite a replacement owner that appears during release preservation", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
-    const contextPath = resolve(root, ".lifecycle-evidence", "release-mismatch-context.json");
+    let contextPath = "";
     const replacementPayload = lockPayload(2002, "replacement-owner");
     let releaseReadCount = 0;
     let replacementClaimed = false;
@@ -842,7 +972,10 @@ await coordinator.start();
     const coordinator = createInfrastructureServiceCoordinator(
       root,
       async (args) => {
-        if (args[0] === "start") return contextPath;
+        if (args[0] === "start") {
+          contextPath = deterministicContextPath(root, args);
+          return contextPath;
+        }
         throw new Error("teardown failed");
       },
       { processId: 1001, isProcessAlive: () => true, fileSystem }
@@ -898,7 +1031,7 @@ await coordinator.start();
   it("does not strand a claimed lock when stale quarantine cleanup fails", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
-    const contextPath = resolve(root, ".lifecycle-evidence", "cleanup-failure-context.json");
+    let contextPath = "";
     const staleQuarantinePaths: string[] = [];
     let resolveCleanupAttempted: (() => void) | undefined;
     const cleanupAttempted = new Promise<void>((resolveAttempted) => {
@@ -926,12 +1059,14 @@ await coordinator.start();
         if (args[0] !== "start") return "";
         await cleanupAttempted;
         expect(readFileSync(lockPath, "utf8")).toContain('"pid":1001');
+        contextPath = deterministicContextPath(root, args);
         return contextPath;
       },
       { processId: 1001, isProcessAlive: () => false, fileSystem }
     );
 
-    await expect(coordinator.start()).resolves.toBe(contextPath);
+    const result = await coordinator.start();
+    expect(result).toBe(contextPath);
     expect(staleQuarantinePaths).toHaveLength(1);
     failStaleCleanup = false;
     await expect(coordinator.stop()).resolves.toBe(true);
@@ -940,14 +1075,17 @@ await coordinator.start();
 
   it("does not remove a replacement owner when releasing after lifecycle failure", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "release-mismatch-context.json");
+    let contextPath = "";
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
     const replacementPayload = lockPayload(2002, "replacement-owner");
     mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
     const coordinator = createInfrastructureServiceCoordinator(
       root,
       async (args) => {
-        if (args[0] === "start") return contextPath;
+        if (args[0] === "start") {
+          contextPath = deterministicContextPath(root, args);
+          return contextPath;
+        }
         writeFileSync(lockPath, replacementPayload, "utf8");
         throw new Error("teardown failed");
       },
@@ -961,7 +1099,7 @@ await coordinator.start();
 
   it("waits for an active lock instead of reclaiming it", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "released-context.json");
+    let contextPath = "";
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
     const calls: string[][] = [];
     let resolveClaimAttempted: (() => void) | undefined;
@@ -987,7 +1125,10 @@ await coordinator.start();
       root,
       async (args) => {
         calls.push(args);
-        if (args[0] === "start") return contextPath;
+        if (args[0] === "start") {
+          contextPath = deterministicContextPath(root, args);
+          return contextPath;
+        }
         return "";
       },
       { isProcessAlive: () => true, fileSystem }
@@ -998,13 +1139,15 @@ await coordinator.start();
     expect(calls).toEqual([]);
     expect(readFileSync(lockPath, "utf8")).toBe(lockPayload(424242, "dead-owner"));
     unlinkSync(lockPath);
-    await expect(starting).resolves.toBe(contextPath);
+    const result = await starting;
+    expect(result).toBe(contextPath);
     expect(existsSync(lockPath)).toBe(false);
   });
 
   it("preserves malformed lock contents and waits instead of reclaiming", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
     const lockPath = resolve(root, ".lifecycle-registry", "services-infrastructure.start.lock");
+    let contextPath = "";
     let resolveClaimAttempted: (() => void) | undefined;
     const claimAttempted = new Promise<void>((resolveAttempted) => {
       resolveClaimAttempted = resolveAttempted;
@@ -1026,7 +1169,10 @@ await coordinator.start();
     writeFileSync(lockPath, "not-a-pid\n", "utf8");
     const coordinator = createInfrastructureServiceCoordinator(
       root,
-      async () => resolve(root, ".lifecycle-evidence", "should-not-start.json"),
+      async (args) => {
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      },
       { isProcessAlive: () => false, fileSystem }
     );
 
@@ -1034,14 +1180,18 @@ await coordinator.start();
     await claimAttempted;
     expect(readFileSync(lockPath, "utf8")).toBe("not-a-pid\n");
     unlinkSync(lockPath);
-    await expect(starting).resolves.toBe(resolve(root, ".lifecycle-evidence", "should-not-start.json"));
+    const result = await starting;
+    expect(result).toBe(contextPath);
   });
 
   it("keeps the ownership record when exact-context teardown fails", async () => {
     const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
-    const contextPath = resolve(root, ".lifecycle-evidence", "exact-context.json");
+    let contextPath = "";
     const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
-      if (args[0] === "start") return contextPath;
+      if (args[0] === "start") {
+        contextPath = deterministicContextPath(root, args);
+        return contextPath;
+      }
       throw new Error("teardown failed");
     });
 
@@ -1051,5 +1201,185 @@ await coordinator.start();
       contextPath: string;
     };
     expect(record.contextPath).toBe(contextPath);
+  });
+
+  it("writes the deterministic context path before starting lifecycle and passes the same nonce", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const calls: string[][] = [];
+    const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
+      calls.push(args);
+      const marker = JSON.parse(readFileSync(getInfrastructureServiceStartingRecordPath(root), "utf8"));
+      expect(marker.contextPath).toBe(getDeterministicContextPath(root, "seovista-dev", args[2]));
+      return marker.contextPath;
+    }, { createLockToken: () => "owner-token" });
+
+    const contextPath = await coordinator.start();
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual(["start", "seovista-dev", expect.any(String)]);
+    expect(contextPath).toBe(getDeterministicContextPath(root, "seovista-dev", calls[0][2]));
+    expect(JSON.parse(readFileSync(getInfrastructureServiceRecordPath(root), "utf8"))).toMatchObject({
+      state: "active",
+      contextPath,
+      operationToken: "owner-token",
+    });
+    expect(existsSync(getInfrastructureServiceStartingRecordPath(root))).toBe(false);
+  });
+
+  it("fails closed when lifecycle returns a context path different from the planned path", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const actualPath = resolve(root, ".lifecycle-evidence", "actual-context.json");
+    const calls: string[][] = [];
+    const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
+      calls.push(args);
+      return actualPath;
+    });
+
+    await expect(coordinator.start()).rejects.toThrow(/context path|planned|deterministic/i);
+    expect(calls).toEqual([
+      ["start", "seovista-dev", expect.any(String)],
+      ["teardown", actualPath],
+    ]);
+    expect(existsSync(getInfrastructureServiceRecordPath(root))).toBe(false);
+    expect(JSON.parse(readFileSync(getInfrastructureServiceStartingRecordPath(root), "utf8"))).toMatchObject({
+      state: "starting",
+      contextPath: expect.stringMatching(/-context\.json$/),
+    });
+  });
+
+  it("recovers an orphan marker without touching a different active owner", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const orphanPath = resolve(root, ".lifecycle-evidence", "orphan-context.json");
+    const activePath = resolve(root, ".lifecycle-evidence", "active-context.json");
+    const startingPath = getInfrastructureServiceStartingRecordPath(root);
+    mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
+    mkdirSync(resolve(root, ".lifecycle-evidence"), { recursive: true });
+    writeFileSync(orphanPath, "orphan", "utf8");
+    writeFileSync(startingPath, `${JSON.stringify({ state: "starting", contextPath: orphanPath, operationToken: "orphan-owner" })}\n`, "utf8");
+    writeFileSync(getInfrastructureServiceRecordPath(root), `${JSON.stringify({ state: "active", contextPath: activePath, operationToken: "active-owner" })}\n`, "utf8");
+    const calls: string[][] = [];
+    const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
+      calls.push(args);
+      return "";
+    });
+
+    await expect(coordinator.recover()).rejects.toThrow(/different active owner|manual recovery/i);
+
+    expect(calls).toEqual([]);
+    expect(existsSync(startingPath)).toBe(true);
+    expect(JSON.parse(readFileSync(getInfrastructureServiceRecordPath(root), "utf8"))).toMatchObject({
+      contextPath: activePath,
+    });
+  });
+
+  it("recovers a marker and matching active owner together", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const startingPath = getInfrastructureServiceStartingRecordPath(root);
+    mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
+    mkdirSync(resolve(root, ".lifecycle-evidence"), { recursive: true });
+    const recoveryContext = createRunContext({ root, runId: "recoverable-context", nonce: "abcdef123456" });
+    const contextPath = getContextPath(recoveryContext, root);
+    writeLifecycleContext(recoveryContext, contextPath, { root });
+    writeFileSync(startingPath, `${JSON.stringify({ state: "starting", contextPath, operationToken: "owner" })}\n`, "utf8");
+    writeFileSync(getInfrastructureServiceRecordPath(root), `${JSON.stringify({ state: "active", contextPath, operationToken: "owner" })}\n`, "utf8");
+    const calls: string[][] = [];
+    const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
+      calls.push(args);
+      return "";
+    });
+
+    await expect(coordinator.recover()).resolves.toBe(true);
+
+    expect(calls).toEqual([["teardown", contextPath]]);
+    expect(existsSync(startingPath)).toBe(false);
+    expect(existsSync(getInfrastructureServiceRecordPath(root))).toBe(false);
+  });
+
+  it("retains a contextless marker and refuses recovery", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const startingPath = getInfrastructureServiceStartingRecordPath(root);
+    mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
+    const marker = { state: "starting", operationToken: "owner" };
+    writeFileSync(startingPath, `${JSON.stringify(marker)}\n`, "utf8");
+    const coordinator = createInfrastructureServiceCoordinator(root, async () => "");
+
+    await expect(coordinator.recover()).rejects.toThrow(/context|recovery/i);
+    expect(JSON.parse(readFileSync(startingPath, "utf8"))).toEqual(marker);
+  });
+
+  it("restores the starting marker when cleanup quarantine cannot be read", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const startingPath = getInfrastructureServiceStartingRecordPath(root);
+    let failQuarantineRead = true;
+    const fileSystem = {
+      readFileSync(path: string, encoding: string) {
+        if (failQuarantineRead && path.includes(".cleanup")) {
+          const error = new Error("starting quarantine read interrupted");
+          Object.assign(error, { code: "EIO" });
+          throw error;
+        }
+        return readFileSync(path, encoding as "utf8");
+      },
+    };
+    const coordinator = createInfrastructureServiceCoordinator(
+      root,
+      async (args) => deterministicContextPath(root, args),
+      { fileSystem },
+    );
+
+    const contextPath = await coordinator.start();
+
+    expect(contextPath).toMatch(/-context\.json$/);
+    expect(existsSync(startingPath)).toBe(true);
+    const marker = JSON.parse(readFileSync(startingPath, "utf8"));
+    expect(marker).toMatchObject({ state: "starting", contextPath });
+  });
+
+  it("refuses recovery when the marker context is not trusted", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const contextPath = resolve(root, ".lifecycle-evidence", "untrusted-context.json");
+    const startingPath = getInfrastructureServiceStartingRecordPath(root);
+    mkdirSync(resolve(root, ".lifecycle-registry"), { recursive: true });
+    mkdirSync(resolve(root, ".lifecycle-evidence"), { recursive: true });
+    writeFileSync(contextPath, "not a lifecycle context", "utf8");
+    const marker = { state: "starting", contextPath, operationToken: "owner" };
+    writeFileSync(startingPath, `${JSON.stringify(marker)}\n`, "utf8");
+    const calls: string[][] = [];
+    const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
+      calls.push(args);
+      return "";
+    });
+
+    await expect(coordinator.recover()).rejects.toThrow(/trusted|schema|authority|context/i);
+    expect(calls).toEqual([]);
+    expect(JSON.parse(readFileSync(startingPath, "utf8"))).toEqual(marker);
+  });
+
+  it("refuses recovery when active and starting ownership tokens differ", async () => {
+    const root = mkdtempSync(resolve(tmpdir(), "seovista-services-"));
+    const context = createRunContext({ root, runId: "recovery-token", nonce: "abcdef123456" });
+    const contextPath = getContextPath(context, root);
+    const startingPath = getInfrastructureServiceStartingRecordPath(root);
+    writeLifecycleContext(context, contextPath, { root });
+    writeFileSync(
+      startingPath,
+      `${JSON.stringify({ state: "starting", contextPath, operationToken: "starting-owner" })}\n`,
+      "utf8",
+    );
+    writeFileSync(
+      getInfrastructureServiceRecordPath(root),
+      `${JSON.stringify({ state: "active", contextPath, operationToken: "active-owner" })}\n`,
+      "utf8",
+    );
+    const calls: string[][] = [];
+    const coordinator = createInfrastructureServiceCoordinator(root, async (args) => {
+      calls.push(args);
+      return "";
+    });
+
+    await expect(coordinator.recover()).rejects.toThrow(/ownership|token|recovery/i);
+    expect(calls).toEqual([]);
+    expect(existsSync(startingPath)).toBe(true);
+    expect(existsSync(getInfrastructureServiceRecordPath(root))).toBe(true);
   });
 });

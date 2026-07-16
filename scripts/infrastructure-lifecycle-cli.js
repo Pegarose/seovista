@@ -108,8 +108,8 @@ export function createLifecycleController(root, dependencies = {}) {
     return context;
   }
 
-  async function startInternal(requestedRunId) {
-    const context = createRunContext({ runId: requestedRunId, root });
+  async function startInternal(requestedRunId, nonce) {
+    const context = createRunContext({ runId: requestedRunId, nonce, root });
     const contextPath = getContextPath(context, root);
     const commands = buildLifecycleCommands(context);
     const environment = lifecycleEnvironmentWithContext(context, contextPath);
@@ -149,8 +149,8 @@ export function createLifecycleController(root, dependencies = {}) {
     return true;
   }
 
-  async function start(requestedRunId) {
-    return serialize(() => startInternal(requestedRunId));
+  async function start(requestedRunId, nonce) {
+    return serialize(() => startInternal(requestedRunId, nonce));
   }
 
   async function teardown(contextPath, expectedContext) {

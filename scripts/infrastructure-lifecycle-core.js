@@ -31,7 +31,7 @@ export function sanitizeRunIdentity(value) {
   return normalized;
 }
 
-function createRunId(baseIdentity, nonce) {
+export function createLifecycleRunId(baseIdentity, nonce) {
   const suffix = nonce.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
   if (suffix.length < 6) {
     throw new Error("Lifecycle nonce must contain at least 6 safe characters");
@@ -50,6 +50,10 @@ function assertPort(value, name) {
 
 export function getContextPath(context, root) {
   return resolve(root, ".lifecycle-evidence", `${context.runId}-context.json`);
+}
+
+export function getDeterministicContextPath(root, requestedRunId, nonce) {
+  return getContextPath(createRunContext({ root, runId: requestedRunId, nonce }), root);
 }
 
 export function getRegistryPath(root) {
@@ -166,7 +170,7 @@ function registerLifecycleContext(context, contextPath, root) {
 export function createRunContext(options = {}) {
   const nonce = options.nonce ?? randomBytes(6).toString("hex");
   const baseIdentity = sanitizeRunIdentity(options.runId ?? "seovista-run");
-  const runId = createRunId(baseIdentity, nonce);
+  const runId = createLifecycleRunId(baseIdentity, nonce);
   const hostPorts = Object.freeze({
     postgres: assertPort(options.hostPorts?.postgres ?? DEFAULT_HOST_PORTS.postgres, "PostgreSQL port"),
     redis: assertPort(options.hostPorts?.redis ?? DEFAULT_HOST_PORTS.redis, "Redis port"),
