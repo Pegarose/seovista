@@ -181,8 +181,6 @@ export function buildPublicJsonLdNodes(
 }
 
 export async function getLivePublicMatrix(now: string = new Date().toISOString()) {
-  const adapter = await createDynamicAdapter(siteUrl, ["en"], { kind: "public", now: new Date(now) });
-  // ensure data is materialized
-  adapter.readContent("html");
+  const adapter = await createDynamicAdapter(siteUrl, ["en"], "public");
   return buildPublicProjectionMatrix({ adapter, siteUrl, now });
 }

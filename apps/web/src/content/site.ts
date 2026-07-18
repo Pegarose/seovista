@@ -122,9 +122,9 @@ export const defaultLocaleEntity: Locale = {
 export const homePage = page(
   "home",
   "/",
-  "SeoVista — GEO & Search Visibility Intelligence",
-  "Identify your positioning across generative engine optimization and traditional search visibility.",
-  "SeoVista is an editorial intelligence lab that helps teams understand where they stand in generative answers and search results. We connect content quality, technical health, and earned authority to build a clearer picture of visibility without promising rankings or citations that cannot be guaranteed."
+  "SeoVista — Editorial intelligence for search visibility",
+  "SeoVista studies how brands earn visibility across search engines and generative answer systems through clarity, technical health, credible sources, and topical authority.",
+  "SeoVista is an editorial intelligence lab that helps teams understand where they stand in generative answers and search results. We connect content quality, technical health, and earned authority to build a clearer picture of visibility without promising rankings or citations that cannot be guaranteed. A GMedya Group company."
 );
 
 export const geoPage = page(
@@ -200,7 +200,7 @@ export const contactPage = page(
   "/contact/",
   "Contact SeoVista",
   "Reach out to SeoVista. We are currently in foundation stage and respond as availability allows.",
-  "We are in foundation stage and do not yet operate a public support desk. If you have questions about SeoVista, GEO, or search visibility, email hello@seovista.com. We read every message and respond when capacity allows."
+  "We are in foundation stage and do not yet operate a public support desk. If you have questions about SeoVista, GEO, or search visibility, email hello@seovista.example. We read every message and respond when capacity allows."
 );
 
 export const insightsPage = page(
