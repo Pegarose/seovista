@@ -1,5 +1,6 @@
 export { createDbClient, checkDbConnection, type DbClient } from "./client.js";
 export { createMigrationRunner, defaultMigrationsDir, type Migration } from "./migrations.js";
+export { createGeoAuditRepository, type GeoAuditLeadRow } from "./geo-audit-repository.js";
 export {
   createJobRepository,
   createJobResultRepository,
