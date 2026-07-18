@@ -45,6 +45,13 @@ export function createGeoAuditRepository(client: DbClient) {
         [jobIdentity, data.service, correlationId, data.target, data.status, data.leadId]
       );
       return res.rows[0]!.id;
+    },
+    async getJobRecord(id: string) {
+      const res = await client.query<{ status: string; lead_id: string }>(
+        `SELECT status, lead_id FROM job_records WHERE id = $1`,
+        [id]
+      );
+      return res.rows[0];
     }
   };
 }

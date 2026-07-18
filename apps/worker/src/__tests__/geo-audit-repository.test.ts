@@ -35,7 +35,7 @@ describe("Geo Audit Repository", () => {
   it("can create a job record wrapping job_records", async () => {
     const db = env.db;
     const repo = createGeoAuditRepository(db);
-    const jobRepo = createJobRepository(db);
+    // removed const jobRepo = createJobRepository(db);
 
     const lead = await repo.createLead({
       domain: "example.com",
@@ -55,7 +55,7 @@ describe("Geo Audit Repository", () => {
     // Verify raw job_records table logic
     const res = await db.query("SELECT * FROM job_records WHERE id = $1", [jobId]);
     expect(res.rows[0]).toBeDefined();
-    const jr = res.rows[0];
+    const jr = res.rows[0]!;
     expect(jr.target).toBe("example.com");
     expect(jr.queue_name).toBe("geo-audit");
     expect(jr.status).toBe("queued");
