@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import console from "node:console";
 import { createDbClient, type DbClient } from "./db/client.js";
 import { createPingQueue, createPingWorker } from "./queue/ping.js";
+import { startGeoWorker } from "./queue/geo-worker.js";
 import { getWorkerEnv, getProjectId } from "./env.js";
 import { checkWorkerHealth } from "./health.js";
 import type { Queue, Worker } from "bullmq";
@@ -14,6 +15,7 @@ interface RunningWorker {
   db: DbClient;
   queue: Queue;
   worker: Worker;
+  geoWorker: Worker;
 }
 
 let running: RunningWorker | null = null;
@@ -59,8 +61,9 @@ async function run(): Promise<void> {
 
   const queue = createPingQueue(queueOptions);
   const worker = createPingWorker(queueOptions);
+  const geoWorker = startGeoWorker();
 
-  running = { db, queue, worker };
+  running = { db, queue, worker, geoWorker };
 
   worker.on("completed", (job) => {
     console.log(
@@ -118,6 +121,7 @@ async function shutdown(signal: string): Promise<void> {
 
   if (current) {
     // Drain or recover: stop accepting new jobs and wait for active jobs to finish.
+    await current.geoWorker.close(false);
     await current.worker.close(false);
     await current.queue.close();
     await current.db.close();

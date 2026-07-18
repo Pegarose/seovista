@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { setupTestEnvironment, TestEnvironment } from "./helpers/test-env.js";
 import { createGeoAuditRepository } from "../db/geo-audit-repository.js";
-import { createJobRepository } from "../db/job.js";
 
 describe("Geo Audit Repository", () => {
   let env: TestEnvironment;
