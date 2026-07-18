@@ -19,12 +19,12 @@ export default defineConfig({
     {
       name: "chromium-desktop",
       use: { ...devices["Desktop Chrome"] },
-      testMatch: /routes\.spec\.ts/,
+      testMatch: /(routes|workflow)\.spec\.ts/,
     },
     {
       name: "chromium-mobile",
       use: { ...devices["Pixel 5"] },
-      testMatch: /routes\.spec\.ts/,
+      testMatch: /(routes|workflow)\.spec\.ts/,
     },
     {
       name: "a11y",
@@ -47,7 +47,7 @@ export default defineConfig({
     command:
       "node ../../scripts/run-isolated-web-command.js playwright build && node ../../scripts/run-isolated-web-command.js playwright serve",
     url: "http://localhost:3200",
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 120000,
     env: {
       NEXT_PUBLIC_SITE_URL: "https://seovista.com",

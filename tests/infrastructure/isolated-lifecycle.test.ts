@@ -53,6 +53,27 @@ describe("isolated infrastructure lifecycle contract", () => {
     expect(first.runId).not.toBe(second.runId);
   });
 
+  it("uses environment port overrides for generated lifecycle contexts", () => {
+    const previousPostgres = process.env.SEOVISTA_POSTGRES_PORT;
+    const previousRedis = process.env.SEOVISTA_REDIS_PORT;
+    process.env.SEOVISTA_POSTGRES_PORT = "55433";
+    process.env.SEOVISTA_REDIS_PORT = "56380";
+
+    try {
+      const context = createRunContext({ root, runId: "seovista-port-overrides", nonce: "123456789abc" });
+      expect(context.hostPorts).toEqual({ postgres: 55433, redis: 56380 });
+      expect(buildLifecycleEnvironment(context)).toMatchObject({
+        SEOVISTA_POSTGRES_PORT: "55433",
+        SEOVISTA_REDIS_PORT: "56380",
+      });
+    } finally {
+      if (previousPostgres === undefined) delete process.env.SEOVISTA_POSTGRES_PORT;
+      else process.env.SEOVISTA_POSTGRES_PORT = previousPostgres;
+      if (previousRedis === undefined) delete process.env.SEOVISTA_REDIS_PORT;
+      else process.env.SEOVISTA_REDIS_PORT = previousRedis;
+    }
+  });
+
   it("normalizes only safe Compose project identities", () => {
     expect(sanitizeRunIdentity("SEOVISTA__RUN.42")).toBe("seovista-run-42");
     expect(() => sanitizeRunIdentity("***")).toThrow(/identity/i);

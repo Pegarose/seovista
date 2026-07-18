@@ -1,37 +1,18 @@
-import { Container, Section } from "@seovista/ui";
-import { geoPage, findServiceByPath } from "../../src/content/site";
-import { pageMetadataFrom } from "../../src/lib/metadata";
-import { buildServicePageGraph } from "../../src/lib/jsonld";
+import { DisciplineLayout, type Chapter } from "../../src/components/discipline-layout";
 import { JsonLd } from "../../src/components/json-ld";
+import { geoPage } from "../../src/content/site";
+import { buildServicePageGraph } from "../../src/lib/jsonld";
+import { pageMetadataFrom } from "../../src/lib/metadata";
 
 export const metadata = pageMetadataFrom(geoPage);
 
+const chapters: Chapter[] = [
+  { id: "what-geo-means", eyebrow: "Definition", title: "What GEO means.", body: <p>Generative answer systems synthesize responses from many sources at once. To be useful to them, a page has to communicate its subject, scope, evidence, and authorship without ambiguity. GEO is the discipline of designing pages, sections, and sites so that this communication happens by default.</p> },
+  { id: "geo-vs-seo", eyebrow: "Contrast", title: "How GEO differs from traditional SEO.", body: <p>Traditional SEO optimizes a page against ranking signals for a keyword-driven results list. GEO optimizes for retrieval and attribution inside a synthesized answer, where the reader is often a model deciding what to keep, drop, or paraphrase. The two share a foundation, clarity, structure, and technical health, but diverge in what counts as a win.</p> },
+  { id: "structure-evidence", eyebrow: "Craft", title: "Structure and evidence carry meaning.", body: <p>A well-scoped heading, a defensible claim, and a linked primary source are more portable through a summarization pipeline than a long paragraph of marketing prose. Structure is not decoration; it is the contract between a page and any system that reads it.</p> },
+  { id: "honesty", eyebrow: "Position", title: "A note on honesty.", body: <p>No ethical provider can guarantee rankings, citations, or inclusion in a generative system. The systems change, the training data is opaque, and the mechanisms of selection are not public. Practitioners can build for better odds; they cannot promise the outcome.</p> },
+];
+
 export default function GeoPage(): React.ReactElement {
-  const service = findServiceByPath("/geo/");
-  if (!service) {
-    throw new Error("GEO service not found");
-  }
-  const graph = buildServicePageGraph(geoPage, service);
-
-  return (
-    <>
-      <JsonLd graph={graph} />
-      <main id="main">
-        <Section padding="lg" className="bg-mineral">
-          <Container>
-            <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-              {service.name}
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg text-muted">{service.description}</p>
-          </Container>
-        </Section>
-
-        <Section padding="md">
-          <Container>
-            <p className="max-w-3xl text-lg leading-relaxed text-ink">{geoPage.body}</p>
-          </Container>
-        </Section>
-      </main>
-    </>
-  );
+  return <><JsonLd graph={buildServicePageGraph(geoPage, { kind: "service", id: "service-geo", slug: "geo", locale: "en", canonical: geoPage.canonical, indexation: geoPage.indexation, provenance: geoPage.provenance, name: "Generative Engine Optimization", description: "We study how content is chosen, quoted, and attributed by generative answer systems, and how to make that process fairer to the source.", body: geoPage.body, sources: [], relatedEntities: [] })} /><main id="main"><DisciplineLayout number="02" displayName="GEO" accessibleName="Generative Engine Optimization" lede="We study how content is chosen, quoted, and attributed by generative answer systems, and how to make that process fairer to the source." capabilities={[{ title: "Retrieval-ready structure", description: "Pages built so models can extract subject, scope, and evidence in one pass." }, { title: "Attribution & provenance", description: "Clear authorship, citations, and source trails that survive summarization." }, { title: "Answer-surface auditing", description: "Observing how generative systems quote, omit, or paraphrase existing content." }, { title: "Model-facing clarity", description: "Plain claims, scoped headings, and minimal ambiguity for synthesis pipelines." }]} supportingNote="Foundation stage of practice. We publish what we can defend and refuse what we cannot verify. No fabricated benchmarks." inquireTo="/contact/" inquireLabel="Start a conversation" visualCaption="Signal within synthesis" chapters={chapters} siblingKicker="Continue reading" siblingLabel="Search Engine Optimization" siblingTo="/seo/" /></main></>;
 }

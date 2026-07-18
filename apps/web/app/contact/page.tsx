@@ -1,40 +1,12 @@
-import { Container, Section, Link } from "@seovista/ui";
-import { contactPage } from "../../src/content/site";
-import { pageMetadataFrom } from "../../src/lib/metadata";
-import { buildPageGraph } from "../../src/lib/jsonld";
+import { CtaAnchor, StatusBadge } from "../../src/components/editorial";
 import { JsonLd } from "../../src/components/json-ld";
+import { contactPage } from "../../src/content/site";
+import { buildPageGraph } from "../../src/lib/jsonld";
+import { pageMetadataFrom } from "../../src/lib/metadata";
 
 export const metadata = pageMetadataFrom(contactPage);
+const CONTACT_EMAIL = "hello@seovista.example";
 
 export default function ContactPage(): React.ReactElement {
-  const graph = buildPageGraph(contactPage);
-
-  return (
-    <>
-      <JsonLd graph={graph} />
-      <main id="main">
-        <Section padding="lg" className="bg-mineral">
-          <Container>
-            <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-              {contactPage.title}
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg text-muted">{contactPage.description}</p>
-          </Container>
-        </Section>
-
-        <Section padding="md">
-          <Container>
-            <p className="max-w-3xl text-lg leading-relaxed text-ink">{contactPage.body}</p>
-            <p className="mt-6 max-w-3xl text-lg leading-relaxed text-ink">
-              Email us at{" "}
-              <Link href="mailto:hello@seovista.com" external>
-                hello@seovista.com
-              </Link>
-              .
-            </p>
-          </Container>
-        </Section>
-      </main>
-    </>
-  );
+  return <><JsonLd graph={buildPageGraph(contactPage)} /><main id="main"><article><header className="border-b border-hairline"><div className="mx-auto max-w-4xl px-6 py-20"><StatusBadge>Contact</StatusBadge><h1 className="mt-6 font-serif text-4xl leading-tight text-ink md:text-5xl">Get in touch.</h1><p className="mt-6 text-lg leading-relaxed text-muted-ink">The foundation release does not include a submission form, a form without a submission backend would be dishonest. Email is the fastest way to reach us.</p></div></header><section className="mx-auto max-w-3xl px-6 py-16"><div className="rounded-lg border border-hairline bg-card p-8"><p className="font-mono text-xs uppercase tracking-widest text-muted-ink">Email</p><p className="mt-2 font-serif text-2xl text-ink"><a href={`mailto:${CONTACT_EMAIL}`} className="text-ink underline underline-offset-4">{CONTACT_EMAIL}</a></p><p className="mt-4 text-sm text-muted-ink">Please include a short description of what you're working on and the timeframe you're operating in. We reply to every genuine enquiry.</p><div className="mt-6"><CtaAnchor href={`mailto:${CONTACT_EMAIL}`}>Compose email</CtaAnchor></div></div></section></article></main></>;
 }

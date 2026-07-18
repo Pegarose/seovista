@@ -48,11 +48,11 @@ export function MobileNavToggle({ items }: MobileNavToggleProps): React.ReactEle
         aria-label={open ? "Close navigation menu" : "Open navigation menu"}
         onClick={toggle}
         onKeyDown={handleKeyDown}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border-light bg-paper text-ink transition-colors hover:bg-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-spectral-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-hairline bg-paper text-ink transition-colors hover:bg-mineral focus:outline-none focus-visible:ring-2 focus-visible:ring-spectral focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
       >
         <span className="sr-only">Menu</span>
         <svg
-          className="h-6 w-6"
+          className="h-[18px] w-[18px]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -70,27 +70,16 @@ export function MobileNavToggle({ items }: MobileNavToggleProps): React.ReactEle
         <nav
           id="mobile-nav"
           aria-label="Mobile"
-          className="absolute left-0 right-0 top-full border-b border-border-light bg-paper shadow-lg"
+          className="border-t border-hairline bg-paper md:hidden"
         >
-          <ul className="mx-auto max-w-[1320px] px-4 py-4 sm:px-6 lg:px-8">
+          <ul className="mx-auto flex max-w-6xl flex-col px-6 py-3">
             {items.map((item) => (
-              <li key={item.href} className="border-b border-border-light last:border-b-0">
-                <Link
-                  href={item.href}
-                  variant="nav"
-                  underline="none"
-                  className="block py-3"
-                  onClick={close}
-                >
+              <li key={item.href}>
+                <Link href={item.href} variant="nav" underline="none" className="block py-3 text-base" onClick={close}>
                   {item.label}
                 </Link>
               </li>
             ))}
-            <li className="pt-3">
-              <Link href="/contact/" variant="cta" underline="none" className="font-medium">
-                Get a GEO Audit
-              </Link>
-            </li>
           </ul>
         </nav>
       )}

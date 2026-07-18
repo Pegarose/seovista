@@ -9,11 +9,11 @@ export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 }
 
 const variantClasses = {
-  default: "text-spectral-blue hover:text-ink",
-  muted: "text-muted hover:text-ink",
-  nav: "text-ink hover:text-spectral-blue",
-  footer: "text-muted hover:text-ink",
-  cta: "text-signal-green hover:text-ink",
+  default: "text-spectral hover:text-ink",
+  muted: "text-muted-ink hover:text-ink",
+  nav: "hover:text-spectral",
+  footer: "text-muted-ink hover:text-ink",
+  cta: "text-signal hover:text-ink",
 } as const;
 
 const underlineClasses = {
@@ -36,7 +36,7 @@ export function Link({
 
   return (
     <a
-      className={`inline-flex items-center rounded-sm transition-opacity duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-spectral-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${variantClasses[variant]} ${underlineClasses[underline]} ${className}`}
+      className={`inline-flex items-center rounded-sm transition-opacity duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-spectral focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${variantClasses[variant]} ${underlineClasses[underline]} ${className}`}
       {...props}
       {...externalAttrs}
     >

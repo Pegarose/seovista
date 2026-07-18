@@ -27,10 +27,9 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createHash } from "node:crypto";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
@@ -45,6 +44,8 @@ const GATES = [
   { name: "lint", command: "pnpm lint", timeout: 120_000 },
   { name: "typecheck", command: "pnpm typecheck", timeout: 120_000 },
   { name: "test", command: "pnpm test", timeout: 300_000, needsDocker: true },
+  { name: "verify:production-sentinels", command: "pnpm verify:production-sentinels", timeout: 600_000 },
+  { name: "verify-package-boundaries", command: "pnpm verify-package-boundaries", timeout: 120_000 },
   { name: "build", command: "pnpm build", timeout: 300_000 },
   { name: "test:e2e", command: "pnpm test:e2e", timeout: 300_000 },
   { name: "test:a11y", command: "pnpm test:a11y", timeout: 300_000 },
@@ -54,14 +55,185 @@ const GATES = [
 
 // Store child process references for cleanup
 const children = new Set();
-let dockerStarted = false;
+
+export function createReleaseRunner(dependencies = {}) {
+  const runnerChildren = dependencies.children ?? children;
+  let runnerLifecycleContextPath = "";
+  let cleanupPromise;
+  let childrenKillPromise;
+  let interruptionPromise;
+  let interrupted = false;
+  const gates = dependencies.gates ?? GATES;
+  const runLifecycle = dependencies.runLifecycle ?? ((args) => runLifecycleCommand(args));
+  const runGate = dependencies.runGate ?? ((name, command, timeout, contextPath) => runCommand(name, command, timeout, contextPath));
+  const killChildrenForRunner = dependencies.killChildren ?? (() => killAllChildren(runnerChildren));
+  const writeReport = dependencies.writeReport ?? ((results, failedGates) => generateArtifactsReport(results, failedGates));
+  const registerSignal = dependencies.registerSignal ?? ((signal, handler) => process.on(signal, handler));
+  const unregisterSignal = dependencies.unregisterSignal ?? ((signal, handler) => process.off(signal, handler));
+  const log = dependencies.log ?? console.log;
+  const errorLog = dependencies.errorLog ?? console.error;
+
+  async function startRunnerInfrastructure() {
+    const runId = `seovista-release-${process.pid}`;
+    const result = await runLifecycle(["start", runId]);
+    const lifecycleOutput = result.stdout ?? "";
+    runnerLifecycleContextPath = lifecycleOutput.trim().split(/\r?\n/).at(-1) ?? "";
+    if (runnerLifecycleContextPath) runnerLifecycleContextPath = runnerLifecycleContextPath.trim();
+    if (result.exitCode !== 0 || !runnerLifecycleContextPath) {
+      errorLog("[release] Infrastructure failed to start:", redactOutput(`${lifecycleOutput}${result.stderr ?? ""}`));
+      return false;
+    }
+    return true;
+  }
+
+  async function stopRunnerInfrastructure() {
+    if (!runnerLifecycleContextPath) return true;
+    const contextPath = runnerLifecycleContextPath;
+    const result = await runLifecycle(["teardown", contextPath]);
+    if (result.exitCode === 0) runnerLifecycleContextPath = "";
+    return result.exitCode === 0;
+  }
+
+  async function killRunnerChildren() {
+    if (!childrenKillPromise) {
+      childrenKillPromise = Promise.resolve().then(() => killChildrenForRunner());
+    }
+    await childrenKillPromise;
+  }
+
+  async function cleanupRunner() {
+    if (!cleanupPromise) {
+      cleanupPromise = (async () => {
+        await killRunnerChildren();
+        return !(await stopRunnerInfrastructure());
+      })();
+    }
+    return cleanupPromise;
+  }
+
+  function addTeardownFailure(results, failedGates) {
+    const result = {
+      gate: "infrastructure-teardown",
+      exitCode: -1,
+      error: "Lifecycle-owned infrastructure teardown failed",
+      durationMs: 0,
+      stdout: "",
+      stderr: "",
+      startedAt: now(),
+      completedAt: now(),
+    };
+    results.push(result);
+    failedGates.push(result);
+  }
+
+  async function finish(exitCode, results, failedGates) {
+    const reportPath = await writeReport(results, failedGates);
+    return { exitCode, results, failedGates, reportPath };
+  }
+
+  async function finishAfterCleanup(exitCode, results, failedGates) {
+    const cleanupFailed = await cleanupRunner();
+    if (cleanupFailed) addTeardownFailure(results, failedGates);
+    return finish(cleanupFailed || failedGates.length > 0 ? 1 : exitCode, results, failedGates);
+  }
+
+  async function handleInterrupt(signal) {
+    interrupted = true;
+    log(`[release] Received ${signal}. Cleaning up...`);
+    if (!interruptionPromise) {
+      interruptionPromise = cleanupRunner();
+    }
+    await interruptionPromise;
+  }
+
+  async function run(options = {}) {
+    const stopOnFirstFailure = options.stopOnFirstFailure ?? false;
+    const skipLighthouse = options.skipLighthouse ?? false;
+    const gatesToRun = skipLighthouse ? gates.filter((gate) => gate.name !== "lighthouse") : gates;
+    const results = [];
+    const failedGates = [];
+    const signalHandlers = new Map();
+    const infrastructureNeeded = gatesToRun.some((gate) => gate.needsDocker);
+
+    for (const signal of ["SIGINT", "SIGTERM"]) {
+      const handler = () => { void handleInterrupt(signal); };
+      signalHandlers.set(signal, handler);
+      registerSignal(signal, handler);
+    }
+
+    try {
+      if (infrastructureNeeded) {
+        const started = await startRunnerInfrastructure();
+        if (!started) {
+          const result = { gate: "infrastructure-start", exitCode: -1, error: "Lifecycle-owned infrastructure failed to start", durationMs: 0, stdout: "", stderr: "", startedAt: now(), completedAt: now() };
+          results.push(result);
+          failedGates.push(result);
+          return finishAfterCleanup(1, results, failedGates);
+        }
+      }
+
+      if (interrupted) {
+        await interruptionPromise;
+        return finishAfterCleanup(1, results, failedGates);
+      }
+
+      for (const gate of gatesToRun) {
+        const result = await runGate(gate.name, gate.command, gate.timeout, runnerLifecycleContextPath);
+        results.push(result);
+        if (result.exitCode !== 0) {
+          failedGates.push(result);
+          if (stopOnFirstFailure) break;
+        }
+        if (interrupted) {
+          await interruptionPromise;
+          return finishAfterCleanup(1, results, failedGates);
+        }
+      }
+
+      if (failedGates.length > 0) return finishAfterCleanup(1, results, failedGates);
+      return finishAfterCleanup(0, results, failedGates);
+    } finally {
+      for (const [signal, handler] of signalHandlers) unregisterSignal(signal, handler);
+    }
+  }
+
+  return { run };
+}
+
+async function killAllChildren(childSet = children) {
+  const exits = [];
+  for (const child of childSet) {
+    exits.push(new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(forceKillTimer);
+        resolve();
+      };
+      const forceKillTimer = setTimeout(() => {
+        try { if (!child.exitCode && !child.signalCode) child.kill("SIGKILL"); } catch {}
+      }, 5000);
+      child.once?.("close", finish);
+      try {
+        if (child.exitCode || child.signalCode) {
+          finish();
+        } else {
+          child.kill("SIGTERM");
+        }
+      } catch {
+        finish();
+      }
+    }));
+  }
+  await Promise.all(exits);
+}
 
 function now() {
   return new Date().toISOString();
 }
 
 function redactPath(filePath) {
-  // Redact absolute paths to relative for artifact safety
   return filePath.replace(root, "<project>");
 }
 
@@ -83,7 +255,7 @@ function redactOutput(text) {
     .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "<redacted-email>");
 }
 
-function runCommand(name, command, timeoutMs) {
+function runCommand(name, command, timeoutMs, contextPath = "") {
   return new Promise((resolve) => {
     const startTime = Date.now();
     let stdout = "";
@@ -92,7 +264,11 @@ function runCommand(name, command, timeoutMs) {
     const child = spawn(command, [], {
       shell: true,
       cwd: root,
-      env: { ...process.env },
+      env: {
+        ...process.env,
+        ...(contextPath ? { SEOVISTA_LIFECYCLE_CONTEXT_PATH: contextPath } : {}),
+      },
+      windowsHide: true,
       stdio: "pipe",
       timeout: timeoutMs,
     });
@@ -140,68 +316,32 @@ function runCommand(name, command, timeoutMs) {
   });
 }
 
-async function runDockerCommand(args) {
-  return new Promise((resolve) => {
-    const child = spawn("docker", ["compose", ...args], {
+async function runLifecycleCommand(args, contextPath = "") {
+  return new Promise((settle) => {
+    const child = spawn(process.execPath, [resolve(root, "scripts/infrastructure-lifecycle.js"), ...args], {
       cwd: root,
+      env: {
+        ...process.env,
+        ...(contextPath ? { SEOVISTA_LIFECYCLE_CONTEXT_PATH: contextPath } : {}),
+      },
       stdio: "pipe",
-      timeout: 60_000,
+      windowsHide: true,
     });
-    let output = "";
+    let stdout = "";
+    let stderr = "";
+    children.add(child);
 
-    child.stdout.on("data", (d) => { output += d.toString(); });
-    child.stderr.on("data", (d) => { output += d.toString(); });
-
+    child.stdout.on("data", (data) => { stdout += data.toString(); });
+    child.stderr.on("data", (data) => { stderr += data.toString(); });
     child.on("close", (code) => {
-      resolve({ exitCode: code, output });
+      children.delete(child);
+      settle({ exitCode: code ?? -1, stdout, stderr });
     });
-
-    child.on("error", (err) => {
-      resolve({ exitCode: -1, output: err.message });
+    child.on("error", (error) => {
+      children.delete(child);
+      settle({ exitCode: -1, stdout, stderr: `${stderr}${error.message}` });
     });
   });
-}
-
-async function startDocker() {
-  console.log("[release] Starting Docker services...");
-  const result = await runDockerCommand(["up", "-d", "--wait", "postgres", "redis"]);
-  if (result.exitCode !== 0) {
-    console.error("[release] Docker services failed to start:", result.output);
-    return false;
-  }
-  dockerStarted = true;
-  console.log("[release] Docker services healthy.");
-  return true;
-}
-
-async function stopDocker() {
-  if (!dockerStarted) return;
-  console.log("[release] Stopping Docker services...");
-  await runDockerCommand(["down", "--volumes", "--remove-orphans", "--timeout", "30"]);
-  dockerStarted = false;
-  console.log("[release] Docker services stopped.");
-}
-
-async function killAllChildren() {
-  for (const child of children) {
-    try {
-      if (!child.killed) {
-        child.kill("SIGTERM");
-        // Force kill after 5s
-        setTimeout(() => {
-          try { if (!child.killed) child.kill("SIGKILL"); } catch {}
-        }, 5000);
-      }
-    } catch {
-      // Child may already be dead
-    }
-  }
-}
-
-async function cleanup() {
-  console.log("[release] Running cleanup...");
-  await killAllChildren();
-  await stopDocker();
 }
 
 async function generateArtifactsReport(results, failedGates) {
@@ -258,95 +398,62 @@ async function main() {
   const args = process.argv.slice(2);
   const stopOnFirstFailure = args.includes("--stop-on-first-failure");
   const skipLighthouse = args.includes("--skip-lighthouse");
-
-  const gatesToRun = skipLighthouse
-    ? GATES.filter((g) => g.name !== "lighthouse")
-    : GATES;
+  const gatesToRun = skipLighthouse ? GATES.filter((gate) => gate.name !== "lighthouse") : GATES;
 
   console.log(`[release] SeoVista Release Gate — ${now()}`);
-  console.log(`[release] Gates to run: ${gatesToRun.map((g) => g.name).join(", ")}`);
+  console.log(`[release] Gates to run: ${gatesToRun.map((gate) => gate.name).join(", ")}`);
   console.log(`[release] Stop on first failure: ${stopOnFirstFailure}`);
   console.log("");
 
-  // Register cleanup handlers
-  let cleaningUp = false;
-  const handleInterrupt = async (signal) => {
-    if (cleaningUp) {
-      console.error(`[release] Forced exit during cleanup (${signal})`);
-      process.exit(1);
-    }
-    cleaningUp = true;
-    console.log(`\n[release] Received ${signal}. Cleaning up...`);
-    await cleanup();
-    console.log("[release] Cleanup complete. Exiting.");
-    process.exit(1);
-  };
-
-  process.on("SIGINT", () => handleInterrupt("SIGINT"));
-  process.on("SIGTERM", () => handleInterrupt("SIGTERM"));
-
-  const results = [];
-  const failedGates = [];
-  let dockerNeeded = gatesToRun.some((g) => g.needsDocker);
-
-  try {
-    // Start Docker if needed
-    if (dockerNeeded) {
-      const started = await startDocker();
-      if (!started) {
-        const result = { gate: "docker-start", exitCode: -1, error: "Docker services failed to start", durationMs: 0, stdout: "", stderr: "", startedAt: now(), completedAt: now() };
-        results.push(result);
-        failedGates.push(result);
-        await generateArtifactsReport(results, failedGates);
-        await cleanup();
-        process.exit(1);
-      }
-    }
-
-    // Run gates in order
-    for (const gate of gatesToRun) {
-      console.log(`[release] Running gate: ${gate.name}...`);
-      const result = await runCommand(gate.name, gate.command, gate.timeout);
-      results.push(result);
-
+  const runner = createReleaseRunner({
+    gates: gatesToRun,
+    log: (...messages) => console.log(...messages),
+    errorLog: (...messages) => console.error(...messages),
+    runLifecycle: async (args) => runLifecycleCommand(args),
+    runGate: async (name, command, timeout, contextPath) => {
+      console.log(`[release] Running gate: ${name}...`);
+      const result = await runCommand(name, command, timeout, contextPath);
       const status = result.exitCode === 0 ? "PASSED" : "FAILED";
-      console.log(`[release] ${gate.name}: ${status} (${result.durationMs}ms, exit ${result.exitCode})`);
+      console.log(`[release] ${name}: ${status} (${result.durationMs}ms, exit ${result.exitCode})`);
+      if (result.exitCode !== 0 && stopOnFirstFailure) console.log("[release] Stopping on first failure.");
+      return result;
+    },
+  });
 
-      if (result.exitCode !== 0) {
-        failedGates.push(result);
-        if (stopOnFirstFailure) {
-          console.log("[release] Stopping on first failure.");
-          break;
-        }
-      }
-    }
-
-    // Generate report
-    await generateArtifactsReport(results, failedGates);
-
-    // Print summary
-    console.log("");
-    console.log("=== Release Gate Summary ===");
-    console.log(`Total gates: ${results.length}`);
-    console.log(`Passed: ${results.filter((r) => r.exitCode === 0).length}`);
-    console.log(`Failed: ${failedGates.length}`);
-    console.log(`Report: ${redactPath(resolve(ARTIFACTS_DIR, "release-report.json"))}`);
-
-    if (failedGates.length > 0) {
-      console.log(`\nFailed gates: ${failedGates.map((r) => r.gate).join(", ")}`);
-      await cleanup();
-      process.exit(1);
-    }
-
-    console.log("\n[release] All gates passed.");
-  } catch (err) {
-    console.error("[release] Unexpected error:", err.message);
-    await generateArtifactsReport(results, failedGates);
-    failedGates.push({ gate: "release-script", exitCode: -1, error: err.message });
+  let result;
+  try {
+    result = await runner.run({ stopOnFirstFailure, skipLighthouse });
+  } catch (error) {
+    const failure = {
+      gate: "release-script",
+      exitCode: -1,
+      error: error instanceof Error ? error.message : String(error),
+      durationMs: 0,
+      stdout: "",
+      stderr: "",
+      startedAt: now(),
+      completedAt: now(),
+    };
+    await generateArtifactsReport([failure], [failure]);
+    throw error;
   }
 
-  await cleanup();
-  process.exit(failedGates.length > 0 ? 1 : 0);
+  console.log("");
+  console.log("=== Release Gate Summary ===");
+  console.log(`Total gates: ${result.results.length}`);
+  console.log(`Passed: ${result.results.filter((gate) => gate.exitCode === 0).length}`);
+  console.log(`Failed: ${result.failedGates.length}`);
+  console.log(`Report: ${redactPath(resolve(ARTIFACTS_DIR, "release-report.json"))}`);
+
+  if (result.failedGates.length > 0) {
+    console.log(`\nFailed gates: ${result.failedGates.map((gate) => gate.gate).join(", ")}`);
+  } else {
+    console.log("\n[release] All gates passed.");
+  }
+
+  process.exit(result.exitCode);
 }
 
-main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main();
+}

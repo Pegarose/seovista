@@ -65,5 +65,22 @@ export function createRbacRepository(client: DbClient) {
         [subjectIdentity, roleId]
       );
     },
+
+    async subjectHasPermission(subjectIdentity: string, permissionIdentity: string): Promise<boolean> {
+      const result = await client.query<{ allowed: boolean }>(
+        `
+          SELECT EXISTS (
+            SELECT 1
+            FROM rbac_subject_roles sr
+            INNER JOIN rbac_role_permissions rp ON rp.role_id = sr.role_id
+            INNER JOIN rbac_permissions p ON p.id = rp.permission_id
+            WHERE sr.subject_identity = $1
+              AND p.canonical_identity = $2
+          ) AS allowed
+        `,
+        [subjectIdentity, permissionIdentity]
+      );
+      return result.rows[0]?.allowed ?? false;
+    },
   };
 }

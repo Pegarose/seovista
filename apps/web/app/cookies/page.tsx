@@ -1,33 +1,8 @@
-import { Container, Section } from "@seovista/ui";
-import { cookiesPage } from "../../src/content/site";
-import { pageMetadataFrom } from "../../src/lib/metadata";
-import { buildPageGraph } from "../../src/lib/jsonld";
+import { StatusBadge } from "../../src/components/editorial";
 import { JsonLd } from "../../src/components/json-ld";
+import { cookiesPage } from "../../src/content/site";
+import { buildPageGraph } from "../../src/lib/jsonld";
+import { pageMetadataFrom } from "../../src/lib/metadata";
 
 export const metadata = pageMetadataFrom(cookiesPage);
-
-export default function CookiesPage(): React.ReactElement {
-  const graph = buildPageGraph(cookiesPage);
-
-  return (
-    <>
-      <JsonLd graph={graph} />
-      <main id="main">
-        <Section padding="lg" className="bg-mineral">
-          <Container>
-            <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-              {cookiesPage.title}
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg text-muted">{cookiesPage.description}</p>
-          </Container>
-        </Section>
-
-        <Section padding="md">
-          <Container>
-            <p className="max-w-3xl text-lg leading-relaxed text-ink">{cookiesPage.body}</p>
-          </Container>
-        </Section>
-      </main>
-    </>
-  );
-}
+export default function CookiesPage(): React.ReactElement { return <><JsonLd graph={buildPageGraph(cookiesPage)} /><main id="main"><article><header className="border-b border-hairline"><div className="mx-auto max-w-4xl px-6 py-20"><StatusBadge>Legal · Foundation draft</StatusBadge><h1 className="mt-6 font-serif text-4xl text-ink">Cookies.</h1></div></header><section className="mx-auto max-w-3xl px-6 py-16 text-muted-ink"><p>This site does not currently set advertising, analytics, profiling, or third-party marketing cookies. Only the strictly necessary cookies required for the site to function may be present.</p><p className="mt-6">If cookie use changes in a future release, this page will describe each cookie's purpose, provider, and retention, and a consent mechanism will be introduced before non-essential cookies are set.</p><p className="mt-10 text-xs uppercase tracking-widest">This document is a foundation-stage draft pending final legal review.</p></section></article></main></>; }

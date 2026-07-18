@@ -9,6 +9,12 @@ export interface SecurityHeadersOptions {
    * origin is always included via `'self'`.
    */
   approvedOrigins?: string[];
+  /**
+   * Allow eval-based development bundles when explicitly enabled by a local
+   * development server. Disabled by default. This should not be enabled for
+   * production responses.
+   */
+  allowUnsafeEval?: boolean;
 }
 
 /**
@@ -20,10 +26,15 @@ export interface SecurityHeadersOptions {
  */
 export function buildCsp(options: SecurityHeadersOptions = {}): string {
   const approved = options.approvedOrigins ?? [];
+  const scriptSources = [
+    "'self'",
+    "'unsafe-inline'",
+    ...(options.allowUnsafeEval ? ["'unsafe-eval'"] : []),
+  ];
 
   const directives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    `script-src ${scriptSources.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",

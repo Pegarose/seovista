@@ -48,6 +48,11 @@ function assertPort(value, name) {
   return value;
 }
 
+function environmentPort(name, fallback) {
+  const value = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isInteger(value) ? value : fallback;
+}
+
 export function getContextPath(context, root) {
   return resolve(root, ".lifecycle-evidence", `${context.runId}-context.json`);
 }
@@ -172,8 +177,14 @@ export function createRunContext(options = {}) {
   const baseIdentity = sanitizeRunIdentity(options.runId ?? "seovista-run");
   const runId = createLifecycleRunId(baseIdentity, nonce);
   const hostPorts = Object.freeze({
-    postgres: assertPort(options.hostPorts?.postgres ?? DEFAULT_HOST_PORTS.postgres, "PostgreSQL port"),
-    redis: assertPort(options.hostPorts?.redis ?? DEFAULT_HOST_PORTS.redis, "Redis port"),
+    postgres: assertPort(
+      options.hostPorts?.postgres ?? environmentPort("SEOVISTA_POSTGRES_PORT", DEFAULT_HOST_PORTS.postgres),
+      "PostgreSQL port",
+    ),
+    redis: assertPort(
+      options.hostPorts?.redis ?? environmentPort("SEOVISTA_REDIS_PORT", DEFAULT_HOST_PORTS.redis),
+      "Redis port",
+    ),
   });
   const ownershipToken = options.ownershipToken ?? randomBytes(32).toString("hex");
   if (!/^[a-f0-9]{64}$/i.test(ownershipToken)) {

@@ -33,6 +33,7 @@ export async function createDynamicAdapter(siteUrl: string, locales: readonly st
 
   for (const row of res.rows) {
     const rawEnvelope = {
+      ...row.content,
       id: row.id,
       collection: row.collection_name,
       slug: row.slug,
@@ -43,8 +44,7 @@ export async function createDynamicAdapter(siteUrl: string, locales: readonly st
         status: row.publication_status,
         locale: row.locale,
         version: 1
-      },
-      ...row.content
+      }
     };
 
     const outcome = mapEntity(rawEnvelope, mapOptions);

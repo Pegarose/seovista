@@ -22,9 +22,13 @@ describe("buildCsp", () => {
     expect(csp).not.toContain("*");
   });
 
-  it("does not contain unsafe-eval", () => {
+  it("does not contain unsafe-eval by default", () => {
     const csp = buildCsp();
     expect(csp).not.toContain("unsafe-eval");
+  });
+
+  it("includes unsafe-eval only when explicitly enabled", () => {
+    expect(buildCsp({ allowUnsafeEval: true })).toContain("'unsafe-eval'");
   });
 
   it("permits the inline bootstrap required by Next.js App Router", () => {

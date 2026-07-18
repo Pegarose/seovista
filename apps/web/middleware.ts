@@ -55,6 +55,12 @@ function isApprovedFinalPath(pathname: string, canonical: string): boolean {
 
 export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-seovista-pathname", pathname);
+
+  if (pathname.startsWith("/admin")) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   if (pathname === "/" || isNonPagePath(pathname)) {
     return NextResponse.next();

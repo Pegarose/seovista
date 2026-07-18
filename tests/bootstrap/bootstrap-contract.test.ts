@@ -53,6 +53,7 @@ describe("monorepo bootstrap contract", () => {
       "test:a11y",
       "test:seo",
       "lighthouse",
+      "verify:production-sentinels",
       "release",
       "verify-package-boundaries",
     ];
@@ -61,7 +62,6 @@ describe("monorepo bootstrap contract", () => {
       ...expectedScripts.slice(0, 9),
       "infrastructure:start",
       "infrastructure:teardown",
-      "verify:production-sentinels",
       ...expectedScripts.slice(9),
     ]);
     expect(pkg.packageManager).toBe("pnpm@10.30.1");
@@ -140,7 +140,7 @@ describe("monorepo bootstrap contract", () => {
       "playwright.config.ts",
       "apps/web/playwright.config.ts",
       "apps/web/playwright.dev.config.ts",
-      "lighthouserc.js",
+      "lighthouserc.cjs",
     ];
 
     for (const file of webPortFiles) {
@@ -181,6 +181,47 @@ describe("monorepo bootstrap contract", () => {
     expect(agents).toMatch(/the PRD wins/i);
   });
 
+  it("root test includes bootstrap and infrastructure contracts", () => {
+    const packageJson = JSON.parse(read("package.json")) as { scripts?: Record<string, string> };
+    expect(packageJson.scripts?.test).toContain("vitest run tests/bootstrap tests/infrastructure");
+  });
+
+  it("canonical quality gates include sentinels and package boundaries", () => {
+    const packageJson = JSON.parse(read("package.json")) as { scripts?: Record<string, string> };
+    const releaseScript = read("scripts/release.js");
+    const workflows = [
+      read(".github/workflows/ci-pull-request.yml"),
+      read(".github/workflows/ci-default-branch.yml"),
+    ];
+
+    expect(packageJson.scripts?.release).toContain("scripts/release.js");
+    expect(releaseScript).toContain("verify:production-sentinels");
+    expect(releaseScript).toContain("verify-package-boundaries");
+    for (const workflow of workflows) {
+      expect(workflow).toContain("pnpm verify:production-sentinels");
+      expect(workflow).toContain("pnpm verify-package-boundaries");
+      expect(workflow).toContain("tests/infrastructure/lifecycle-scenarios.test.ts");
+      expect(workflow).toContain("SEOVISTA_POSTGRES_PORT: 55433");
+      expect(workflow).toContain("SEOVISTA_REDIS_PORT: 56380");
+    }
+  });
+
+  it("CI cache consumers directly depend on the install job", () => {
+    const workflows = [
+      read(".github/workflows/ci-pull-request.yml"),
+      read(".github/workflows/ci-default-branch.yml"),
+    ];
+    const cacheConsumers = ["build", "e2e", "a11y", "seo", "lighthouse"];
+
+    for (const workflow of workflows) {
+      for (const job of cacheConsumers) {
+        const jobBlock = new RegExp(`\\n  ${job}:\\n([\\s\\S]*?)(?=\\n  [a-z0-9_-]+:\\n|$)`).exec(workflow)?.[1] ?? "";
+        expect(jobBlock).toContain("needs.install.outputs.cache-key");
+        expect(jobBlock).toMatch(/needs:\s*\[[^\]]*\binstall\b[^\]]*\]/);
+      }
+    }
+  });
+
   it("README.md documents architecture, prerequisites, ports, setup, commands, teardown, and mock limitations", () => {
     const readme = read("README.md");
 
@@ -191,6 +232,10 @@ describe("monorepo bootstrap contract", () => {
     expect(readme).toMatch(/## Commands/i);
     expect(readme).toMatch(/## Teardown/i);
     expect(readme).toMatch(/## Provider-Mock Limitations/i);
+    expect(readme).toContain("3200");
+    expect(readme).toContain("infrastructure:start");
+    expect(readme).toContain("infrastructure:teardown");
+    expect(readme).not.toContain("# seovista");
   });
 
   it(".env.example contains all consumed env var names and no secret values", () => {
@@ -298,7 +343,7 @@ describe("monorepo bootstrap contract", () => {
   });
 
   it("Lighthouse config contains required route set with assertions", () => {
-    const lhConfig = read("lighthouserc.js");
+    const lhConfig = read("lighthouserc.cjs");
 
     const requiredUrls = [
       "http://localhost:3200/",
@@ -330,6 +375,12 @@ describe("monorepo bootstrap contract", () => {
     expect(lhConfig).toContain("run-isolated-web-command.js lighthouse build");
     expect(lhConfig).toContain("run-isolated-web-command.js lighthouse serve");
     expect(lhConfig).toContain("startServerCommand");
+    expect(read("apps/web/package.json")).toContain("lhci autorun --config ../../lighthouserc.cjs");
+    expect(read("lighthouserc.js")).toContain('require("./lighthouserc.cjs")');
+    expect(read("lighthouserc.cjs")).toContain("module.exports");
+    expect(read("lighthouserc.cjs")).toContain("puppeteerScript");
+    expect(read("lighthouserc.cjs")).toContain("chromePath");
+    expect(read("scripts/lighthouse-puppeteer.cjs")).toContain("networkidle0");
   });
 
   it("Dependency policy reconciles one row per direct dependency", () => {
@@ -379,6 +430,18 @@ describe("monorepo bootstrap contract", () => {
     expect(policy).toMatch(/Update Strategy/i);
   });
 
+  it("Release command owns infrastructure through the durable lifecycle coordinator", () => {
+    const releaseScript = read("scripts/release.js");
+
+    expect(releaseScript).toContain("infrastructure-lifecycle.js");
+    expect(releaseScript).toContain("SEOVISTA_LIFECYCLE_CONTEXT_PATH");
+    expect(releaseScript).toContain("infrastructure-teardown");
+    expect(releaseScript).toContain("cleanupFailed");
+    expect(releaseScript).toMatch(/children\.add\(child\)[\s\S]*children\.delete\(child\)/);
+    expect(releaseScript).not.toContain('docker compose", "up"');
+    expect(releaseScript).not.toContain('docker compose", "down"');
+  });
+
   it("Release command is executable and references canonical gates", () => {
     const releaseScript = read("scripts/release.js");
 
@@ -391,13 +454,22 @@ describe("monorepo bootstrap contract", () => {
     expect(releaseScript).toContain("pnpm test:a11y");
     expect(releaseScript).toContain("pnpm test:seo");
     expect(releaseScript).toContain("pnpm lighthouse");
+    expect(releaseScript).toContain("pnpm verify:production-sentinels");
+    expect(releaseScript).toContain("pnpm verify-package-boundaries");
 
     // Must handle cleanup and interruption
     expect(releaseScript).toMatch(/SIGINT|SIGTERM|cleanup|interrupt/i);
-    expect(releaseScript).toMatch(/"docker"|docker compose|compose.*down|down.*volumes/i);
+    expect(releaseScript).toMatch(/infrastructure-lifecycle\.js|docker compose|compose.*down|down.*volumes/i);
 
     // Must produce redacted artifacts
     expect(releaseScript).toMatch(/redact/i);
+  });
+
+  it("Redis uses BullMQ-compatible noeviction policy", () => {
+    const compose = read("docker-compose.yml");
+    expect(compose).toContain("--maxmemory-policy");
+    expect(compose).toContain("noeviction");
+    expect(compose).not.toContain("allkeys-lru");
   });
 
   it("Package-boundary verifier exists and is runnable", () => {

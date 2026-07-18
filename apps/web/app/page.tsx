@@ -1,48 +1,56 @@
-import { Container, Section, Link } from "@seovista/ui";
-import { homePage } from "../src/content/site";
-import { pageMetadataFrom } from "../src/lib/metadata";
-import { buildPageGraph } from "../src/lib/jsonld";
 import { JsonLd } from "../src/components/json-ld";
+import { CtaLink, MethodologyStep, StatusBadge } from "../src/components/editorial";
+import { WorkflowScene } from "../src/components/workflow-scene";
+import { homePage } from "../src/content/site";
+import { buildPageGraph } from "../src/lib/jsonld";
+import { pageMetadataFrom } from "../src/lib/metadata";
 
 export const metadata = pageMetadataFrom(homePage);
 
-export default function HomePage(): React.ReactElement {
-  const graph = buildPageGraph(homePage);
+const PREVIEW_ROWS = [
+  ["Clarity", "Subject stated in first paragraph", "observed"],
+  ["Attribution", "Primary source cited", "observed"],
+  ["Structural markup", "Article schema present", "review"],
+  ["Authorship", "Byline resolves to identity page", "observed"],
+  ["Crawlability", "Rendered HTML matches source", "missing"],
+] as const;
 
+const PREVIEW_TAG_CLASSES = {
+  observed: "border-signal/40 bg-signal/10 text-ink",
+  review: "border-hairline bg-paper text-muted-ink",
+  missing: "border-hairline bg-mineral text-muted-ink",
+} as const;
+
+export default function HomePage(): React.ReactElement {
   return (
     <>
-      <JsonLd graph={graph} />
+      <JsonLd graph={buildPageGraph(homePage)} />
       <main id="main">
-        <Section padding="xl" className="bg-mineral">
-          <Container>
-            <h1 className="max-w-4xl text-4xl font-semibold leading-tight tracking-tight text-ink sm:text-5xl lg:text-6xl">
-              {homePage.title}
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg text-muted sm:text-xl">{homePage.description}</p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                href="/geo/"
-                className="inline-flex rounded-lg bg-spectral-blue px-5 py-3 font-medium text-paper transition-colors hover:bg-spectral-blue/90"
-                underline="none"
-              >
-                Explore GEO
-              </Link>
-              <Link
-                href="/tools/"
-                className="inline-flex rounded-lg border border-border-light bg-paper px-5 py-3 font-medium text-ink transition-colors hover:bg-mineral"
-                underline="none"
-              >
-                Free Tools
-              </Link>
-            </div>
-          </Container>
-        </Section>
+        <section className="hero-section relative flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center overflow-hidden border-b border-hairline px-4 py-8 sm:px-6 md:px-8">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-multiply" aria-hidden="true"><svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg"><filter id="hero-noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /></filter><rect width="100%" height="100%" filter="url(#hero-noise)" /></svg></div>
+          <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden" aria-hidden="true"><div className="hero-scan-line absolute left-0 top-0 h-px w-full bg-signal/25" /></div>
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-[1] h-[420px] w-[92vw] max-w-[860px] -translate-x-1/2 -translate-y-[55%] rounded-full blur-[80px] md:h-[560px] md:blur-[100px]" style={{ background: "radial-gradient(ellipse at center, oklch(0.90 0.075 55 / 0.85) 0%, oklch(0.93 0.055 60 / 0.55) 35%, oklch(0.95 0.035 65 / 0.25) 60%, transparent 78%)" }} aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-0 z-[2]" aria-hidden="true" style={{ backgroundImage: "linear-gradient(to right, oklch(0.25 0.02 250 / 0.09) 1px, transparent 1px), linear-gradient(to bottom, oklch(0.25 0.02 250 / 0.09) 1px, transparent 1px)", backgroundSize: "44px 44px", maskImage: "radial-gradient(ellipse at center, black 0%, black 40%, transparent 78%)", WebkitMaskImage: "radial-gradient(ellipse at center, black 0%, black 40%, transparent 78%)" }} />
+          <span aria-hidden="true" className="absolute left-6 top-24 h-8 w-8 border-l border-t border-ink/20 md:left-10 md:h-12 md:w-12" /><span aria-hidden="true" className="absolute right-6 top-24 h-8 w-8 border-r border-t border-ink/20 md:right-10 md:h-12 md:w-12" /><span aria-hidden="true" className="absolute bottom-8 left-6 h-8 w-8 border-b border-l border-ink/20 md:bottom-12 md:left-10 md:h-12 md:w-12" /><span aria-hidden="true" className="absolute bottom-8 right-6 h-8 w-8 border-b border-r border-ink/20 md:bottom-12 md:right-10 md:h-12 md:w-12" />
+          <div className="absolute bottom-8 left-0 right-0 flex items-end justify-center gap-3 md:bottom-12"><div className="h-px w-10 bg-ink/20 md:w-16" /><span className="shrink-0 translate-y-[2px] bg-paper px-2 font-mono text-[10px] uppercase leading-none tracking-[0.25em] text-muted-ink">SeoVista Research Lab</span><div className="h-px w-10 bg-ink/20 md:w-16" /></div>
+          <div className="relative z-10 mx-auto w-full max-w-4xl -translate-y-[1.75rem] text-center md:max-w-5xl lg:max-w-6xl">
+            <div className="hero-rise inline-flex items-center gap-2 border border-hairline bg-mineral px-3 py-1"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-70" /><span className="relative inline-flex h-2 w-2 rounded-full bg-signal" /></span><span className="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-ink">Foundation Stage · Sprint 0</span></div>
+            <h1 className="hero-rise mt-6 font-serif text-5xl font-light leading-[1.05] tracking-tight text-ink sm:text-6xl md:mt-8 md:text-7xl lg:text-8xl" style={{ animationDelay: "80ms" }}>Visibility is earned,<br /><span className="font-normal italic">not engineered.</span></h1>
+            <p className="hero-rise mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-ink sm:text-lg md:mt-8 md:max-w-3xl md:text-xl lg:text-2xl" style={{ animationDelay: "160ms" }}>SeoVista is an editorial intelligence lab focused on Generative Engine Optimization, traditional SEO, and digital authority. We publish structured thinking on how clarity, technical health, credible sourcing, and topical authority shape what search engines and generative answer systems choose to surface.</p>
+            <div className="hero-rise mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row md:mt-10" style={{ animationDelay: "240ms" }}><CtaLink href="/geo/">Learn about GEO</CtaLink><CtaLink href="/tools/geo-readiness-checker/" variant="secondary">See the foundation tool</CtaLink></div>
+          </div>
+        </section>
 
-        <Section padding="lg">
-          <Container>
-            <p className="max-w-3xl text-lg leading-relaxed text-ink">{homePage.body}</p>
-          </Container>
-        </Section>
+        <div className="relative"><div className="pointer-events-none absolute inset-x-0 top-0 h-[220px]" style={{ background: "radial-gradient(ellipse 60% 100% at 50% 0%, oklch(0.93 0.055 60 / 0.28) 0%, oklch(0.95 0.035 65 / 0.12) 45%, transparent 75%)" }} /><div className="pointer-events-none absolute inset-x-0 top-[220px] h-px bg-hairline" />
+          <section aria-labelledby="how-it-works-title" className="relative z-10 mx-auto -mt-10 max-w-6xl px-4 sm:px-6 md:-mt-20 md:px-8"><div className="relative overflow-hidden rounded-xl border border-hairline bg-card" style={{ boxShadow: "0 1px 0 0 rgba(0,0,0,0.02), 0 24px 60px -30px rgba(0,0,0,0.18)" }}><div className="absolute inset-x-0 top-0 h-px bg-signal/40" /><div className="grid gap-0 md:grid-cols-2"><div className="border-b border-hairline p-8 md:border-b-0 md:border-r md:p-10"><p className="font-mono text-xs uppercase tracking-widest text-muted-ink">How SeoVista works</p><h2 id="how-it-works-title" className="mt-2 font-serif text-3xl text-ink">A method, not a magic box.</h2><p className="mt-3 max-w-md text-sm leading-relaxed text-muted-ink">Three deliberate stages describe how the practice reads a page, weighs its visibility, and turns findings into ordered work.</p><ol className="mt-8 space-y-6"><li className="grid grid-cols-[auto_1fr] gap-4"><div className="font-mono text-xs text-muted-ink">01</div><div><h3 className="font-serif text-lg text-ink">Scan</h3><p className="mt-1.5 text-sm leading-relaxed text-muted-ink">Read the page the way both a crawler and a generative reader would: source, structure, signals.</p></div></li><li className="grid grid-cols-[auto_1fr] gap-4"><div className="font-mono text-xs text-muted-ink">02</div><div><h3 className="font-serif text-lg text-ink">Assess visibility</h3><p className="mt-1.5 text-sm leading-relaxed text-muted-ink">Weigh clarity, attribution, and technical health against how answer systems decide what to cite.</p></div></li><li className="grid grid-cols-[auto_1fr] gap-4"><div className="font-mono text-xs text-muted-ink">03</div><div><h3 className="font-serif text-lg text-ink">Prioritised actions</h3><p className="mt-1.5 text-sm leading-relaxed text-muted-ink">Return an ordered list of edits with the reasoning attached — not a score, a plan.</p></div></li></ol></div><div className="relative bg-mineral/40 p-8 md:p-10"><div className="pointer-events-none absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "linear-gradient(to right, oklch(0.25 0.02 250 / 1) 1px, transparent 1px), linear-gradient(to bottom, oklch(0.25 0.02 250 / 1) 1px, transparent 1px)", backgroundSize: "28px 28px" }} /><div className="relative rounded-lg border border-hairline bg-card"><div className="flex items-center justify-between border-b border-hairline px-5 py-3"><div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-signal" /><span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-ink">Illustrative preview</span></div><span className="font-mono text-[10px] uppercase tracking-widest text-muted-ink">example.com/page</span></div><div className="space-y-4 px-5 py-5">{PREVIEW_ROWS.map(([label, detail, tag]) => <div key={label} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-t border-hairline pt-4 first:border-t-0 first:pt-0"><div className="font-mono text-[10px] uppercase tracking-widest text-muted-ink">{label}</div><div className="text-sm text-ink">{detail}</div><span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest ${PREVIEW_TAG_CLASSES[tag]}`}>{tag}</span></div>)}</div></div><p className="relative mt-4 font-mono text-[10px] uppercase tracking-widest text-muted-ink">Static illustration of the intended workflow. No audit runs.</p></div></div></div></section>
+          <div className="mt-16 border-y border-hairline bg-mineral/40 md:mt-24"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-6 py-4 text-center">{["Foundation stage · Sprint 0", "Editorial research lab", "Public methodology", "No tracking on this page"].map((item, index) => <span key={item} className="flex items-center gap-6 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-ink">{index > 0 && <span aria-hidden="true" className="hidden h-1 w-1 rounded-full bg-hairline md:inline-block" />}{item}</span>)}</div></div>
+        </div>
+
+        <section className="border-b border-hairline"><div className="mx-auto max-w-6xl px-6 py-24"><div className="grid gap-10 md:grid-cols-[1fr_2fr]"><div><p className="font-mono text-xs uppercase tracking-widest text-muted-ink">The problem</p><h2 className="mt-2 font-serif text-3xl text-ink">Two audiences, one page.</h2></div><p className="max-w-2xl text-base leading-relaxed text-muted-ink">Brands now have to be understandable to both traditional search systems and generative answer systems. The pages that succeed are not the loudest — they are the ones whose structure, evidence, and provenance are unambiguous to a machine that must decide what to cite.</p></div></div></section>
+        <WorkflowScene />
+        <section className="border-b border-hairline bg-mineral/50"><div className="mx-auto max-w-6xl px-6 py-20"><p className="font-mono text-xs uppercase tracking-widest text-muted-ink">Methodology</p><h2 className="mt-2 font-serif text-3xl text-ink">What we look for.</h2><ol className="mt-8"><MethodologyStep index={1} title="Clear information architecture">A page's purpose and place in the site should be obvious within seconds — to a reader and to a crawler.</MethodologyStep><MethodologyStep index={2} title="Useful, attributable content">Statements should be traceable to a source. Opinion should be clearly marked as such.</MethodologyStep><MethodologyStep index={3} title="Technical crawlability and indexation">Rendering, status codes, canonicals, and structured data must agree with what a reader sees.</MethodologyStep><MethodologyStep index={4} title="Credible sourcing">Citations to primary material outperform citations to summaries of summaries.</MethodologyStep><MethodologyStep index={5} title="Consistent topical expertise">Authority accrues to sites that keep publishing on a subject over time, not to one-off pages.</MethodologyStep></ol></div></section>
+        <section className="border-b border-hairline"><div className="mx-auto grid max-w-6xl gap-10 px-6 py-20 md:grid-cols-2"><div className="rounded-lg border border-hairline bg-card p-8"><StatusBadge>Non-operational preview</StatusBadge><h2 className="mt-4 font-serif text-2xl text-ink">GEO Readiness Checker</h2><p className="mt-3 text-sm leading-relaxed text-muted-ink">A future tool for assessing a page's readiness to be understood and cited by generative answer systems. There is no submission flow, no score, and no report in the foundation release.</p><div className="mt-6"><CtaLink href="/tools/geo-readiness-checker/" variant="secondary">Read the tool brief</CtaLink></div></div><div className="rounded-lg border border-hairline bg-card p-8"><p className="font-mono text-xs uppercase tracking-widest text-muted-ink">Insights</p><h2 className="mt-2 font-serif text-2xl text-ink">Editorial research</h2><p className="mt-3 text-sm leading-relaxed text-muted-ink">We publish articles only when the underlying research is ready. No filler and no fabricated benchmarks.</p><div className="mt-6"><CtaLink href="/insights/" variant="secondary">Browse Insights</CtaLink></div></div></div></section>
+        <section><div className="mx-auto max-w-3xl px-6 py-24 text-center"><h2 className="font-serif text-3xl text-ink">Work with us as we build.</h2><p className="mx-auto mt-4 max-w-xl text-base text-muted-ink">SeoVista is an editorial lab, not a growth-hacking studio. If that frames the kind of collaboration you're looking for, reach out.</p><div className="mt-8"><CtaLink href="/contact/">Contact SeoVista</CtaLink></div></div></section>
       </main>
     </>
   );

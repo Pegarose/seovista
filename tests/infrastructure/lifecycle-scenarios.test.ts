@@ -199,7 +199,7 @@ describe("isolated lifecycle scenarios", () => {
     expect(evidence.inventory.containers).toContain(`${context.composeProject}-postgres-1`);
     expect(evidence.inventory.networks).toContain(`${context.composeProject}_default`);
     expect(evidence.inventory.volumes).toContain(`${context.composeProject}_seovista-postgres-data`);
-    expect(evidence.inventory.listeners.some((listener) => getListenerPort(listener).includes("55432"))).toBe(true);
+    expect(evidence.inventory.listeners.some((listener) => getListenerPort(listener).includes(String(context.hostPorts.postgres)))).toBe(true);
     expect(evidence.inventory.databases).toContain(context.databaseName);
     expect(evidence.inventory.redisNamespaces).toContain(redisKeys.namespaceKey);
     expect(evidence.inventory.queues).toContain(redisKeys.queueKey);

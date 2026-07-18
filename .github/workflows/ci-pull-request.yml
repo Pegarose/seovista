@@ -170,6 +170,19 @@ jobs:
         env:
           SEOVISTA_LIFECYCLE_CONTEXT_PATH: ${{ steps.lifecycle.outputs.context_path }}
 
+      - name: Verify production sentinels
+        run: pnpm verify:production-sentinels
+
+      - name: Verify package boundaries
+        run: pnpm verify-package-boundaries
+
+      - name: Run isolated lifecycle scenarios
+        run: pnpm exec vitest run tests/infrastructure/lifecycle-scenarios.test.ts --no-file-parallelism
+        env:
+          SEOVISTA_POSTGRES_PORT: 55433
+          SEOVISTA_REDIS_PORT: 56380
+        timeout-minutes: 15
+
       - name: Stop lifecycle-owned services
         if: always() && steps.lifecycle.outputs.context_path != ''
         run: node scripts/infrastructure-lifecycle.js teardown "${{ steps.lifecycle.outputs.context_path }}"
@@ -178,7 +191,7 @@ jobs:
   # ── Build ───────────────────────────────────────────────────────
   build:
     name: Build (production)
-    needs: [lint, typecheck, test]
+    needs: [install, lint, typecheck, test]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -211,7 +224,7 @@ jobs:
   # ── Playwright E2E ──────────────────────────────────────────────
   e2e:
     name: Playwright E2E (≤2 workers)
-    needs: [build]
+    needs: [install, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -253,7 +266,7 @@ jobs:
   # ── Axe Accessibility ───────────────────────────────────────────
   a11y:
     name: Axe Accessibility
-    needs: [build]
+    needs: [install, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -295,7 +308,7 @@ jobs:
   # ── SEO Validation ──────────────────────────────────────────────
   seo:
     name: SEO Validation
-    needs: [build]
+    needs: [install, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -337,7 +350,7 @@ jobs:
   # ── Lighthouse ──────────────────────────────────────────────────
   lighthouse:
     name: Lighthouse CI (Linux Chromium)
-    needs: [build]
+    needs: [install, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

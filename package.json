@@ -16,7 +16,7 @@
     "build": "pnpm run --recursive --if-present --sort --aggregate-output build",
     "typecheck": "pnpm --filter ./packages/* --if-present build && pnpm run --recursive --if-present --aggregate-output typecheck",
     "lint": "pnpm run --recursive --if-present --aggregate-output lint",
-    "test": "pnpm --filter ./packages/* --if-present build && pnpm run --recursive --if-present --aggregate-output test",
+    "test": "pnpm --filter ./packages/* --if-present build && vitest run tests/bootstrap tests/infrastructure --exclude tests/infrastructure/lifecycle-scenarios.test.ts && pnpm run --recursive --if-present --aggregate-output test",
     "test:e2e": "pnpm run --filter @seovista/web --if-present test:e2e",
     "test:a11y": "pnpm run --filter @seovista/web --if-present test:a11y",
     "test:seo": "pnpm run --filter @seovista/web --if-present test:seo",

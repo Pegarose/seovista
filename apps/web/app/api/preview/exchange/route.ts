@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { getAdminDb } from "../../../../src/lib/admin/db";
 import { setPreviewCookie } from "../../../../src/lib/cms/preview-cookie";
+import { requireAdminUser } from "../../../../src/lib/admin/session";
+import { requireCmsCapability, CmsCapabilities } from "../../../../src/lib/cms/capabilities";
 
 export async function GET(request: NextRequest) {
+  // Enforce authentication & authorization before handling preview tokens
+  const user = await requireAdminUser();
+  await requireCmsCapability(user, CmsCapabilities.Preview);
+
   const token = request.nextUrl.searchParams.get("token");
   const path = request.nextUrl.searchParams.get("path") || "/";
 

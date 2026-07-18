@@ -208,7 +208,7 @@ describe("web build isolation policy", () => {
       "run-isolated-web-command.js development dev"
     );
     expect(read("playwright.config.ts")).toContain("run-isolated-web-command.js playwright build");
-    expect(read("lighthouserc.js")).toContain("run-isolated-web-command.js lighthouse build");
+    expect(read("lighthouserc.js")).toContain("lighthouserc.cjs");
     expect(read("scripts/production-sentinel.js")).toContain("acquireBuildOwnership");
     expect(read("scripts/production-sentinel.js")).toContain('buildProfileEnvironment("sentinel"');
   });
