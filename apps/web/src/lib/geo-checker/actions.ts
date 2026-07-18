@@ -62,3 +62,20 @@ export async function startGeoAudit(formData: FormData): Promise<{ jobId?: strin
   
   return { jobId: jobId! };
 }
+
+export async function unlockDetailedReport(_prev: any, formData: FormData) {
+  const email = formData.get("email") as string;
+  const consent = formData.get("consent") === "true";
+  const leadId = formData.get("leadId") as string;
+
+  if (!email || !email.includes("@")) return { error: "Please provide a valid work email." };
+
+  try {
+    const db = getAdminDb();
+    const repo = createGeoAuditRepository(db);
+    await repo.updateLeadEmail(leadId, email, consent);
+    return { success: true };
+  } catch (err) {
+    return { error: "Database error assigning lead." };
+  }
+}

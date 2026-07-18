@@ -1,5 +1,7 @@
 import { getAdminDb } from "@/lib/admin/db";
 import { AuditPoller } from "@/components/geo-checker/audit-poller";
+import { GatedReportForm } from "@/components/geo-checker/gated-report-form";
+import { unlockDetailedReport } from "@/lib/geo-checker/actions";
 import { notFound } from "next/navigation";
 import { createGeoAuditRepository } from "@seovista/worker";
 import { headers } from "next/headers";
@@ -38,9 +40,19 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   return (
     <main className="min-h-screen bg-graphite flex items-center justify-center">
       {status === "completed" ? (
-         <div className="bg-paper p-8 rounded shadow-lg text-ink">
-           <h1>Audit Complete</h1>
-           <p className="text-muted">A short summary goes here pointing to gated form next.</p>
+         <div className="bg-paper p-8 rounded shadow-lg text-ink max-w-2xl mx-auto w-full">
+           <h1 className="text-3xl font-display font-semibold mb-4">Audit Complete: Summary</h1>
+           <div className="grid grid-cols-2 gap-4 my-8">
+             <div className="bg-mineral p-4 rounded text-center">
+                 <div className="text-sm text-muted uppercase tracking-wider mb-2">Access</div>
+                 <div className="text-2xl font-bold text-signal-green">Pass</div>
+             </div>
+             <div className="bg-mineral p-4 rounded text-center">
+                 <div className="text-sm text-muted uppercase tracking-wider mb-2">Understanding</div>
+                 <div className="text-2xl font-bold text-spectral-blue">78/100</div>
+             </div>
+           </div>
+           <GatedReportForm leadId={row.lead_id} actionBase={unlockDetailedReport} />
          </div>
       ) : (
          <AuditPoller jobId={jobId} pollAction={pollStatus} />
