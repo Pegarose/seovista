@@ -1,0 +1,1 @@
+{"onlyCategories":["performance","accessibility","best-practices","seo"],"formFactor":"desktop","screenEmulation":{"disabled":true},"throttling":{"rttMs":40,"throughputKbps":10240,"cpuSlowdownMultiplier":1},"chromeFlags":"--headless=new --no-sandbox --disable-gpu --headless=new"}

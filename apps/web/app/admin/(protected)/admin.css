@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+.admin-shell {
+  min-height: 100vh;
+  background: #f4f6f8;
+  color: #17202a;
+}
+
+.admin-card {
+  border: 1px solid #dfe5ea;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(23, 32, 42, 0.06);
+}

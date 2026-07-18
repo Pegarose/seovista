@@ -1,0 +1,686 @@
+[
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "performance",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.95,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "accessibility",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 0.96,
+    "values": [
+      0.96
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "best-practices",
+    "auditId": "categories",
+    "level": "warn",
+    "url": "http://localhost:3200/"
+  },
+  {
+    "name": "minScore",
+    "expected": 1,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "seo",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 2500,
+    "actual": 424.1396,
+    "values": [
+      424.1396
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "largest-contentful-paint",
+    "level": "error",
+    "url": "http://localhost:3200/",
+    "auditTitle": "Largest Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 0.1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "cumulative-layout-shift",
+    "level": "error",
+    "url": "http://localhost:3200/",
+    "auditTitle": "Cumulative Layout Shift",
+    "auditDocumentationLink": "https://web.dev/articles/cls"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 800,
+    "actual": 3.345,
+    "values": [
+      3.345
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "server-response-time",
+    "level": "error",
+    "url": "http://localhost:3200/",
+    "auditTitle": "Initial server response time was short",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/"
+  },
+  {
+    "name": "auditRan",
+    "expected": 1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": ">=",
+    "passed": false,
+    "auditId": "interaction-to-next-paint",
+    "level": "warn",
+    "url": "http://localhost:3200/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "performance",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/geo/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.95,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "accessibility",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/geo/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 0.96,
+    "values": [
+      0.96
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "best-practices",
+    "auditId": "categories",
+    "level": "warn",
+    "url": "http://localhost:3200/geo/"
+  },
+  {
+    "name": "minScore",
+    "expected": 1,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "seo",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/geo/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 2500,
+    "actual": 424.00249999999994,
+    "values": [
+      424.00249999999994
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "largest-contentful-paint",
+    "level": "error",
+    "url": "http://localhost:3200/geo/",
+    "auditTitle": "Largest Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 0.1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "cumulative-layout-shift",
+    "level": "error",
+    "url": "http://localhost:3200/geo/",
+    "auditTitle": "Cumulative Layout Shift",
+    "auditDocumentationLink": "https://web.dev/articles/cls"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 800,
+    "actual": 3.029,
+    "values": [
+      3.029
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "server-response-time",
+    "level": "error",
+    "url": "http://localhost:3200/geo/",
+    "auditTitle": "Initial server response time was short",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/"
+  },
+  {
+    "name": "auditRan",
+    "expected": 1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": ">=",
+    "passed": false,
+    "auditId": "interaction-to-next-paint",
+    "level": "warn",
+    "url": "http://localhost:3200/geo/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "performance",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/tools/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.95,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "accessibility",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/tools/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 0.96,
+    "values": [
+      0.96
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "best-practices",
+    "auditId": "categories",
+    "level": "warn",
+    "url": "http://localhost:3200/tools/"
+  },
+  {
+    "name": "minScore",
+    "expected": 1,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "seo",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/tools/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 2500,
+    "actual": 420.7229,
+    "values": [
+      420.7229
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "largest-contentful-paint",
+    "level": "error",
+    "url": "http://localhost:3200/tools/",
+    "auditTitle": "Largest Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 0.1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "cumulative-layout-shift",
+    "level": "error",
+    "url": "http://localhost:3200/tools/",
+    "auditTitle": "Cumulative Layout Shift",
+    "auditDocumentationLink": "https://web.dev/articles/cls"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 800,
+    "actual": 2.946,
+    "values": [
+      2.946
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "server-response-time",
+    "level": "error",
+    "url": "http://localhost:3200/tools/",
+    "auditTitle": "Initial server response time was short",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/"
+  },
+  {
+    "name": "auditRan",
+    "expected": 1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": ">=",
+    "passed": false,
+    "auditId": "interaction-to-next-paint",
+    "level": "warn",
+    "url": "http://localhost:3200/tools/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "performance",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/tools/geo-readiness-checker/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.95,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "accessibility",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/tools/geo-readiness-checker/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 0.96,
+    "values": [
+      0.96
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "best-practices",
+    "auditId": "categories",
+    "level": "warn",
+    "url": "http://localhost:3200/tools/geo-readiness-checker/"
+  },
+  {
+    "name": "minScore",
+    "expected": 1,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "seo",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/tools/geo-readiness-checker/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 2500,
+    "actual": 364.3134,
+    "values": [
+      364.3134
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "largest-contentful-paint",
+    "level": "error",
+    "url": "http://localhost:3200/tools/geo-readiness-checker/",
+    "auditTitle": "Largest Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 0.1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "cumulative-layout-shift",
+    "level": "error",
+    "url": "http://localhost:3200/tools/geo-readiness-checker/",
+    "auditTitle": "Cumulative Layout Shift",
+    "auditDocumentationLink": "https://web.dev/articles/cls"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 800,
+    "actual": 3.384,
+    "values": [
+      3.384
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "server-response-time",
+    "level": "error",
+    "url": "http://localhost:3200/tools/geo-readiness-checker/",
+    "auditTitle": "Initial server response time was short",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/"
+  },
+  {
+    "name": "auditRan",
+    "expected": 1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": ">=",
+    "passed": false,
+    "auditId": "interaction-to-next-paint",
+    "level": "warn",
+    "url": "http://localhost:3200/tools/geo-readiness-checker/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "performance",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/contact/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.95,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "accessibility",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/contact/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 0.96,
+    "values": [
+      0.96
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "best-practices",
+    "auditId": "categories",
+    "level": "warn",
+    "url": "http://localhost:3200/contact/"
+  },
+  {
+    "name": "minScore",
+    "expected": 1,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "seo",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/contact/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 2500,
+    "actual": 420.4426,
+    "values": [
+      420.4426
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "largest-contentful-paint",
+    "level": "error",
+    "url": "http://localhost:3200/contact/",
+    "auditTitle": "Largest Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 0.1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "cumulative-layout-shift",
+    "level": "error",
+    "url": "http://localhost:3200/contact/",
+    "auditTitle": "Cumulative Layout Shift",
+    "auditDocumentationLink": "https://web.dev/articles/cls"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 800,
+    "actual": 2.814,
+    "values": [
+      2.814
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "server-response-time",
+    "level": "error",
+    "url": "http://localhost:3200/contact/",
+    "auditTitle": "Initial server response time was short",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/"
+  },
+  {
+    "name": "auditRan",
+    "expected": 1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": ">=",
+    "passed": false,
+    "auditId": "interaction-to-next-paint",
+    "level": "warn",
+    "url": "http://localhost:3200/contact/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "performance",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/terms/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.95,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "accessibility",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/terms/"
+  },
+  {
+    "name": "minScore",
+    "expected": 0.9,
+    "actual": 0.96,
+    "values": [
+      0.96
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "best-practices",
+    "auditId": "categories",
+    "level": "warn",
+    "url": "http://localhost:3200/terms/"
+  },
+  {
+    "name": "minScore",
+    "expected": 1,
+    "actual": 1,
+    "values": [
+      1
+    ],
+    "operator": ">=",
+    "passed": true,
+    "auditProperty": "seo",
+    "auditId": "categories",
+    "level": "error",
+    "url": "http://localhost:3200/terms/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 2500,
+    "actual": 421.5611,
+    "values": [
+      421.5611
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "largest-contentful-paint",
+    "level": "error",
+    "url": "http://localhost:3200/terms/",
+    "auditTitle": "Largest Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 0.1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "cumulative-layout-shift",
+    "level": "error",
+    "url": "http://localhost:3200/terms/",
+    "auditTitle": "Cumulative Layout Shift",
+    "auditDocumentationLink": "https://web.dev/articles/cls"
+  },
+  {
+    "name": "maxNumericValue",
+    "expected": 800,
+    "actual": 2.789,
+    "values": [
+      2.789
+    ],
+    "operator": "<=",
+    "passed": true,
+    "auditId": "server-response-time",
+    "level": "error",
+    "url": "http://localhost:3200/terms/",
+    "auditTitle": "Initial server response time was short",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/"
+  },
+  {
+    "name": "auditRan",
+    "expected": 1,
+    "actual": 0,
+    "values": [
+      0
+    ],
+    "operator": ">=",
+    "passed": false,
+    "auditId": "interaction-to-next-paint",
+    "level": "warn",
+    "url": "http://localhost:3200/terms/"
+  }
+]

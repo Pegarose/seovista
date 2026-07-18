@@ -1,0 +1,102 @@
+  0 mean=[248 247 245] std=[4 4 3] dark=   7 green=   0
+  5 mean=[248 247 245] std=[4 4 4] dark=   6 green=   2
+ 10 mean=[241 240 238] std=[33 31 32] dark= 247 green=  10
+ 15 mean=[248 247 245] std=[6 6 6] dark=  16 green=   0
+ 20 mean=[248 247 245] std=[6 6 6] dark=  15 green=   0
+ 25 mean=[218 217 215] std=[10 10 10] dark=  21 green=   0
+ 30 mean=[218 217 215] std=[11 11 11] dark=  20 green=   0
+ 35 mean=[219 218 216] std=[11 11 11] dark=  19 green=   0
+ 40 mean=[217 217 214] std=[18 16 17] dark=  92 green=  20
+ 45 mean=[219 218 216] std=[12 12 12] dark=  20 green=   4
+ 50 mean=[218 217 215] std=[11 11 11] dark=  21 green=   0
+ 55 mean=[218 217 215] std=[12 12 12] dark=  31 green=   0
+ 60 mean=[215 214 212] std=[25 25 25] dark= 126 green=   0
+ 65 mean=[218 217 215] std=[12 12 12] dark=  24 green=   0
+ 70 mean=[215 215 213] std=[22 22 22] dark=  96 green=   0
+ 75 mean=[218 217 215] std=[11 11 11] dark=  23 green=   0
+ 80 mean=[218 217 213] std=[10 10 10] dark=  20 green=   0
+ 85 mean=[249 248 244] std=[7 7 7] dark=  16 green=   0
+ 90 mean=[238 237 234] std=[36 35 34] dark= 388 green=   0
+ 95 mean=[243 242 238] std=[21 21 20] dark= 118 green=   0
+100 mean=[244 243 239] std=[25 25 24] dark= 177 green=   0
+105 mean=[238 237 234] std=[36 35 34] dark= 384 green=   0
+110 mean=[249 248 244] std=[7 7 7] dark=  15 green=   0
+115 mean=[240 239 236] std=[33 32 31] dark= 301 green=   0
+120 mean=[244 243 239] std=[26 26 25] dark= 187 green=   0
+125 mean=[249 248 244] std=[7 7 7] dark=  13 green=   0
+130 mean=[230 230 227] std=[42 42 40] dark= 544 green=   0
+135 mean=[249 248 244] std=[4 4 4] dark=   4 green=   0
+140 mean=[248 247 243] std=[11 11 11] dark=  31 green=   0
+145 mean=[248 247 243] std=[12 12 11] dark=  39 green=   0
+150 mean=[249 248 244] std=[2 2 2] dark=   0 green=   0
+155 mean=[249 248 244] std=[2 2 2] dark=   0 green=   0
+160 mean=[247 248 242] std=[25  6 24] dark=  55 green=  60
+165 mean=[235 245 231] std=[56 14 55] dark= 290 green= 294
+170 mean=[235 243 231] std=[56 23 54] dark= 290 green= 284
+175 mean=[235 245 231] std=[57 14 55] dark= 290 green= 291
+180 mean=[242 245 237] std=[35 10 35] dark= 112 green= 120
+185 mean=[249 248 244] std=[1 1 1] dark=   0 green=   0
+190 mean=[248 247 244] std=[12 12 11] dark=  30 green=   9
+195 mean=[247 247 243] std=[18 18 18] dark=  50 green=  11
+200 mean=[249 248 244] std=[3 3 3] dark=   0 green=   0
+205 mean=[249 248 244] std=[0 0 0] dark=   0 green=   0
+210 mean=[249 248 244] std=[0 0 0] dark=   0 green=   0
+215 mean=[244 243 239] std=[14 14 14] dark=   8 green=   0
+220 mean=[250 249 246] std=[14 14 14] dark=  20 green=   0
+225 mean=[240 240 237] std=[45 45 44] dark= 233 green=   0
+230 mean=[250 249 247] std=[13 12 13] dark=  33 green=   0
+235 mean=[249 248 246] std=[17 16 17] dark=  72 green=   6
+240 mean=[249 248 246] std=[20 20 20] dark=  47 green=   0
+245 mean=[241 240 238] std=[45 45 44] dark= 243 green=   0
+250 mean=[244 243 241] std=[38 38 37] dark= 168 green=   0
+255 mean=[247 246 244] std=[25 25 25] dark= 101 green=   0
+260 mean=[244 244 241] std=[28 28 27] dark= 205 green=   0
+265 mean=[249 248 246] std=[15 15 14] dark=  54 green=   0
+270 mean=[247 246 244] std=[21 21 20] dark= 121 green=   0
+275 mean=[249 249 246] std=[16 16 16] dark=  38 green=   0
+280 mean=[248 248 245] std=[22 22 22] dark=  70 green=   0
+285 mean=[250 249 247] std=[16 16 16] dark=  29 green=   0
+290 mean=[251 250 248] std=[8 8 9] dark=   8 green=   0
+295 mean=[249 249 246] std=[19 19 19] dark=  43 green=   0
+300 mean=[247 246 244] std=[22 22 22] dark= 114 green=   0
+305 mean=[244 244 241] std=[28 28 27] dark= 225 green=   0
+310 mean=[250 249 247] std=[13 13 13] dark=  38 green=   0
+315 mean=[250 249 247] std=[13 13 13] dark=  45 green=   0
+320 mean=[245 244 242] std=[30 30 29] dark= 149 green=   0
+325 mean=[247 247 245] std=[25 25 25] dark=  80 green=   0
+330 mean=[249 248 246] std=[10 10 10] dark=  15 green=   0
+335 mean=[244 243 241] std=[27 27 26] dark= 212 green=   0
+340 mean=[245 244 242] std=[30 30 29] dark= 147 green=   0
+345 mean=[248 247 245] std=[22 22 21] dark=  88 green=   0
+350 mean=[249 248 246] std=[20 20 19] dark=  50 green=   0
+355 mean=[246 245 242] std=[29 29 28] dark= 102 green=   0
+360 mean=[244 243 241] std=[28 28 27] dark= 186 green=   0
+365 mean=[243 243 240] std=[28 28 27] dark= 220 green=   0
+370 mean=[249 248 246] std=[14 14 14] dark=  27 green=   0
+375 mean=[249 249 246] std=[14 14 13] dark=  21 green=   0
+380 mean=[249 249 246] std=[13 13 13] dark=  20 green=   0
+385 mean=[249 249 246] std=[13 13 13] dark=  20 green=   0
+390 mean=[245 244 241] std=[11 11 11] dark=   8 green=   0
+395 mean=[245 244 240] std=[5 5 5] dark=   0 green=   0
+400 mean=[247 246 242] std=[2 2 2] dark=   0 green=   0
+405 mean=[248 247 243] std=[1 1 1] dark=   0 green=   0
+410 mean=[249 248 244] std=[0 0 0] dark=   0 green=   0
+415 mean=[250 249 245] std=[0 0 0] dark=   0 green=   0
+420 mean=[249 248 244] std=[0 0 0] dark=   0 green=   0
+425 mean=[250 249 245] std=[1 1 1] dark=   0 green=   0
+430 mean=[241 240 236] std=[10 10 10] dark=   0 green=   0
+435 mean=[244 243 239] std=[11 11 11] dark=  50 green=   0
+440 mean=[244 243 239] std=[11 11 11] dark=  54 green=   0
+445 mean=[245 245 241] std=[2 2 2] dark=   0 green=   0
+450 mean=[249 248 244] std=[0 0 0] dark=   0 green=   0
+455 mean=[250 249 245] std=[0 0 0] dark=   0 green=   0
+460 mean=[250 249 245] std=[0 0 0] dark=   0 green=   0
+465 mean=[250 249 245] std=[0 0 0] dark=   0 green=   0
+470 mean=[250 249 245] std=[0 0 0] dark=   0 green=   0
+475 mean=[250 249 245] std=[0 0 0] dark=   0 green=   0
+480 mean=[250 249 245] std=[0 0 0] dark=   0 green=   0
+485 mean=[249 249 245] std=[0 0 1] dark=   0 green=   0
+490 mean=[249 248 244] std=[10  9  9] dark=  24 green=   0
+495 mean=[249 249 245] std=[1 1 1] dark=   0 green=   0
+500 mean=[246 245 241] std=[28 28 26] dark=  85 green=   6
+505 mean=[237 237 233] std=[49 48 46] dark= 229 green=  17

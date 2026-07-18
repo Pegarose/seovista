@@ -1,0 +1,50 @@
+name: Visual Regression
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers (chromium, firefox, webkit)
+        run: bunx playwright install --with-deps chromium firefox webkit
+
+      - name: Run visual regression tests
+        env:
+          CI: "true"
+        run: bun run test:visual
+
+      - name: Upload screenshots and diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diffs
+          path: |
+            /tmp/browser/seovista/visual-output
+            /tmp/browser/seovista/shots
+            tests/visual/__screenshots__
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload approved screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-shots
+          path: /tmp/browser/seovista/shots
+          if-no-files-found: warn
+          retention-days: 14

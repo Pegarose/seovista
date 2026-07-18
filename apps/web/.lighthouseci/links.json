@@ -1,0 +1,8 @@
+{
+  "http://localhost:3200/": "https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/1784215734139-46252.report.html",
+  "http://localhost:3200/geo/": "https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/1784215735476-31587.report.html",
+  "http://localhost:3200/tools/": "https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/1784215736675-95936.report.html",
+  "http://localhost:3200/tools/geo-readiness-checker/": "https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/1784215737872-89261.report.html",
+  "http://localhost:3200/contact/": "https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/1784215739009-21390.report.html",
+  "http://localhost:3200/terms/": "https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/1784215740190-18905.report.html"
+}
