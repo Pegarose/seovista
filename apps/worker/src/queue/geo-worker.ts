@@ -13,7 +13,7 @@ function parseRedisUrl(redisUrl: string | undefined): { host: string; port: numb
       host: url.hostname || "127.0.0.1", 
       port: parseInt(url.port, 10) || 56379 
     };
-  } catch (e) {
+  } catch {
     return { host: "127.0.0.1", port: 56379 };
   }
 }
