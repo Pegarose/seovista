@@ -8,6 +8,8 @@ import {
   resolveCanonical,
 } from "@seovista/seo-core";
 import { buildFAQPage, buildGraph, buildWebPage, type SchemaNode } from "@seovista/schema";
+import { createDynamicAdapter } from "./dynamic-source";
+import { siteUrl } from "./site";
 
 export interface PublicProjectionMatrixOptions {
   readonly adapter: Adapter;
@@ -176,4 +178,11 @@ export function buildPublicJsonLdNodes(
     }
     return [];
   });
+}
+
+export async function getLivePublicMatrix(now: string = new Date().toISOString()) {
+  const adapter = await createDynamicAdapter(siteUrl, ["en"], { kind: "public", now: new Date(now) });
+  // ensure data is materialized
+  adapter.readContent("html");
+  return buildPublicProjectionMatrix({ adapter, siteUrl, now });
 }
