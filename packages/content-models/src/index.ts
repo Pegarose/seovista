@@ -124,4 +124,6 @@ export {
   type ValidatedRedirect,
 } from "./canonical.js";
 
+export * from "./blocks.js";
+
 export const name: string = "@seovista/content-models";
