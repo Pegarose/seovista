@@ -11,3 +11,7 @@ export {
 export { createRbacRepository, type Role, type Permission } from "./rbac.js";
 export { createAuditRepository, sanitizeAuditMetadata, type AuditEvent } from "./audit.js";
 export { createCostRepository, type CostRecord } from "./cost.js";
+export {
+  createCmsRepository,
+  type CmsEntryRow,
+} from "./cms-repository.js";
