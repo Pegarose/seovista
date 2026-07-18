@@ -17,6 +17,7 @@ export {
   type CmsEntryRow,
   type PublishedInsightListRow,
   type PublishedInsightDetail,
+  type AdminInsightListRow,
 } from "./cms-repository.js";
 export { readAdminOverview, type AdminOverview, type OverviewDependencyStatus } from "./admin-overview.js";
 export {

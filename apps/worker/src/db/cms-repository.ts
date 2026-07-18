@@ -30,6 +30,15 @@ export interface PublishedInsightDetail {
   article: Article;
 }
 
+export interface AdminInsightListRow {
+  id: string;
+  slug: string | null;
+  title: string | null;
+  status: string;
+  author_identity: string | null;
+  created_at: Date;
+}
+
 export function createCmsRepository(db: DbClient) {
   return {
     async createEntry(entry: Omit<CmsEntryRow, 'id' | 'publication_status' | 'archived_at' | 'version'>): Promise<CmsEntryRow> {
@@ -139,6 +148,31 @@ export function createCmsRepository(db: DbClient) {
         entry_id: result.rows[0].entry_id as string,
         revision_id: result.rows[0].revision_id as string
       };
+    },
+
+    async getAllInsightsForAdmin(): Promise<AdminInsightListRow[]> {
+      const result = await db.query(
+        `SELECT 
+           e.id,
+           e.slug,
+           (r.content->>'title') as title,
+           e.publication_status as status,
+           r.created_by as author_identity,
+           r.created_at
+         FROM cms_entries e
+         LEFT JOIN cms_revisions r ON e.current_revision_id = r.id
+         WHERE e.collection_name = 'articles'
+           AND e.archived_at IS NULL
+         ORDER BY r.created_at DESC`
+      );
+      return result.rows.map(row => ({
+        id: row.id as string,
+        slug: row.slug as string | null,
+        title: row.title as string | null,
+        status: row.status as string,
+        author_identity: row.author_identity as string | null,
+        created_at: row.created_at as Date,
+      }));
     },
 
     async getPublishedInsights(): Promise<PublishedInsightListRow[]> {
