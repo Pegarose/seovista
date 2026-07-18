@@ -1,4 +1,5 @@
 import type { DbClient } from "./client.js";
+import { type Article, mapEntity, type MapOptions } from "@seovista/content-models";
 
 export interface CmsEntryRow {
   id: string;
@@ -11,6 +12,22 @@ export interface CmsEntryRow {
   publication_status: 'draft' | 'preview' | 'published' | 'private';
   archived_at: Date | null;
   version: number;
+}
+
+export interface PublishedInsightListRow {
+  slug: string;
+  title: string;
+  status: string;
+  published_at: Date;
+}
+
+export interface PublishedInsightDetail {
+  slug: string;
+  title: string;
+  status: string;
+  published_at: Date;
+  blocks: unknown[];
+  article: Article;
 }
 
 export function createCmsRepository(db: DbClient) {
@@ -121,6 +138,65 @@ export function createCmsRepository(db: DbClient) {
       return {
         entry_id: result.rows[0].entry_id as string,
         revision_id: result.rows[0].revision_id as string
+      };
+    },
+
+    async getPublishedInsights(): Promise<PublishedInsightListRow[]> {
+      const result = await db.query(
+        `SELECT 
+           e.slug,
+           (r.content->>'title') as title,
+           e.publication_status as status,
+           r.created_at as published_at
+         FROM cms_entries e
+         JOIN cms_revisions r ON e.published_revision_id = r.id
+         WHERE e.collection_name = 'articles'
+           AND e.publication_status = 'published'
+           AND e.archived_at IS NULL
+         ORDER BY r.created_at DESC`
+      );
+      return result.rows.map(row => ({
+        slug: row.slug as string,
+        title: row.title as string,
+        status: row.status as string,
+        published_at: row.published_at as Date,
+      }));
+    },
+
+    async getPublishedInsightBySlug(slug: string, mapOptions: MapOptions): Promise<PublishedInsightDetail | null> {
+      const result = await db.query(
+        `SELECT 
+           e.slug,
+           e.publication_status as status,
+           r.created_at as published_at,
+           r.content
+         FROM cms_entries e
+         JOIN cms_revisions r ON e.published_revision_id = r.id
+         WHERE e.collection_name = 'articles'
+           AND e.slug = $1
+           AND e.publication_status = 'published'
+           AND e.archived_at IS NULL`,
+        [slug]
+      );
+      
+      const row = result.rows[0];
+      if (!row) return null;
+
+      const rawContent = row.content as any;
+      const parsedBlocks = Array.isArray(rawContent.body) ? rawContent.body : [];
+
+      const mappedEntity = mapEntity(rawContent, mapOptions);
+      if (!mappedEntity.success || mappedEntity.value.kind !== 'article') {
+         throw new Error("Failed to map article entity");
+      }
+
+      return {
+        slug: row.slug as string,
+        title: rawContent.title as string || mappedEntity.value.title || "",
+        status: row.status as string,
+        published_at: row.published_at as Date,
+        blocks: parsedBlocks,
+        article: mappedEntity.value,
       };
     }
   };

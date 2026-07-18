@@ -145,6 +145,9 @@ importers:
       '@seovista/audit-core':
         specifier: workspace:*
         version: link:../../packages/audit-core
+      '@seovista/content-models':
+        specifier: workspace:*
+        version: link:../../packages/content-models
       bullmq:
         specifier: ^5.43.1
         version: 5.80.1

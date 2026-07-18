@@ -15,6 +15,8 @@ export { createCostRepository, type CostRecord } from "./cost.js";
 export {
   createCmsRepository,
   type CmsEntryRow,
+  type PublishedInsightListRow,
+  type PublishedInsightDetail,
 } from "./cms-repository.js";
 export { readAdminOverview, type AdminOverview, type OverviewDependencyStatus } from "./admin-overview.js";
 export {
