@@ -10,6 +10,17 @@ export interface GeoAuditLeadRow {
   created_at: Date;
 }
 
+export interface AdminLeadListRow {
+  id: string;
+  domain: string;
+  brandName: string;
+  primaryMarket: string;
+  workEmail: string | null;
+  marketingConsent: boolean;
+  createdAt: Date;
+  jobStatus: string | null;
+}
+
 export function createGeoAuditRepository(client: DbClient) {
   return {
     async createLead(data: { domain: string; brandName: string; primaryMarket: string }) {
@@ -52,6 +63,12 @@ export function createGeoAuditRepository(client: DbClient) {
         [id]
       );
       return res.rows[0];
+    },
+    async getAllLeadsForAdmin(): Promise<AdminLeadListRow[]> {
+      const res = await client.query<any>(
+        `SELECT l.id, l.domain, l.brand_name as "brandName", l.primary_market as "primaryMarket", l.work_email as "workEmail", l.marketing_consent as "marketingConsent", l.created_at as "createdAt", j.status AS "jobStatus" FROM geo_audit_leads l LEFT JOIN job_records j ON l.id = j.lead_id ORDER BY l.created_at DESC`
+      );
+      return res.rows;
     }
   };
 }
