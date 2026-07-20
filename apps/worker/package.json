@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit",
     "healthcheck": "node dist/healthcheck.js",
     "dev": "node dist/worker.js",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "seed": "tsx src/db/dev-seed.ts"
   },
   "dependencies": {
     "@seovista/audit-core": "workspace:*",

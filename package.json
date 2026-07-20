@@ -36,6 +36,7 @@
     "eslint-plugin-import": "^2.31.0",
     "js-yaml": "^4.1.0",
     "prettier": "^3.5.3",
+    "tsx": "^4.23.1",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.1",
     "vitest": "^3.0.8"
