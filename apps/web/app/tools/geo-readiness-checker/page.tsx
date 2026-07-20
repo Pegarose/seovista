@@ -1,28 +1,116 @@
-import { DisciplineHero } from "../../../src/components/discipline-layout";
-import { CtaLink, UnavailableState } from "../../../src/components/editorial";
-import { JsonLd } from "../../../src/components/json-ld";
-import { checkerPage } from "../../../src/content/site";
-import { buildPageGraph } from "../../../src/lib/jsonld";
-import { pageMetadataFrom } from "../../../src/lib/metadata";
+"use client";
 
-export const metadata = pageMetadataFrom(checkerPage);
+import { useActionState } from "react";
+import { startGeoAuditAction, type ActionState } from "../../../src/lib/geo-checker/actions";
 
-type MethodRow = { id: string; title: string; detail: string };
-const willAssess: MethodRow[] = [
-  { id: "01", title: "Subject & audience clarity", detail: "Whether a page states what it is about and who it is for, without ambiguity." },
-  { id: "02", title: "Attributable claims", detail: "Whether factual claims can be traced to identifiable, primary sources." },
-  { id: "03", title: "Markup ↔ content parity", detail: "Whether structured markup matches the visible content of the page." },
-  { id: "04", title: "Authorship & organisation", detail: "Whether the author and organisation behind the page are transparent." },
-  { id: "05", title: "Crawl & render integrity", detail: "Whether a well-behaved crawler can reach and render the page in full." },
-];
-const willNot: MethodRow[] = [
-  { id: "01", title: "Guarantee inclusion", detail: "No instrument can promise a page will appear in any generative system." },
-  { id: "02", title: "Promise ranking outcomes", detail: "Rankings depend on systems and inputs we do not control." },
-  { id: "03", title: "Fabricate a score", detail: "No number will be invented to make a page look better than it is." },
-];
+const initialState: ActionState = {
+  status: "idle",
+};
 
-function MethodList({ rows }: { rows: MethodRow[] }): React.ReactElement { return <ul className="mt-6 flex flex-col divide-y divide-hairline border-y border-hairline">{rows.map((row) => <li key={row.id + row.title} className="grid grid-cols-[3rem_1fr] items-baseline gap-x-6 py-6"><span className="font-mono text-xs tabular-nums text-muted-ink">{row.id}</span><div><h3 className="font-serif text-xl text-ink">{row.title}</h3><p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-ink">{row.detail}</p></div></li>)}</ul>; }
+export default function GeoReadinessCheckerPage() {
+  const [state, formAction, isPending] = useActionState(startGeoAuditAction, initialState);
 
-export default function GeoReadinessCheckerPage(): React.ReactElement {
-  return <><JsonLd graph={buildPageGraph(checkerPage)} /><main id="main"><article className="bg-paper text-ink"><DisciplineHero number="04·01" displayName="Readiness" accessibleName="GEO Readiness Checker" lede="A brief for a future instrument. It does not accept URLs, does not produce a score, and does not generate a report. There is no submission flow, no score, and no report in the foundation release." capabilities={["Subject & audience clarity", "Attributable claims", "Markup ↔ content parity", "Authorship & organisation", "Crawl & render integrity"]} supportingNote="Non-operational preview. Published so the intent is on the record before the engine is built." inquireTo="/contact/" inquireLabel="Get notified when it goes live" /><section className="mx-auto w-full max-w-7xl px-6 pb-24 md:px-16 md:pb-32"><div className="grid grid-cols-1 gap-16 md:grid-cols-12 md:gap-8"><div className="md:col-span-3"><span className="sticky top-24 block font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink">Method Sheet</span></div><div className="flex flex-col gap-16 md:col-span-9"><section><h2 className="font-sans text-[10px] font-bold uppercase tracking-[0.3em] text-signal-text">What it will assess</h2><MethodList rows={willAssess} /></section><section><h2 className="font-sans text-[10px] font-bold uppercase tracking-[0.3em] text-ember">What it will not do</h2><MethodList rows={willNot} /></section><section><h2 className="font-sans text-[10px] font-bold uppercase tracking-[0.3em] text-muted-ink">Why it is not live yet</h2><p className="mt-4 max-w-2xl font-serif text-xl leading-relaxed text-ink">We would rather publish the brief than ship a demo that pretends to analyse real pages. The instrument goes live when its output is one we would defend in writing.</p></section><div><UnavailableState title="This capability is not operational in the foundation release." description="No user data is being collected on this page. The instrument will announce itself when it is ready." /><div className="mt-8"><CtaLink href="/contact/" variant="secondary">Get notified when it goes live</CtaLink></div></div></div></div></section></article></main></>;
+  return (
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+        <div className="p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              GEO Readiness Checker
+            </h1>
+            <p className="mt-2 text-sm text-gray-500">
+              Find out how well your brand performs across AI Overviews and major Search Engines.
+            </p>
+          </div>
+
+          <form action={formAction} className="space-y-6">
+            {state.errors?.form && (
+              <div className="p-3 bg-red-50 text-red-700 text-sm rounded-md border border-red-200">
+                {state.errors.form.join(", ")}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="domain" className="block text-sm font-medium text-gray-700">
+                Domain URL
+              </label>
+              <div className="mt-1">
+                <input
+                  id="domain"
+                  name="domain"
+                  type="url"
+                  required
+                  placeholder="https://example.com"
+                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
+                />
+              </div>
+              {state.errors?.domain && (
+                <p className="mt-2 text-sm text-red-600">{state.errors.domain.join(", ")}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="brandName" className="block text-sm font-medium text-gray-700">
+                Brand Name
+              </label>
+              <div className="mt-1">
+                <input
+                  id="brandName"
+                  name="brandName"
+                  type="text"
+                  required
+                  placeholder="Acme Corp"
+                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
+                />
+              </div>
+              {state.errors?.brandName && (
+                <p className="mt-2 text-sm text-red-600">{state.errors.brandName.join(", ")}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="primaryMarket" className="block text-sm font-medium text-gray-700">
+                Primary Market
+              </label>
+              <div className="mt-1 relative">
+                <select
+                  id="primaryMarket"
+                  name="primaryMarket"
+                  required
+                  defaultValue=""
+                  className="appearance-none block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-700 transition-colors"
+                >
+                  <option value="" disabled>Select your market</option>
+                  <option value="USA">United States</option>
+                  <option value="UK">United Kingdom</option>
+                  <option value="TR">Turkey</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="GLOBAL">Global</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                  <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
+              </div>
+              {state.errors?.primaryMarket && (
+                <p className="mt-2 text-sm text-red-600">{state.errors.primaryMarket.join(", ")}</p>
+              )}
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {isPending ? "Starting Audit..." : "Start Free Audit"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  );
 }

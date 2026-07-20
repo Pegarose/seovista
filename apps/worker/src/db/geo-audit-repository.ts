@@ -58,8 +58,11 @@ export function createGeoAuditRepository(client: DbClient) {
       return res.rows[0]!.id;
     },
     async getJobRecord(id: string) {
-      const res = await client.query<{ status: string; lead_id: string }>(
-        `SELECT status, lead_id FROM job_records WHERE id = $1`,
+      const res = await client.query<{ status: string; lead_id: string; work_email: string | null }>(
+        `SELECT j.status, j.lead_id, l.work_email 
+         FROM job_records j
+         LEFT JOIN geo_audit_leads l ON j.lead_id = l.id
+         WHERE j.id = $1`,
         [id]
       );
       return res.rows[0];

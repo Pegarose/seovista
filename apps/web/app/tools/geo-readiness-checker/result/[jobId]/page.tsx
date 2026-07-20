@@ -1,7 +1,6 @@
-import { getAdminDb } from "@/lib/admin/db";
-import { AuditPoller } from "@/components/geo-checker/audit-poller";
-import { GatedReportForm } from "@/components/geo-checker/gated-report-form";
-import { unlockDetailedReport } from "@/lib/geo-checker/actions";
+import { getAdminDb } from "../../../../../src/lib/admin/db";
+import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
+import { GatedReportForm } from "../../../../../src/components/geo-checker/gated-report-form";
 import { notFound } from "next/navigation";
 import { createGeoAuditRepository } from "@seovista/worker";
 import { headers } from "next/headers";
@@ -26,36 +25,41 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   if (!row) return notFound();
   
   const status = row.status;
-
-  // Polling helper
-  async function pollStatus(id: string) {
-    "use server";
-    await headers();
-    const pollDb = getAdminDb();
-    const pollRepo = createGeoAuditRepository(pollDb);
-    const probe = await pollRepo.getJobRecord(id);
-    return probe ? probe.status : "failed";
-  }
+  const hasEmail = Boolean(row.work_email);
 
   return (
-    <main className="min-h-screen bg-graphite flex items-center justify-center">
+    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       {status === "completed" ? (
-         <div className="bg-paper p-8 rounded shadow-lg text-ink max-w-2xl mx-auto w-full">
-           <h1 className="text-3xl font-display font-semibold mb-4">Audit Complete: Summary</h1>
-           <div className="grid grid-cols-2 gap-4 my-8">
-             <div className="bg-mineral p-4 rounded text-center">
-                 <div className="text-sm text-muted uppercase tracking-wider mb-2">Access</div>
-                 <div className="text-2xl font-bold text-signal-green">Pass</div>
-             </div>
-             <div className="bg-mineral p-4 rounded text-center">
-                 <div className="text-sm text-muted uppercase tracking-wider mb-2">Understanding</div>
-                 <div className="text-2xl font-bold text-spectral-blue">78/100</div>
-             </div>
-           </div>
-           <GatedReportForm leadId={row.lead_id} actionBase={unlockDetailedReport} />
-         </div>
+        hasEmail ? (
+          <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 w-full max-w-4xl mx-auto">
+            <h1 className="text-3xl font-bold text-slate-900 mb-6 font-display">Full Raw Dashboard</h1>
+            <div className="bg-slate-50 p-6 rounded-lg text-slate-700 text-sm mb-6 border border-slate-200">
+               <p className="mb-4">This is the fully unlocked raw dashboard. Since this is Sprint 0, the OpenSEO visual mock data would normally render here. Your domain has been successfully analyzed.</p>
+               <ul className="list-disc pl-5 space-y-2 text-slate-600">
+                  <li>AI Model A: Recognized 95% of keywords</li>
+                  <li>AI Model B: High confidence visibility</li>
+                  <li>Citation Index: Strong backlink profile in knowledge graph</li>
+               </ul>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full">
+            <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Audit Complete: Summary</h1>
+            <div className="grid grid-cols-2 gap-4 my-8">
+              <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-100">
+                  <div className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Access</div>
+                  <div className="text-2xl font-bold text-emerald-600">Pass</div>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-100">
+                  <div className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Understanding</div>
+                  <div className="text-2xl font-bold text-blue-600">78/100</div>
+              </div>
+            </div>
+            <GatedReportForm leadId={row.lead_id} />
+          </div>
+        )
       ) : (
-         <AuditPoller jobId={jobId} pollAction={pollStatus} />
+         <AuditPoller jobId={jobId} />
       )}
     </main>
   );

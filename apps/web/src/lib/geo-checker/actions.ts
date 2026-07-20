@@ -1,81 +1,124 @@
-// apps/web/src/lib/geo-checker/actions.ts
-"use server";
+import "server-only";
 
 import { z } from "zod";
-import { getAdminDb } from "../admin/db"; // safe execution context db
+import { redirect } from "next/navigation";
+import { getAdminDb } from "../admin/db";
 import { createGeoAuditRepository } from "@seovista/worker";
-import { Queue } from "bullmq";
 
-const AuditInputSchema = z.object({
-  domain: z.string().url(), // Basic structure validation
-  brandName: z.string().min(1).max(100),
-  primaryMarket: z.string().min(2).max(50),
+// Ensure schema handles edge cases matching user specifications.
+const GeoAuditFormSchema = z.object({
+  domain: z
+    .string()
+    .url("Must be a valid URL")
+    .min(1, "Domain is required"),
+  brandName: z
+    .string()
+    .min(3, "Brand Name must be greater than 2 characters"),
+  primaryMarket: z
+    .string()
+    .min(1, "Primary Market is required"),
 });
 
-export async function startGeoAudit(formData: FormData): Promise<{ jobId?: string; error?: string }> {
-  const result = AuditInputSchema.safeParse({
-    domain: formData.get("domain"),
-    brandName: formData.get("brandName"),
-    primaryMarket: formData.get("primaryMarket"),
-  });
+export type ActionState = {
+  status: "idle" | "error" | "validating";
+  errors?: {
+    domain?: string[];
+    brandName?: string[];
+    primaryMarket?: string[];
+    form?: string[];
+  };
+};
 
-  if (!result.success) {
-    return { error: "Invalid form input." };
+export async function startGeoAuditAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const rawData = {
+    domain: formData.get("domain")?.toString() ?? "",
+    brandName: formData.get("brandName")?.toString() ?? "",
+    primaryMarket: formData.get("primaryMarket")?.toString() ?? "",
+  };
+
+  const validatedFields = GeoAuditFormSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      status: "error",
+      errors: validatedFields.error.flatten().fieldErrors,
+    };
   }
 
+  const { domain, brandName, primaryMarket } = validatedFields.data;
   const db = getAdminDb();
-  let jobId: string;
-  try {
-     // Transaction wrapping creating the lead and the job record
-     await db.transaction(async (tx) => {
-        const _client = {
-          query: tx.query.bind(tx),
-          transaction: db.transaction.bind(db),
-          close: db.close.bind(db)
-        };
-        const repo = createGeoAuditRepository(_client);
-        
-        const lead = await repo.createLead({
-          domain: result.data.domain,
-          brandName: result.data.brandName,
-          primaryMarket: result.data.primaryMarket,
-        });
+  const repo = createGeoAuditRepository(db);
 
-        jobId = await repo.createJobRecord({
-          target: result.data.domain,
-          service: "geo_readiness_checker",
-          status: "queued",
-          leadId: lead.id,
-        });
-        
-        // Push actual task to BullMQ for the worker to process
-        // Using url format for ConnectionOptions
-        const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:56379";
-        const geoQueue = new Queue("geo_readiness_jobs", { connection: { url: REDIS_URL } });
-        await geoQueue.add("process_geo", { jobId, url: result.data.domain });
-        await geoQueue.close();
-     });
-  } catch (err) {
-    console.error("Geo audit action error:", err);
-    return { error: "Could not provision job. Internal network error." };
+  try {
+    const lead = await repo.createLead({
+      domain,
+      brandName,
+      primaryMarket,
+    });
+
+    const jobId = await repo.createJobRecord({
+      target: lead.domain,
+      service: "geo_audit",
+      status: "queued",
+      leadId: lead.id,
+    });
+
+    // Assume BullMQ worker catches this dynamically if configured to read 'queued' status on job_records, 
+    // or trigger explicit event queue processing here if required, though task says:
+    // "Trigger background BullMQ event theoretically OR just assume the background worker catches "queued" records dynamically."
+
+    // Redirect uses returning action block natively inside standard next actions handling, but since this executes server-side:
+    // we use `redirect` here.
+    return redirect(`/tools/geo-readiness-checker/result/${jobId}`);
+  } catch (error) {
+    console.error("Geo audit start error:", error);
+    return {
+      status: "error",
+      errors: {
+        form: ["Failed to start audit due to a system error. Please try again later."],
+      },
+    };
   }
-  
-  return { jobId: jobId! };
 }
 
-export async function unlockDetailedReport(_prev: any, formData: FormData) {
-  const email = formData.get("email") as string;
-  const consent = formData.get("consent") === "true";
-  const leadId = formData.get("leadId") as string;
-
-  if (!email || !email.includes("@")) return { error: "Please provide a valid work email." };
+export async function checkJobStatusAction(jobId: string) {
+  "use server";
+  
+  const db = getAdminDb();
+  const repo = createGeoAuditRepository(db);
 
   try {
-    const db = getAdminDb();
-    const repo = createGeoAuditRepository(db);
+    const job = await repo.getJobRecord(jobId);
+    return { success: true, data: job };
+  } catch (error) {
+    console.error("Failed to check job status", error);
+    return { success: false, error: "Failed to check job status" };
+  }
+}
+
+export async function unlockDetailedReport(_prev: any, formData: FormData): Promise<{ success?: boolean; error?: string }> {
+  "use server";
+  
+  // Actually update lead marketing data since this is the gated form handler
+  const leadId = formData.get("leadId")?.toString();
+  const email = formData.get("email")?.toString();
+  const consent = formData.get("consent") === "true";
+  
+  if (!leadId || !email) {
+    return { error: "Missing required fields" };
+  }
+  
+  const db = getAdminDb();
+  const repo = createGeoAuditRepository(db);
+  
+  try {
     await repo.updateLeadEmail(leadId, email, consent);
     return { success: true };
   } catch (err) {
-    return { error: "Database error assigning lead." };
+    console.error("Failed to unlock report", err);
+    return { error: "Failed to update lead information. Please try again." };
   }
 }
