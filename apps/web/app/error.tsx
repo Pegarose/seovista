@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Container, Section, Button, Link } from "@seovista/ui";
+import { captureException } from "../src/lib/error-capture";
 
 export default function ErrorPage({
   error,
@@ -11,8 +12,7 @@ export default function ErrorPage({
   reset: () => void;
 }): React.ReactElement {
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.error(error);
+    captureException(error, { digest: error.digest });
   }, [error]);
 
   return (

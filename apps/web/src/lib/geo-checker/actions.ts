@@ -10,7 +10,23 @@ const GeoAuditFormSchema = z.object({
   domain: z
     .string()
     .url("Must be a valid URL")
-    .min(1, "Domain is required"),
+    .min(1, "Domain is required")
+    .refine(
+      (val) => {
+        try {
+          const hostname = new URL(val).hostname.toLowerCase();
+          
+          if (["localhost", "127.0.0.1", "0.0.0.0"].includes(hostname)) return false;
+          if (hostname.startsWith("10.") || hostname.startsWith("192.168.") || hostname.startsWith("172.16.")) return false;
+          if (hostname.endsWith(".local") || hostname.endsWith(".internal") || hostname.endsWith(".corp")) return false;
+          
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid target. Internal domains are strictly prohibited." }
+    ),
   brandName: z
     .string()
     .min(3, "Brand Name must be greater than 2 characters"),
