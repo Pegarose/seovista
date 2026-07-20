@@ -28,9 +28,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       };
     }
 
+    let descriptionObj = insight.article.description || "";
+    if (!descriptionObj) {
+        if (insight.blocks && insight.blocks.length > 0) {
+            const firstBlock = insight.blocks[0] as any;
+            if (firstBlock.type === 'paragraph' && firstBlock.data?.text) {
+                // Remove HTML tags for clean description
+                const cleanText = firstBlock.data.text.replace(/<[^>]*>?/gm, '');
+                descriptionObj = cleanText.substring(0, 160) + (cleanText.length > 160 ? "..." : "");
+            }
+        }
+        if (!descriptionObj) {
+            descriptionObj = `Read ${insight.title} on SeoVista.`;
+        }
+    }
+
     return {
       title: `${insight.title} | Insights | SeoVista`,
-      // Additional metadata can be added here if needed based on insight
+      description: descriptionObj,
+      openGraph: {
+        title: insight.title,
+        type: 'article',
+        publishedTime: insight.published_at.toISOString(),
+      }
     };
   } catch (error) {
     return {
@@ -60,8 +80,27 @@ export default async function InsightPage({ params }: PageProps) {
     notFound();
   }
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: insight.title,
+    datePublished: insight.published_at.toISOString(),
+    author: {
+      "@type": "Person",
+      name: insight.article.author
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "SeoVista"
+    }
+  };
+
   return (
     <main className="insight-page-container mx-auto max-w-4xl px-4 py-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <h1 className="text-4xl font-bold mb-8">{insight.title}</h1>
       <article className="insight-content">
         <BlockRenderer blocks={insight.blocks as any} />
