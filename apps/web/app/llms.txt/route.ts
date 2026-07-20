@@ -1,29 +1,43 @@
-import { NextResponse } from "next/server";
-import { buildLlmsTxt } from "@seovista/seo-core";
-import { publicLlmsContent, siteUrl } from "../../src/content/site";
+import { NextResponse } from 'next/server';
+import { getAdminDb } from '../../src/lib/admin/db';
+import { createCmsRepository } from '@seovista/worker';
 
-const securityHeaders = {
-  "Content-Type": "text/plain; charset=utf-8",
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-};
+export async function GET() {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3101';
 
-export function buildLlmsBody(): string {
-  return buildLlmsTxt({
-    siteUrl,
-    description:
-      "SeoVista is a foundation-stage editorial intelligence lab for generative engine optimization and search visibility. This site is informational and does not claim ranking-factor benefits or promised inclusion in AI models.",
-    resources: publicLlmsContent().map((page) => ({
-      title: page.title,
-      url: page.canonical.absolute,
-    })),
+  let insightsMarkdown = '';
+  try {
+    const repo = createCmsRepository(getAdminDb());
+    const insights = await repo.getPublishedInsights();
+
+    insightsMarkdown = insights
+      .map(
+        (insight) =>
+          `- [${insight.title}](${baseUrl}/insights/${insight.slug})`
+      )
+      .join('\n');
+  } catch (error) {
+    console.error('Error fetching insights for llms.txt:', error);
+  }
+
+  const markdownContent = `# SeoVista - Global GEO & Search Visibility Website
+
+> Visibility is earned, not engineered. SeoVista is an editorial intelligence lab focused on Generative Engine Optimization, traditional SEO, and digital authority.
+
+## Core Properties
+- [Homepage](${baseUrl}/)
+- [About Us](${baseUrl}/about/)
+- [GEO Services](${baseUrl}/geo/)
+- [SEO Services](${baseUrl}/seo/)
+- [GEO Readiness Checker Tool](${baseUrl}/tools/geo-readiness-checker/)
+
+## Published Labs & Insights
+${insightsMarkdown}
+`;
+
+  return new NextResponse(markdownContent, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+    },
   });
-}
-
-export function GET(): NextResponse {
-  return new NextResponse(buildLlmsBody(), { headers: securityHeaders });
-}
-
-export function HEAD(): NextResponse {
-  return new NextResponse(null, { headers: securityHeaders });
 }
