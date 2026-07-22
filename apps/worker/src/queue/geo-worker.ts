@@ -1,6 +1,7 @@
 import { Worker, type Job } from "bullmq";
 import { createDbClient } from "../db/client.js";
 import { ScoringEngine, type ScoreContext } from "@seovista/geo-engine";
+import { fetchAndParseUrl } from "../utils/fetcher.js";
 
 // Helper to parse redis url for bullmq
 function parseRedisUrl(redisUrl: string | undefined): { host: string; port: number } {
@@ -37,25 +38,14 @@ export function startGeoWorker() {
       try {
         await db.query(`UPDATE job_records SET status = 'running', updated_at = now() WHERE id = $1`, [jobId]);
 
-        // Mock a parsed page for the internal scoring engine
-        const mockParsedPage = {
-          statusCode: 200,
-          headers: {},
-          title: "Mock Title for " + url,
-          metaDescription: "Mock Description",
-          headings: [{ level: 1, text: "Mock Heading 1" }],
-          links: [],
-          images: [],
-          jsonLd: [],
-          rawHtml: "<html><body><h1>Mock Heading 1</h1></body></html>",
-          textContent: "Mock Heading 1",
-        };
+        // Actually fetch and parse the page
+        const parsedPage = await fetchAndParseUrl(url);
 
         const scoreContext: ScoreContext = {
           tenantId: "worker-tenant",
           url: url,
           normalizedUrl: url,
-          parsed: mockParsedPage,
+          parsed: parsedPage,
         };
 
         const data = await engine.scorePage(scoreContext, Date.now());
