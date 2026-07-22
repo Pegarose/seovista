@@ -1,5 +1,6 @@
 import { Worker, type Job } from "bullmq";
 import { createDbClient } from "../db/client.js";
+import { ScoringEngine, type ScoreContext } from "@seovista/geo-engine";
 
 // Helper to parse redis url for bullmq
 function parseRedisUrl(redisUrl: string | undefined): { host: string; port: number } {
@@ -26,6 +27,7 @@ export function startGeoWorker() {
   }
   
   const db = createDbClient({ connectionString: process.env.DATABASE_URL, max: 2 });
+  const engine = new ScoringEngine();
 
   const worker = new Worker(
     "geo_readiness_jobs",
@@ -35,42 +37,46 @@ export function startGeoWorker() {
       try {
         await db.query(`UPDATE job_records SET status = 'running', updated_at = now() WHERE id = $1`, [jobId]);
 
-        // Use environment variables for API configuration
-        const gseoApiUrl = process.env.GSEO_API_URL || "http://localhost:3001/api/v1";
-        const gseoApiKey = process.env.GSEO_API_KEY || "";
+        // Mock a parsed page for the internal scoring engine
+        const mockParsedPage = {
+          statusCode: 200,
+          headers: {},
+          title: "Mock Title for " + url,
+          metaDescription: "Mock Description",
+          headings: [{ level: 1, text: "Mock Heading 1" }],
+          links: [],
+          images: [],
+          jsonLd: [],
+          rawHtml: "<html><body><h1>Mock Heading 1</h1></body></html>",
+          textContent: "Mock Heading 1",
+        };
 
-        let response;
-        try {
-          response = await fetch(`${gseoApiUrl}/score/url`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${gseoApiKey}`,
-            },
-            body: JSON.stringify({ url }), // Send URL in JSON body
-          });
-        } catch (fetchError) {
-           throw new Error(`Failed to reach GSeoSuite scoring API: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
-        }
+        const scoreContext: ScoreContext = {
+          tenantId: "worker-tenant",
+          url: url,
+          normalizedUrl: url,
+          parsed: mockParsedPage,
+        };
 
-        if (!response.ok) {
-          if (response.status === 429) {
-            throw new Error("Rate limit exceeded from GSeoSuite scoring API");
-          }
-          throw new Error(`GSeoSuite scoring API error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await engine.scorePage(scoreContext, Date.now());
 
         // Safe access to the data structure
-        const overallScore = data.score ?? data.overall ?? 0;
-        const accessScore = data.indexability ?? data.scores?.access ?? 0;
-        const understandingScore = data.understanding ?? data.scores?.understanding ?? 0;
-        const evidenceScore = data.evidence ?? data.scores?.evidence ?? 0;
-        const issues = data.overall_issues ?? data.issues ?? [];
+        const overallScore = data.finalScore ?? 0;
+        
+        let accessScore = 0;
+        let understandingScore = 0;
+        let evidenceScore = 0;
+        
+        for (const mod of data.modules) {
+          if (mod.key === 'indexability') accessScore = mod.score;
+          if (mod.key === 'semantic' || mod.key === 'content') understandingScore += mod.score / 2; // rough estimation if needed
+          if (mod.key === 'evidence' || mod.key === 'experience') evidenceScore = mod.score;
+        }
+
+        const issues = data.topIssues ?? [];
 
         const mockJsonBResult = JSON.stringify({
-          methodologyVersion: "v1.0",
+          methodologyVersion: data.scoreVersion || "v1.1",
           auditedAt: new Date().toISOString(),
           target: url,
           scores: {

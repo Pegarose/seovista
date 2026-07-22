@@ -9,6 +9,10 @@ export type {
   ScoringConfiguration,
 } from "./types.js";
 
+export type { ScoreContext, ParsedPage } from "./types.js";
+export type { ScoreOutput } from "./engine.js";
+export { ScoringEngine } from "./engine.js";
+
 export { defaultScoringConfiguration, defaultLimitations, getScoringConfiguration } from "./scoring.js";
 
 export { parseGeoReadinessResult, GeoReadinessValidationError } from "./result.js";
