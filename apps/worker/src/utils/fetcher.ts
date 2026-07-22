@@ -59,37 +59,12 @@ async function validateSSRF(urlString: string): Promise<void> {
 }
 
 /**
- * Fetches the HTML content of a given URL and parses it into the structure expected by the Geo-Engine.
- * 
- * @param targetUrl The URL of the page to fetch and analyze.
- * @returns A Promise resolving to a strongly-typed `ParsedPage`.
+ * Helper function to parse HTML string into ParsedPage using Cheerio.
  */
-export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
-  // 1. Validate against SSRF
-  await validateSSRF(targetUrl);
-
+function parseHtmlToParsedPage(rawHtml: string, targetUrl: string, statusCode: number = 200, headers: Record<string, string> = {}): ParsedPage {
   const requestUrl = new URL(targetUrl);
   const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
 
-  // 2. Execute GET Request
-  const response = await fetch(requestUrl.toString(), {
-    headers: {
-      "User-Agent": "SeoVista Crawler/1.0",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.5"
-    }
-  });
-
-  const rawHtml = await response.text();
-  const statusCode = response.status;
-  
-  // Convert Headers object to plain Record
-  const headersRecord: Record<string, string> = {};
-  response.headers.forEach((value, key) => {
-    headersRecord[key.toLowerCase()] = value;
-  });
-
-  // 3. Parse HTML
   const $ = cheerio.load(rawHtml);
   
   // Title
@@ -176,7 +151,7 @@ export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
                   jsonLd.push(parsed);
               }
           }
-      } catch (err) {
+      } catch {
           // Ignore invalid JSON
       }
   });
@@ -202,7 +177,6 @@ export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
   });
 
   // Text Content (extract text of body without script/style tags)
-  // Create a copy of the body to strip tags off safely 
   const bodyClone = $("body").clone();
   bodyClone.find("script, style, noscript, iframe, svg").remove();
   const textContent = bodyClone.text().replace(/\s+/g, ' ').trim();
@@ -210,7 +184,7 @@ export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
   // Construct return object avoiding undefined assignments for exactOptionalPropertyTypes
   const parsedPage: ParsedPage = {
     statusCode,
-    headers: headersRecord,
+    headers,
     metaRobots,
     headings,
     links,
@@ -232,3 +206,143 @@ export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
 
   return parsedPage;
 }
+
+/**
+ * Checks whether raw HTML looks like a Client-Side Rendered (CSR) / SPA shell.
+ * E.g., minimal body text, root div without content, or typical React/Angular bundle scripts with empty root.
+ */
+function isJsBundleRendering(rawHtml: string, parsed: ParsedPage): boolean {
+  // If body has very little text content (e.g. <div id="root"></div> without pre-rendered elements)
+  // or contains root/app elements with zero headings and minimal text
+  const textLength = parsed.textContent.length;
+
+  const $ = cheerio.load(rawHtml);
+  const hasAppShell = $("#root, #app, #__next, app-root").length > 0;
+
+  if (hasAppShell && textLength < 150) {
+    return true;
+  }
+
+  // Also check if text content is extremely short (< 50 chars) and JS bundle scripts exist
+  const scriptCount = $("script[src]").length;
+  if (textLength < 50 && scriptCount > 0) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Fetches rendered HTML from Browseract.com API.
+ */
+async function fetchViaBrowseract(targetUrl: string, apiKey: string): Promise<string> {
+  const browseractUrl = process.env.BROWSERACT_API_URL || "https://api.browseract.com/v1/render";
+
+  const response = await fetch(browseractUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "X-API-Key": apiKey
+    },
+    body: JSON.stringify({
+      url: targetUrl,
+      render: true,
+      wait_until: "networkidle"
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Browseract API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json() as any;
+  // Browseract can return { html: "..." } or { data: { html: "..." } } or raw text depending on response structure
+  if (typeof data === "string") {
+    return data;
+  }
+  if (data?.html) {
+    return data.html;
+  }
+  if (data?.data?.html) {
+    return data.data.html;
+  }
+  if (data?.content) {
+    return data.content;
+  }
+
+  throw new Error("Browseract API response did not contain HTML content");
+}
+
+/**
+ * Standard Cheerio network fetch.
+ */
+async function fetchViaCheerio(targetUrl: string): Promise<{ rawHtml: string; statusCode: number; headers: Record<string, string> }> {
+  const requestUrl = new URL(targetUrl);
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      "User-Agent": "SeoVista Crawler/1.0",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5"
+    }
+  });
+
+  const rawHtml = await response.text();
+  const statusCode = response.status;
+  
+  const headersRecord: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    headersRecord[key.toLowerCase()] = value;
+  });
+
+  return { rawHtml, statusCode, headers: headersRecord };
+}
+
+/**
+ * Fetches the HTML content of a given URL and parses it into the structure expected by the Geo-Engine.
+ * 
+ * First validates against SSRF.
+ * If BROWSERACT_API_KEY is configured:
+ *   - Attempts headless SPA rendering via Browseract API.
+ *   - If Browseract rate limits or fails, falls back to standard HTTP/Cheerio fetch.
+ *   - If Browseract is skipped initially, performs Cheerio fetch, and if it looks like a JS bundle rendering, retries with Browseract.
+ * If BROWSERACT_API_KEY is not set or fails:
+ *   - Performs standard HTTP/Cheerio fetch.
+ * 
+ * @param targetUrl The URL of the page to fetch and analyze.
+ * @returns A Promise resolving to a strongly-typed `ParsedPage`.
+ */
+export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
+  // 1. Validate against SSRF
+  await validateSSRF(targetUrl);
+
+  const apiKey = process.env.BROWSERACT_API_KEY;
+
+  if (apiKey && apiKey !== "your_key_here") {
+    try {
+      // Primary: Headfull engine via Browseract POST request
+      const rawHtml = await fetchViaBrowseract(targetUrl, apiKey);
+      const parsed = parseHtmlToParsedPage(rawHtml, targetUrl);
+      return parsed;
+    } catch (browseractError) {
+      console.warn(`Browseract engine failed or rate limited, falling back to Cheerio: ${(browseractError as Error).message}`);
+    }
+  }
+
+  // Fallback or default path: Cheerio fetch
+  const cheerioResult = await fetchViaCheerio(targetUrl);
+  let parsed = parseHtmlToParsedPage(cheerioResult.rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
+
+  // Secondary check: if Cheerio succeeded but output looks like JS bundle rendering and API key is present, try Browseract
+  if (apiKey && apiKey !== "your_key_here" && isJsBundleRendering(cheerioResult.rawHtml, parsed)) {
+    try {
+      const rawHtml = await fetchViaBrowseract(targetUrl, apiKey);
+      parsed = parseHtmlToParsedPage(rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
+    } catch (browseractError) {
+      console.warn(`Browseract retry for JS bundle failed: ${(browseractError as Error).message}`);
+    }
+  }
+
+  return parsed;
+}
+
