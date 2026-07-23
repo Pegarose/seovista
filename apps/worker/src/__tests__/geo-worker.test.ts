@@ -43,6 +43,7 @@ describe("geo-worker", () => {
     // so the test never depends on live external provider traffic or credentials.
     delete process.env.BROWSERACT_API_KEY;
     delete process.env.NEURONWRITER_API_KEY;
+    delete process.env.CREW_AGENCY_API_KEY;
     queueName = `geo_readiness_jobs_${env.projectId}`;
 
     queue = new Queue(queueName, {
@@ -138,5 +139,72 @@ describe("geo-worker", () => {
 
     const errorDetails = await waitForJobStatus(env.db, jobIdInDb);
     expect(errorDetails).toBe("failed");
+  });
+
+  it("notifies Crew Agency when CREW_AGENCY_API_KEY is configured and score is low", async () => {
+    process.env.CREW_AGENCY_API_KEY = "test_crew_api_key";
+
+    // Build intentionally minimal/weak HTML so the engine produces a low score
+    const weakHtml =
+      "<!doctype html><html><head><title>Weak Page</title></head>" +
+      "<body><div id='root'></div></body></html>";
+
+    const crewPayloads: unknown[] = [];
+
+    const fetchMock = vi.fn().mockImplementation(async (url, options) => {
+      if (typeof url === "string" && url.includes("crew.tr4.net")) {
+        crewPayloads.push(JSON.parse(options.body));
+        return { ok: true, status: 200, statusText: "OK" };
+      }
+      // Cheerio fallback for the page fetch
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => weakHtml,
+        json: async () => ({}),
+        headers: { forEach: () => undefined },
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    worker = startGeoWorker({ queueName });
+
+    const res = await env.db.query(
+      `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      ["geo-test-job-identity-low", queueName, "queued", "https://example.com", "geo-test-corr-id-low"]
+    );
+    const jobIdInDb = res.rows[0]?.id;
+
+    await queue.add("geo_score", {
+      jobId: jobIdInDb,
+      url: "https://example.com",
+    });
+
+    const actualStatus = await waitForJobStatus(env.db, jobIdInDb);
+    expect(actualStatus).toBe("completed");
+
+    expect(crewPayloads).toHaveLength(1);
+    const payload = crewPayloads[0] as {
+      url: string;
+      brand: string;
+      score: number;
+      proposalTrigger: boolean;
+      lowScores: Record<string, number>;
+      topIssues: Array<unknown>;
+      correlationId: string;
+      jobIdentity: string;
+      resultId: string;
+    };
+    expect(payload.url).toBe("https://example.com");
+    expect(payload.brand).toBe("example.com");
+    expect(typeof payload.score).toBe("number");
+    expect(payload.proposalTrigger).toBe(true);
+    expect(payload.lowScores).toBeTruthy();
+    expect(payload.topIssues).toBeInstanceOf(Array);
+    expect(payload.correlationId).toBe("geo-test-corr-id-low");
+    expect(payload.jobIdentity).toBe("geo-test-job-identity-low");
+    expect(payload.resultId).toBeTruthy();
   });
 });

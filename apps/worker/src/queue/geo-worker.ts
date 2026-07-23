@@ -3,6 +3,20 @@ import { createDbClient } from "../db/client.js";
 import { ScoringEngine, type ScoreContext } from "@seovista/geo-engine";
 import { fetchAndParseUrl } from "../utils/fetcher.js";
 
+export interface CrewAgencyPayload {
+  url: string;
+  brand: string;
+  score: number;
+  scoreBand: string;
+  lowScores: Record<string, number>;
+  topIssues: Array<{ code: string; title: string; severity: string }>;
+  proposalTrigger: boolean;
+  correlationId: string;
+  jobIdentity: string;
+  resultId: string;
+  analysisSummary: string;
+}
+
 // Helper to parse redis url for bullmq
 function parseRedisUrl(redisUrl: string | undefined): { host: string; port: number } {
   if (!redisUrl) {
@@ -118,6 +132,32 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         
         await db.query(`UPDATE job_records SET status = 'completed', result_id = $2, completed_at = now(), updated_at = now() WHERE id = $1`, [jobId, resultId]);
 
+        // Fire Crew Agency webhook immediately after DB update completes
+        await notifyCrewAgency({
+          url,
+          brand: extractBrandFromUrl(url),
+          score: overallScore,
+          scoreBand: data.scoreBand,
+          lowScores: {
+            access: accessScore,
+            understanding: understandingScore,
+            evidence: evidenceScore,
+          },
+          topIssues: issues.slice(0, 5).map((issue) => ({
+            code: issue.code,
+            title: issue.title,
+            severity: issue.severity,
+          })),
+          proposalTrigger: overallScore < 60 || data.scoreBand === 'critical' || data.scoreBand === 'poor',
+          correlationId: correlation_id,
+          jobIdentity: job_identity,
+          resultId: resultId,
+          analysisSummary: buildAnalysisSummary(url, overallScore, data.scoreBand, issues),
+        }).catch((notifyErr) => {
+          // Webhook failures must not fail the geo job; log and continue
+          console.error("Crew Agency notification failed:", notifyErr);
+        });
+
       } catch (err) {
         console.error("Worker failed job:", err);
         await db.query(`UPDATE job_records SET status = 'failed', updated_at = now() WHERE id = $1`, [jobId]);
@@ -133,4 +173,66 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
   });
   
   return worker;
+}
+
+function extractBrandFromUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function buildAnalysisSummary(
+  url: string,
+  score: number,
+  scoreBand: string,
+  issues: Array<{ code: string; title: string; severity: string }>
+): string {
+  const summaryLines = [
+    `SeoVista GEO analysis completed for ${url}`,
+    `Overall score: ${score} (${scoreBand})`,
+  ];
+
+  if (issues.length > 0) {
+    summaryLines.push(`Top issues: ${issues.slice(0, 3).map((i) => i.title).join("; ")}`);
+  }
+
+  return summaryLines.join(". ");
+}
+
+function buildCrewAgencyUrl(): string {
+  const baseUrl = process.env.CREW_AGENCY_API_URL ?? "https://crew.tr4.net/api";
+  return `${baseUrl.replace(/\/$/, "")}/teklif-yaz`;
+}
+
+function resolveCrewAgencyApiKey(): string | undefined {
+  return process.env.CREW_AGENCY_API_KEY;
+}
+
+async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
+  const apiKey = resolveCrewAgencyApiKey();
+  if (!apiKey) {
+    console.warn("CREW_AGENCY_API_KEY is not configured; skipping Crew Agency notification");
+    return;
+  }
+
+  const targetUrl = buildCrewAgencyUrl();
+
+  const response = await fetch(targetUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "X-API-Key": apiKey,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Crew Agency notification failed: ${response.status} ${response.statusText}`);
+  }
+
+  console.log(`Crew Agency notification sent to ${targetUrl} for ${payload.url}`);
 }
