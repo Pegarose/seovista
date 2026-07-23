@@ -203,8 +203,11 @@ function buildAnalysisSummary(
 }
 
 function buildCrewAgencyUrl(): string {
-  const baseUrl = process.env.CREW_AGENCY_API_URL ?? "https://crew.tr4.net/api";
-  return `${baseUrl.replace(/\/$/, "")}/teklif-yaz`;
+  const baseUrl = (process.env.CREW_AGENCY_API_URL ?? "https://crew.tr4.net/api").replace(/\/$/, "");
+  // Ensure the path always includes `/api` before `/teklif-yaz`.
+  // Handles both `http://crew.tr4.net` and `http://crew.tr4.net/api`.
+  const withApi = /\/api$/.test(baseUrl) ? baseUrl : `${baseUrl}/api`;
+  return `${withApi}/teklif-yaz`;
 }
 
 function resolveCrewAgencyApiKey(): string | undefined {
@@ -220,6 +223,20 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
 
   const targetUrl = buildCrewAgencyUrl();
 
+  // Map internal analysis data to the Crew Agency API's expected payload format.
+  // The API is async: POST returns a job_id immediately, results are fetched via
+  // GET /api/jobs/{job_id}. We fire-and-forget but log job_id for tracking.
+  const topIssuesText = payload.topIssues
+    .slice(0, 3)
+    .map((issue) => issue.title)
+    .join(", ");
+
+  const apiPayload = {
+    musteri_ihtiyaci: `GEO visibility analysis for ${payload.url}: Score ${payload.score}/100 (${payload.scoreBand}). Critical issues: ${topIssuesText || "none"}. Needs SEO/AEO improvement services.`,
+    brand_context: `SeoVista analysis for ${payload.brand}: Overall score ${payload.score}, issues detected: ${payload.analysisSummary}`,
+    dil: "tr",
+  };
+
   const response = await fetch(targetUrl, {
     method: "POST",
     headers: {
@@ -227,11 +244,21 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
       "Authorization": `Bearer ${apiKey}`,
       "X-API-Key": apiKey,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(apiPayload),
   });
 
   if (!response.ok) {
     throw new Error(`Crew Agency notification failed: ${response.status} ${response.statusText}`);
+  }
+
+  // The API returns { "job_id": "<uuid>" } for the async job. Log it for tracking.
+  try {
+    const responseBody = await response.json() as { job_id?: string };
+    if (responseBody.job_id) {
+      console.log("Crew Agency job started:", responseBody.job_id);
+    }
+  } catch {
+    // Response wasn't JSON or didn't contain job_id; non-fatal.
   }
 
   console.log(`Crew Agency notification sent to ${targetUrl} for ${payload.url}`);

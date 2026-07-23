@@ -233,45 +233,114 @@ function isJsBundleRendering(rawHtml: string, parsed: ParsedPage): boolean {
 }
 
 /**
- * Fetches rendered HTML from Browseract.com API.
+ * Fetches rendered HTML from the Browseract.com workflow API (v2).
+ *
+ * Browseract is a workflow-based system. The flow is:
+ *   1. POST /v2/workflow/run-task  -> starts a task, returns { id }
+ *   2. GET  /v2/workflow/get-task-status?task_id=xxx  -> poll until "finished"
+ *   3. GET  /v2/workflow/get-task?task_id=xxx         -> retrieve output.string (rendered HTML)
+ *
+ * Requires both BROWSERACT_API_KEY and BROWSERACT_WORKFLOW_ID env vars.
  */
 async function fetchViaBrowseract(targetUrl: string, apiKey: string): Promise<string> {
-  const browseractUrl = process.env.BROWSERACT_API_URL || "https://api.browseract.com/v1/render";
+  const workflowId = process.env.BROWSERACT_WORKFLOW_ID;
+  if (!workflowId) {
+    throw new Error("Browseract skipped: BROWSERACT_WORKFLOW_ID is not set");
+  }
 
-  const response = await fetch(browseractUrl, {
+  const baseUrl = (process.env.BROWSERACT_API_URL || "https://api.browseract.com/v2").replace(/\/$/, "");
+  const authHeaders = {
+    "Authorization": `Bearer ${apiKey}`,
+    "Content-Type": "application/json"
+  };
+
+  // 1. Start the task
+  const runResponse = await fetch(`${baseUrl}/workflow/run-task`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-      "X-API-Key": apiKey
-    },
+    headers: authHeaders,
     body: JSON.stringify({
-      url: targetUrl,
-      render: true,
-      wait_until: "networkidle"
+      workflow_id: workflowId,
+      input_parameters: [
+        { name: "url", value: targetUrl }
+      ]
     })
   });
 
-  if (!response.ok) {
-    throw new Error(`Browseract API error: ${response.status} ${response.statusText}`);
+  if (!runResponse.ok) {
+    const errText = await runResponse.text().catch(() => "");
+    throw new Error(`Browseract run-task error: ${runResponse.status} ${runResponse.statusText}${errText ? ` - ${errText}` : ""}`);
   }
 
-  const data = await response.json() as any;
-  // Browseract can return { html: "..." } or { data: { html: "..." } } or raw text depending on response structure
-  if (typeof data === "string") {
-    return data;
-  }
-  if (data?.html) {
-    return data.html;
-  }
-  if (data?.data?.html) {
-    return data.data.html;
-  }
-  if (data?.content) {
-    return data.content;
+  const runData = await runResponse.json() as { id?: string };
+  const taskId = runData.id;
+  if (!taskId) {
+    throw new Error("Browseract run-task response did not contain a task id");
   }
 
-  throw new Error("Browseract API response did not contain HTML content");
+  // 2. Poll for status every 5s, max 120s
+  const pollIntervalMs = 5000;
+  const maxPollMs = 120000;
+  const startedAt = Date.now();
+  let status: string = "running";
+
+  while (Date.now() - startedAt < maxPollMs) {
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+
+    const statusResponse = await fetch(
+      `${baseUrl}/workflow/get-task-status?task_id=${encodeURIComponent(taskId)}`,
+      { method: "GET", headers: authHeaders }
+    );
+
+    if (!statusResponse.ok) {
+      const errText = await statusResponse.text().catch(() => "");
+      throw new Error(`Browseract get-task-status error: ${statusResponse.status} ${statusResponse.statusText}${errText ? ` - ${errText}` : ""}`);
+    }
+
+    const statusData = await statusResponse.json() as { status?: string };
+    status = statusData.status ?? "running";
+
+    if (status === "finished") {
+      break;
+    }
+    if (status === "failed" || status === "canceled") {
+      throw new Error(`Browseract task ${status} for task ${taskId}`);
+    }
+    // otherwise keep polling (running, queued, etc.)
+  }
+
+  if (status !== "finished") {
+    throw new Error(`Browseract polling timed out after ${maxPollMs}ms for task ${taskId}`);
+  }
+
+  // 3. Get task result
+  const resultResponse = await fetch(
+    `${baseUrl}/workflow/get-task?task_id=${encodeURIComponent(taskId)}`,
+    { method: "GET", headers: authHeaders }
+  );
+
+  if (!resultResponse.ok) {
+    const errText = await resultResponse.text().catch(() => "");
+    throw new Error(`Browseract get-task error: ${resultResponse.status} ${resultResponse.statusText}${errText ? ` - ${errText}` : ""}`);
+  }
+
+  const resultData = await resultResponse.json() as {
+    output?: { string?: string; files?: string[] };
+    status?: string;
+  };
+
+  const html = resultData.output?.string;
+  if (html && html.trim().length > 0) {
+    return html;
+  }
+
+  // Fallback: if output.string is empty, try the first file entry
+  const files = resultData.output?.files;
+  const firstFile = files?.[0];
+  if (firstFile) {
+    return firstFile;
+  }
+
+  throw new Error("Browseract task result did not contain rendered HTML content");
 }
 
 /**
@@ -317,11 +386,13 @@ export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
   await validateSSRF(targetUrl);
 
   const apiKey = process.env.BROWSERACT_API_KEY;
+  const workflowId = process.env.BROWSERACT_WORKFLOW_ID;
+  const browseractEnabled = Boolean(apiKey && apiKey !== "your_key_here" && workflowId);
 
-  if (apiKey && apiKey !== "your_key_here") {
+  if (browseractEnabled) {
     try {
-      // Primary: Headfull engine via Browseract POST request
-      const rawHtml = await fetchViaBrowseract(targetUrl, apiKey);
+      // Primary: Headfull engine via Browseract workflow API
+      const rawHtml = await fetchViaBrowseract(targetUrl, apiKey as string);
       const parsed = parseHtmlToParsedPage(rawHtml, targetUrl);
       return parsed;
     } catch (browseractError) {
@@ -333,10 +404,10 @@ export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
   const cheerioResult = await fetchViaCheerio(targetUrl);
   let parsed = parseHtmlToParsedPage(cheerioResult.rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
 
-  // Secondary check: if Cheerio succeeded but output looks like JS bundle rendering and API key is present, try Browseract
-  if (apiKey && apiKey !== "your_key_here" && isJsBundleRendering(cheerioResult.rawHtml, parsed)) {
+  // Secondary check: if Cheerio succeeded but output looks like JS bundle rendering and Browseract is enabled, retry with Browseract
+  if (browseractEnabled && isJsBundleRendering(cheerioResult.rawHtml, parsed)) {
     try {
-      const rawHtml = await fetchViaBrowseract(targetUrl, apiKey);
+      const rawHtml = await fetchViaBrowseract(targetUrl, apiKey as string);
       parsed = parseHtmlToParsedPage(rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
     } catch (browseractError) {
       console.warn(`Browseract retry for JS bundle failed: ${(browseractError as Error).message}`);
