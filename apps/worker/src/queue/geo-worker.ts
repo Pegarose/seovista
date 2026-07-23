@@ -46,6 +46,13 @@ export function startGeoWorker() {
           url: url,
           normalizedUrl: url,
           parsed: parsedPage,
+          options: {
+            includeNeuronWriter: true,
+            includePerformance: false,
+            includeAiVisibility: true,
+            renderJavascript: true,
+            storeSnapshot: false,
+          },
         };
 
         const data = await engine.scorePage(scoreContext, Date.now());

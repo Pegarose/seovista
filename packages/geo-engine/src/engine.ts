@@ -1,23 +1,21 @@
-import { 
+import type { 
   ScoreContext, 
   ScoreModuleResult, 
   AuditIssue, 
   Recommendation, 
   ScoreModule
 } from './types';
-// import { NWEnrichmentResult } from '../providers/neuronwriter';
-import { IndexabilityModule } from './modules/indexability';
-import { TechnicalModule } from './modules/technical';
-import { ContentModule } from './modules/content';
-import { SemanticModule } from './modules/semantic';
-import { ExperienceModule } from './modules/experience';
-import { LinkingModule } from './modules/linking';
-import { AiVisibilityModule } from './modules/ai-visibility';
-// import { enrichWithNeuronWriter } from '../providers/neuronwriter';
+import type { NWEnrichmentResult } from './providers/neuronwriter.js';
+import { IndexabilityModule } from "./modules/indexability.js";
+import { TechnicalModule } from './modules/technical.js';
+import { ContentModule } from './modules/content.js';
+import { SemanticModule } from './modules/semantic.js';
+import { ExperienceModule } from './modules/experience.js';
+import { LinkingModule } from './modules/linking.js';
+import { AiVisibilityModule } from './modules/ai-visibility.js';
+import { enrichWithNeuronWriter } from './providers/neuronwriter.js';
 
-export interface NWEnrichmentResult {
-  [key: string]: unknown;
-}
+export type { NWEnrichmentResult } from './providers/neuronwriter.js';
 
 export interface ScoreOutput {
   scoreVersion: string;
@@ -62,19 +60,12 @@ export class ScoringEngine {
   async scorePage(context: ScoreContext, startTime: number): Promise<ScoreOutput> {
     const providerEnrichments: NWEnrichmentResult[] = [];
     if (context.options?.includeNeuronWriter) {
-      // Mock logic as requested
-      // const nwStart = Date.now();
-      // const enrichment = await enrichWithNeuronWriter(
-      //   context.tenantId,
-      //   context.siteId,
-      //   context.targetKeyword || null,
-      //   nwStart
-      // );
-      
-      const nwResult = {
+      const nwStart = Date.now();
+      const enrichment = await enrichWithNeuronWriter(context, nwStart);
+      const nwResult: NWEnrichmentResult = {
+        ...enrichment,
         provider: 'neuronwriter',
-        // ...enrichment
-      } as NWEnrichmentResult;
+      };
       providerEnrichments.push(nwResult);
 
       // Attach to context for SemanticModule
@@ -244,7 +235,7 @@ export class ScoringEngine {
       platformReadiness,
       durationMs,
       providerEnrichments,
-      semanticAnalysis,
+      semanticAnalysis: semanticAnalysis ? Object.assign({}, semanticAnalysis, { provider: 'neuronwriter' }) : semanticAnalysis,
       aiVisibility,
       recommendations,
     };
