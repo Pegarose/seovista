@@ -82,16 +82,42 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
 
         // Safe access to the data structure
         const overallScore = data.finalScore ?? 0;
-        
-        let accessScore = 0;
-        let understandingScore = 0;
-        let evidenceScore = 0;
-        
+
+        // Map each engine module to one of the three saved score dimensions.
+        // Module keys come from packages/geo-engine/src/modules/* (e.g.
+        // `indexability_crawlability`, `semantic_coverage`, etc.). The previous
+        // implementation compared against non-existent keys (`indexability`,
+        // `semantic`, `content`, `evidence`, `experience`), so no branch ever
+        // matched and every dimension score was saved as 0.
+        const MODULE_DIMENSION_MAP: Record<string, 'access' | 'understanding' | 'evidence'> = {
+          indexability_crawlability: 'access',
+          technical_seo_metadata: 'access',
+          internal_linking_architecture: 'access',
+          semantic_coverage: 'understanding',
+          content_quality_intent: 'understanding',
+          ai_visibility_readiness: 'understanding',
+          page_experience_performance: 'evidence',
+        };
+
+        const dimensionScores: Record<'access' | 'understanding' | 'evidence', number[]> = {
+          access: [],
+          understanding: [],
+          evidence: [],
+        };
+
         for (const mod of data.modules) {
-          if (mod.key === 'indexability') accessScore = mod.score;
-          if (mod.key === 'semantic' || mod.key === 'content') understandingScore += mod.score / 2; // rough estimation if needed
-          if (mod.key === 'evidence' || mod.key === 'experience') evidenceScore = mod.score;
+          const dimension = MODULE_DIMENSION_MAP[mod.key];
+          if (dimension) {
+            dimensionScores[dimension].push(mod.score);
+          }
         }
+
+        const mean = (nums: number[]): number =>
+          nums.length > 0 ? nums.reduce((sum, n) => sum + n, 0) / nums.length : 0;
+
+        const accessScore = mean(dimensionScores.access);
+        const understandingScore = mean(dimensionScores.understanding);
+        const evidenceScore = mean(dimensionScores.evidence);
 
         const issues = data.topIssues ?? [];
 

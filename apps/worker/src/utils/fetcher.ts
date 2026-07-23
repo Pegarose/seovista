@@ -233,6 +233,68 @@ function isJsBundleRendering(rawHtml: string, parsed: ParsedPage): boolean {
 }
 
 /**
+ * Recursively collects string values from an arbitrary JSON value into `out`.
+ */
+function collectStringValues(value: unknown, out: string[]): void {
+  if (typeof value === 'string') {
+    out.push(value);
+  } else if (Array.isArray(value)) {
+    for (const item of value) {
+      collectStringValues(item, out);
+    }
+  } else if (value !== null && typeof value === 'object') {
+    for (const val of Object.values(value as Record<string, unknown>)) {
+      collectStringValues(val, out);
+    }
+  }
+}
+
+/**
+ * Extracts rendered HTML from a Browseract `output.string` payload.
+ *
+ * Browseract wraps the rendered HTML in a JSON array, e.g.:
+ *   [{"script_result_1": "<html lang=\"en\">...</html>"}]
+ * Cheerio is lenient enough to find <title>/<h1> inside the JSON-wrapped
+ * string, but `textContent` becomes polluted with brackets and property
+ * names like `script_result_1`. This unwraps the HTML when possible and
+ * falls back to the raw string when it is not JSON (raw HTML).
+ *
+ * Handles common patterns:
+ *   - Single array with one element: `[{"script_result_1": "..."}]`
+ *   - Array with multiple results: uses the first HTML-looking string
+ *   - Object directly: `{"html": "..."}` / `{"content": "..."}`
+ */
+function extractHtmlFromBrowseractOutput(outputString: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(outputString);
+  } catch {
+    // Not valid JSON — assume it is already raw HTML.
+    return outputString;
+  }
+
+  const candidates: string[] = [];
+  if (Array.isArray(parsed)) {
+    for (const item of parsed) {
+      collectStringValues(item, candidates);
+    }
+  } else if (parsed !== null && typeof parsed === 'object') {
+    collectStringValues(parsed, candidates);
+  }
+
+  // Prefer the first string that looks like HTML.
+  for (const candidate of candidates) {
+    if (candidate.includes('<')) {
+      return candidate;
+    }
+  }
+
+  // No HTML-looking string found; fall back to first candidate, else original.
+  const firstCandidate = candidates[0];
+  return firstCandidate ?? outputString;
+}
+
+/**
  * Fetches rendered HTML from the Browseract.com workflow API (v2).
  *
  * Browseract is a workflow-based system. The flow is:
@@ -330,7 +392,7 @@ async function fetchViaBrowseract(targetUrl: string, apiKey: string): Promise<st
 
   const html = resultData.output?.string;
   if (html && html.trim().length > 0) {
-    return html;
+    return extractHtmlFromBrowseractOutput(html);
   }
 
   // Fallback: if output.string is empty, try the first file entry
