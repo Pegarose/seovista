@@ -132,10 +132,29 @@ describe("NeuronWriter semantic enrichment", () => {
     expect(semanticAnalysis.missingLsiTerms).toContain("entity coverage");
     expect(semanticAnalysis.missingEntities).toContain("NLP");
 
-    // The scoring engine should report semantic gap issues derived from the enrichment.
+    // Decoupled behavior (trust-foundation): NeuronWriter-derived LSI / entity
+    // gap issues live on the enrichment surface (`enrichmentIssues`) and do NOT
+    // deduct points from the SemanticModule score.
     const semanticModule = result.modules.find((m) => m.key === "semantic_coverage");
     expect(semanticModule).toBeDefined();
-    expect(semanticModule?.score).toBeLessThan(semanticModule?.maxScore ?? 15);
+    // The well-aligned page only loses 1pt for HEADING_COVERAGE_WEAK; LSI/entity
+    // gaps no longer reduce the module score.
+    expect(semanticModule?.score).toBeLessThanOrEqual(semanticModule?.maxScore ?? 15);
+    expect(semanticModule?.score).toBeGreaterThanOrEqual(semanticModule! && semanticModule.maxScore - 1);
+
+    const lsiGap = result.enrichmentIssues.find((i) => i.code === "SEMANTIC_LSI_GAP");
+    const entityGap = result.enrichmentIssues.find((i) => i.code === "SEMANTIC_ENTITY_GAP");
+    expect(lsiGap).toBeDefined();
+    expect(entityGap).toBeDefined();
+    expect(lsiGap?.severity).toBe("info");
+    expect(entityGap?.severity).toBe("info");
+
+    // The enrichment-derived issues also appear on the recommendation surface.
+    expect(result.recommendations.some((r) => r.code === "SEMANTIC_LSI_GAP")).toBe(true);
+    expect(result.recommendations.some((r) => r.code === "SEMANTIC_ENTITY_GAP")).toBe(true);
+
+    // Platform readiness must not be penalized for enrichment-derived issues.
+    expect(result.platformReadiness.googleAiOverviews).toBeGreaterThan(0);
   });
 
   it("gracefully returns an error enrichment when NEURONWRITER_API_KEY is missing", async () => {
@@ -170,5 +189,23 @@ describe("NeuronWriter semantic enrichment", () => {
     expect(enrichment).toBeDefined();
     expect(enrichment?.status).toBe("error");
     expect(enrichment?.error).toContain("NEURONWRITER_API_KEY");
+
+    // Decoupled behavior (trust-foundation): when enrichment errors, the score
+    // is still valid and the recommendation surface gains a documented
+    // fallback marker instead of NeuronWriter-derived items.
+    expect(result.finalScore).toBeGreaterThanOrEqual(0);
+    expect(result.finalScore).toBeLessThanOrEqual(100);
+    expect(result.overall.score).toBe(result.finalScore);
+    const fallback = result.enrichmentIssues.find(
+      (i) => i.code === "SEMANTIC_ENRICHMENT_UNAVAILABLE"
+    );
+    expect(fallback).toBeDefined();
+    expect(fallback?.recommendation).toMatch(/on-page signals only/i);
+    expect(
+      result.recommendations.some((r) => r.code === "SEMANTIC_LSI_GAP")
+    ).toBe(false);
+    expect(
+      result.recommendations.some((r) => r.code === "SEMANTIC_ENTITY_GAP")
+    ).toBe(false);
   });
 });

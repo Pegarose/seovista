@@ -43,16 +43,13 @@ export class SemanticModule implements ScoreModule {
         return words.some(w => h.text.toLowerCase().includes(w));
       });
 
-      // NeuronWriter enrichment: compare target page content against recommended LSI terms.
-      const nwEnrichment = context.enrichments?.[0] as
-        | { provider?: string; recommendedHeadings?: string[]; missingLsiTerms?: string[]; terms?: { entities?: Array<{ t: string }> } }
-        | undefined;
-      const recommendedHeadings = nwEnrichment?.recommendedHeadings ?? [];
-      const missingLsiTerms = nwEnrichment?.missingLsiTerms ?? [];
-      const recommendedEntities = nwEnrichment?.terms?.entities?.map((e) => e.t).filter(Boolean) ?? [];
-      const bodyTextLower = bodyText.toLowerCase();
-      const pageLsiMissing = missingLsiTerms.filter((term) => !bodyTextLower.includes(term.toLowerCase()));
-      const pageEntityMissing = recommendedEntities.filter((entity) => !bodyTextLower.includes(entity.toLowerCase()));
+      // NOTE: NeuronWriter LSI / entity / PAA signals have been moved out of the
+      // score path (trust-foundation refactor). The SemanticModule now derives
+      // its score purely from on-page signals (title / H1 / intro / body /
+      // heading coverage). NeuronWriter-derived `SEMANTIC_LSI_GAP` and
+      // `SEMANTIC_ENTITY_GAP` issues are emitted by the engine's enrichment
+      // layer after scoring and feed the recommendation surface only — they no
+      // longer deduct points from this module or affect platform readiness.
 
       if (!inTitle) {
         const isDoc = context.pageType === 'documentation';
@@ -154,34 +151,10 @@ export class SemanticModule implements ScoreModule {
         });
       }
 
-      // Issue LSI / entity gap recommendations derived from NeuronWriter enrichment.
-      if (pageLsiMissing.length > 0) {
-        issues.push({
-          code: 'SEMANTIC_LSI_GAP',
-          title: 'Page content is missing competitor-related LSI terms',
-          severity: 'medium',
-          module: this.key,
-          impact: 'Including semantically related terms used by top competitors can strengthen topical relevance.',
-          evidence: { missingLsiTerms: pageLsiMissing.slice(0, 10) },
-          recommendation: `Weave the following related terms naturally into the content: ${pageLsiMissing.slice(0, 5).join(', ')}.`,
-          confidence: 0.80,
-        });
-        score -= 2;
-      }
-
-      if (pageEntityMissing.length > 0) {
-        issues.push({
-          code: 'SEMANTIC_ENTITY_GAP',
-          title: 'Page content is missing key topical entities identified by NLP analysis',
-          severity: 'medium',
-          module: this.key,
-          impact: 'Entities help search engines build topical authority and connect concepts across content.',
-          evidence: { missingEntities: pageEntityMissing.slice(0, 10) },
-          recommendation: `Consider covering or referencing the following entities: ${pageEntityMissing.slice(0, 5).join(', ')}.`,
-          confidence: 0.78,
-        });
-        score -= 2;
-      }
+      // LSI / entity gap recommendations (SEMANTIC_LSI_GAP / SEMANTIC_ENTITY_GAP)
+      // are now emitted by the engine's enrichment layer from NeuronWriter
+      // data and are recommendation-surface only — they no longer deduct score
+      // here. See `ScoringEngine.scorePage` post-scoring enrichment step.
 
       const semanticCoverageScore = Math.round((score / this.maxScore) * 100);
 
@@ -193,17 +166,18 @@ export class SemanticModule implements ScoreModule {
         status: this.getStatus(score),
         issues,
         recommendations: [],
-        // Extra analysis attached for response shape
+        // Extra analysis attached for response shape. NeuronWriter-derived
+        // fields (missingLsiTerms / missingEntities / recommendedHeadings /
+        // provider) are merged in by the engine after enrichment completes.
         semanticAnalysisData: this.buildSemanticAnalysis({
           targetKeywordProvided: true,
           inferredPrimaryTopic: null,
           topicConfidence: null,
           semanticCoverageScore,
           missingTopics: issues.filter(i => i.severity === 'high' || i.severity === 'medium').map(i => i.code),
-          recommendedHeadings: recommendedHeadings.length > 0 ? recommendedHeadings : (context.enrichments?.[0]?.recommendedHeadings as string[] | undefined) || [],
-          missingLsiTerms: pageLsiMissing,
-          missingEntities: pageEntityMissing,
-          provider: nwEnrichment?.provider ?? undefined,
+          recommendedHeadings: [],
+          missingLsiTerms: [],
+          missingEntities: [],
         }),
       };
     }

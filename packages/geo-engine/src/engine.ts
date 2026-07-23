@@ -17,8 +17,31 @@ import { enrichWithNeuronWriter } from './providers/neuronwriter.js';
 
 export type { NWEnrichmentResult } from './providers/neuronwriter.js';
 
+/**
+ * Score formula identity.
+ *
+ * Bumped from `seosuite-score-v1.1` to `seovista-score-v1.2-decoupled` as part
+ * of the trust-foundation refactor: NeuronWriter LSI / entity / PAA signals
+ * were moved out of the deterministic score path into the enrichment-only
+ * surface. Operators can compare `score_version` across cached runs to detect
+ * formula drift and invalidate stale cache entries.
+ */
+export const SCORE_VERSION = 'seovista-score-v1.2-decoupled';
+
 export interface ScoreOutput {
   scoreVersion: string;
+  /**
+   * Promoted overall score envelope. Carries the deterministic 0-100 `score`,
+   * the `score_version` formula identity, and the `band`. Operators compare
+   * `overall.score_version` across runs to detect formula drift. The legacy
+   * `scoreVersion` / `finalScore` / `scoreBand` top-level fields are preserved
+   * for backward compatibility with existing consumers.
+   */
+  overall: {
+    score: number;
+    score_version: string;
+    band: ScoreOutput['scoreBand'];
+  };
   finalScore: number;
   scoreBand: 'excellent' | 'good' | 'needs_improvement' | 'poor' | 'critical';
   modules: Omit<ScoreModuleResult, 'issues' | 'recommendations'>[];
@@ -26,6 +49,12 @@ export interface ScoreOutput {
   quickWins: { title: string; estimatedEffort: string; estimatedImpact: string; code: string }[];
   nextActions: string[];
   experimentalSignals: AuditIssue[];
+  /**
+   * Issues derived from the enrichment layer (NeuronWriter LSI / entity gaps).
+   * These are recommendation-surface only — they never contributed to the
+   * deterministic `finalScore`, cap rules, or `platformReadiness` values.
+   */
+  enrichmentIssues: AuditIssue[];
   platformReadiness: {
     chatgpt: number;
     perplexity: number;
@@ -56,25 +85,21 @@ export class ScoringEngine {
 
   /**
    * Run all scoring modules on a parsed page context.
+   *
+   * The deterministic scoring core runs FIRST and in isolation from any
+   * variance-producing enrichment (NeuronWriter LSI / entity / PAA). The
+   * enrichment layer is fetched AFTER the score, caps, band, and platform
+   * readiness have been computed, and only feeds the recommendation /
+   * enrichment surface (`enrichmentIssues`, `semanticAnalysis`,
+   * `providerEnrichments`). As a result, an identical `ParsedPage` produces a
+   * byte-identical 0-100 score regardless of NeuronWriter response state.
    */
   async scorePage(context: ScoreContext, startTime: number): Promise<ScoreOutput> {
-    const providerEnrichments: NWEnrichmentResult[] = [];
-    if (context.options?.includeNeuronWriter) {
-      const nwStart = Date.now();
-      const enrichment = await enrichWithNeuronWriter(context, nwStart);
-      const nwResult: NWEnrichmentResult = {
-        ...enrichment,
-        provider: 'neuronwriter',
-      };
-      providerEnrichments.push(nwResult);
-
-      // Attach to context for SemanticModule
-      context.enrichments = [nwResult as unknown as Record<string, unknown>];
-    }
-
     const moduleResults: ScoreModuleResult[] = [];
     
-    // Execute all modules
+    // Execute all modules. NeuronWriter enrichment is intentionally NOT
+    // attached to `context.enrichments` here — modules must derive their score
+    // purely from on-page signals so the score is deterministic.
     for (const mod of this.modules) {
       try {
         const result = await mod.run(context);
@@ -204,7 +229,9 @@ export class ScoringEngine {
 
     const durationMs = Date.now() - startTime;
 
-    // Aggregate AI Visibility and Semantic data from modules
+    // Aggregate AI Visibility and Semantic data from modules.
+    // Only on-page (deterministic) data is sourced from modules — NeuronWriter
+    // LSI / entity / PAA data is merged in below from the enrichment layer.
     let semanticAnalysis: Record<string, unknown> | null = null;
     let aiVisibility: Record<string, unknown> | null = null;
 
@@ -217,8 +244,115 @@ export class ScoringEngine {
       }
     });
 
+    // ── Enrichment layer (recommendations-only) ─────────────────────────────
+    // NeuronWriter LSI / entity / PAA signals are fetched AFTER the score,
+    // caps, band, and platform readiness have been computed. They feed the
+    // recommendation / enrichment surface only and never mutate `finalScore`
+    // or `platformReadiness`, so an identical `ParsedPage` yields an identical
+    // score regardless of NeuronWriter response state.
+    const providerEnrichments: NWEnrichmentResult[] = [];
+    const enrichmentIssues: AuditIssue[] = [];
+
+    if (context.options?.includeNeuronWriter) {
+      const nwStart = Date.now();
+      let enrichment: NWEnrichmentResult;
+      try {
+        enrichment = await enrichWithNeuronWriter(context, nwStart);
+      } catch (err) {
+        // Defensive: enrichWithNeuronWriter already returns an error envelope,
+        // but guard against unexpected throws so the score path never crashes
+        // due to enrichment failure.
+        enrichment = {
+          provider: 'neuronwriter',
+          status: 'error',
+          terms: {},
+          recommendedHeadings: [],
+          missingLsiTerms: [],
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+      const nwResult: NWEnrichmentResult = { ...enrichment, provider: 'neuronwriter' };
+      providerEnrichments.push(nwResult);
+
+      if (enrichment.status === 'ready') {
+        const bodyTextLower = (context.parsed.textContent || '').toLowerCase();
+        const missingLsiTerms = enrichment.missingLsiTerms.filter(
+          (term) => !bodyTextLower.includes(term.toLowerCase())
+        );
+        const recommendedEntities =
+          enrichment.terms.entities?.map((e) => e.t).filter(Boolean) ?? [];
+        const missingEntities = recommendedEntities.filter(
+          (entity) => !bodyTextLower.includes(entity.toLowerCase())
+        );
+
+        if (missingLsiTerms.length > 0) {
+          enrichmentIssues.push({
+            code: 'SEMANTIC_LSI_GAP',
+            title: 'Page content is missing competitor-related LSI terms',
+            severity: 'info',
+            module: 'semantic_coverage',
+            impact: 'Including semantically related terms used by top competitors can strengthen topical relevance.',
+            evidence: { missingLsiTerms: missingLsiTerms.slice(0, 10) },
+            recommendation: `Weave the following related terms naturally into the content: ${missingLsiTerms.slice(0, 5).join(', ')}.`,
+            confidence: 0.80,
+            implementationHint: this.getPlatformHint('SEMANTIC_LSI_GAP', platform),
+          });
+        }
+
+        if (missingEntities.length > 0) {
+          enrichmentIssues.push({
+            code: 'SEMANTIC_ENTITY_GAP',
+            title: 'Page content is missing key topical entities identified by NLP analysis',
+            severity: 'info',
+            module: 'semantic_coverage',
+            impact: 'Entities help search engines build topical authority and connect concepts across content.',
+            evidence: { missingEntities: missingEntities.slice(0, 10) },
+            recommendation: `Consider covering or referencing the following entities: ${missingEntities.slice(0, 5).join(', ')}.`,
+            confidence: 0.78,
+            implementationHint: this.getPlatformHint('SEMANTIC_ENTITY_GAP', platform),
+          });
+        }
+
+        // Merge enrichment-derived data into the semantic analysis surface.
+        semanticAnalysis = Object.assign({}, semanticAnalysis ?? {}, {
+          provider: 'neuronwriter',
+          recommendedHeadings: enrichment.recommendedHeadings,
+          missingLsiTerms,
+          missingEntities,
+        });
+      } else {
+        // Documented fallback when enrichment errors / times out. The score is
+        // unaffected; only the recommendation list loses NeuronWriter-derived
+        // items and gains an explicit fallback marker.
+        enrichmentIssues.push({
+          code: 'SEMANTIC_ENRICHMENT_UNAVAILABLE',
+          title: 'NeuronWriter semantic enrichment unavailable',
+          severity: 'info',
+          module: 'semantic_coverage',
+          impact: 'LSI / entity / PAA gap recommendations are unavailable for this run; the score is unaffected.',
+          evidence: { error: enrichment.error ?? `NeuronWriter status: ${enrichment.status}` },
+          recommendation:
+            'NeuronWriter enrichment skipped — score computed from on-page signals only. Re-run the audit later to surface LSI / entity gap recommendations.',
+          confidence: 1.0,
+          implementationHint: this.getPlatformHint('SEMANTIC_ENRICHMENT_UNAVAILABLE', platform),
+        });
+      }
+    }
+
+    // Append enrichment-surface issues to the recommendation list and the
+    // top-issues surface. They are severity `info` so they never bubble into
+    // quickWins (high/critical/medium) or dominate nextActions.
+    const enrichmentRecommendations = enrichmentIssues.map(recommendationFromIssue);
+    const recommendationsWithEnrichment = [...recommendations, ...enrichmentRecommendations];
+    const topIssuesWithEnrichment = [...standardIssues, ...enrichmentIssues];
+
     return {
-      scoreVersion: 'seosuite-score-v1.1',
+      scoreVersion: SCORE_VERSION,
+      overall: {
+        score: finalScore,
+        score_version: SCORE_VERSION,
+        band: scoreBand,
+      },
       finalScore,
       scoreBand,
       modules: moduleResults.map(res => ({
@@ -228,16 +362,17 @@ export class ScoringEngine {
         maxScore: res.maxScore,
         status: res.status
       })),
-      topIssues: standardIssues,
+      topIssues: topIssuesWithEnrichment,
       quickWins,
       nextActions,
       experimentalSignals,
+      enrichmentIssues,
       platformReadiness,
       durationMs,
       providerEnrichments,
-      semanticAnalysis: semanticAnalysis ? Object.assign({}, semanticAnalysis, { provider: 'neuronwriter' }) : semanticAnalysis,
+      semanticAnalysis,
       aiVisibility,
-      recommendations,
+      recommendations: recommendationsWithEnrichment,
     };
   }
 
