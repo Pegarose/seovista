@@ -20,18 +20,27 @@ function parseRedisUrl(redisUrl: string | undefined): { host: string; port: numb
   }
 }
 
-export function startGeoWorker() {
+export interface GeoWorkerOptions {
+  /**
+   * Override the BullMQ queue name. Defaults to "geo_readiness_jobs".
+   * Tests pass a unique name so parallel workers / orphaned processes
+   * listening on the default queue cannot steal their jobs.
+   */
+  queueName?: string;
+}
+
+export function startGeoWorker(options?: GeoWorkerOptions) {
   const connection = parseRedisUrl(process.env.REDIS_URL);
-  
+
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required to start geo worker");
   }
-  
+
   const db = createDbClient({ connectionString: process.env.DATABASE_URL, max: 2 });
   const engine = new ScoringEngine();
 
   const worker = new Worker(
-    "geo_readiness_jobs",
+    options?.queueName ?? "geo_readiness_jobs",
     async (job: Job) => {
       const { jobId, url } = job.data;
       
