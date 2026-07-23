@@ -158,6 +158,16 @@ See §22 Glossary (consolidated at end of document).
 
 ## 3. Functional Requirements
 
+### 3.0 Scoring Trust Foundation (P0 — Reproducibility & Explainability)
+
+> Added per Phase Sequencing feedback loop (`docs/PHASE-2-6-MONTH-ROADMAP.md`, Phase A). This requirement group was not in the original P0 list; it is the foundation prerequisite for Action, Coverage, and Monitoring bets.
+
+* **Engine-Grade Reproducibility (P0).** Decouple the deterministic scoring core from variance-producing enrichment (NeuronWriter LSI/poll variance, Browseract render snapshot drift). A single URL audited 5 times in a row must yield a score variance **≤ ±2 points** (Phase A exit criterion, `[TO VERIFY: production measurement]`).
+* **Semantic Module Decoupling (P0).** Move NeuronWriter LSI/entity/PAA influence out of the score calculation into a separate enrichment layer that only feeds recommendations, not the 0–100 score or per-platform readiness. SemanticModule currently contributes up to 15 points from LSI/entity gap penalties (master PRD §7); weight rebalancing required.
+* **SPA Snapshot Stability (P0).** Stabilize Browseract render output so the same URL yields consistent `ParsedPage`. Options: in-memory snapshot hash, retry-until-stable gate, or aggressive caching of successful renders keyed by URL. Variant source `[TO VERIFY: workflow JSON shape vs runtime]` must be measured first.
+* **Explainability UI (Score Breakdown) (P0).** Result page surfaces per-module contribution and per-issue point-loss mapping (e.g., *Indexability 18/20, missing JSON-LD −2*). Requires server-rendered enhancements to `app/tools/geo-readiness-checker/result/[jobId]/page.tsx` (RSC) and a typed breakdown contract in `packages/geo-engine/src/types.ts`.
+* **Per-Platform Confidence Labeling (P0).** Per-platform readiness scores today are experimental (0.6–0.8 confidence, master PRD §7). Display them with explicit confidence context ("Perplexity readiness: Düşük — deneysel") instead of bare numeric values, to preserve the trust mandate in §0.6 not to represent the score as guaranteed. Final UX pattern `[TO VERIFY: design decision]`.
+
 ### 3.1 Reliability & Scale Foundation (P0)
 
 * **Result Caching.** Cache normalized audit results keyed by URL + input signature with a configurable TTL to serve repeat requests without re-running platform checks. TTL candidates under evaluation: 24h blanket (ChatPRD draft) vs per-tier (Free 7d / Pro 14d / Enterprise 30d in engineering analysis) — **see §13 for conflict resolution; final value `[TO VERIFY]`**.
@@ -174,6 +184,7 @@ See §22 Glossary (consolidated at end of document).
 
 * **SERP & AI-Answer Preview.** Show a representative preview of how the brand surfaces in AI-generated answers and search results, alongside the score.
 * **Citation Readiness Detail.** Expand per-platform readiness with specific, actionable reasons (e.g., missing structured data, thin authoritative content, crawlability gaps).
+* **Recommendation Engine (Tag → Crew Service) — expanded per Phase B2.** Move from generic "Consult with Crew Agency" CTA to a personalized one matched from `Recommendation.issueTags[]` to Crew service catalog entries. Prerequisite: Crew service catalog is normalized to `{ service_id, name, description, target_issue_tags[], tier, sla }` schema (Phase B1 in `docs/PHASE-2-6-MONTH-ROADMAP.md`); `[TO VERIFY: Crew catalog format]` because if the catalog is free-text rather than tag-based, B1 adds 2–3 weeks and encompasses an additional coordination step with the Crew side. Existing `notifyCrewAgency()` webhook payload (`geo-worker.ts`) is enriched with the matched `service_id` so the Crew CRM can route leads to the right specialist.
 
 ### 3.4 Monitoring & Volume (P2)
 
@@ -917,6 +928,11 @@ Query actual LLMs (ChatGPT, Perplexity, Claude) with brand-related prompts and c
 - Current: single-tenant, single admin session.
 - Future: per-tenant auth, per-tenant API keys, per-tenant credit budgets, per-tenant branded report pages.
 - Requires: auth refactor (replace `apps/web/src/lib/admin/session.ts` with multi-tenant session), `tenant_id` column on all tables (already exists on `ScoreContext.tenantId` but not persisted), per-tenant rate limiting.
+
+### 17.2 Phase Sequencing Cross-Reference
+
+> Canonical "what" and "P-priority" live in §17.1. Canonical "when" and "in what order" lives in `docs/PHASE-2-6-MONTH-ROADMAP.md`.
+> That document sequences the bets in the order **Trust → Action → Coverage → Monitoring** with a 6-month horizon and introduces a new P0 group (§3.0 Scoring Trust Foundation) plus a Crew service-catalog prerequisite for §3.3 GEO Depth. Where this document and the phase sequencing document disagree, the phase sequencing doc governs for any feature whose `[TO VERIFY]`-tagged budget would push its Phase A exit criterion (≤ ±2 score variance) before its Phase B3 cache deployment.
 
 ---
 
