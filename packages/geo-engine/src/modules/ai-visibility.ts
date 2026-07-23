@@ -1,4 +1,4 @@
-import { ScoreModule, ScoreContext, ScoreModuleResult, AuditIssue, AiVisibilityData } from '../types';
+import type { ScoreModule, ScoreContext, ScoreModuleResult, AuditIssue, AiVisibilityData } from '../types';
 
 export class AiVisibilityModule implements ScoreModule {
   key = 'ai_visibility_readiness';

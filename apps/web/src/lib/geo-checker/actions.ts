@@ -1,4 +1,6 @@
-import "server-only";
+"use server";
+
+
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
@@ -101,7 +103,7 @@ export async function startGeoAuditAction(
 }
 
 export async function checkJobStatusAction(jobId: string) {
-  "use server";
+  
   
   const db = getAdminDb();
   const repo = createGeoAuditRepository(db);
@@ -116,7 +118,7 @@ export async function checkJobStatusAction(jobId: string) {
 }
 
 export async function unlockDetailedReport(_prev: any, formData: FormData): Promise<{ success?: boolean; error?: string }> {
-  "use server";
+  
   
   // Actually update lead marketing data since this is the gated form handler
   const leadId = formData.get("leadId")?.toString();
@@ -138,3 +140,4 @@ export async function unlockDetailedReport(_prev: any, formData: FormData): Prom
     return { error: "Failed to update lead information. Please try again." };
   }
 }
+

@@ -1,4 +1,4 @@
-import { ScoreModule, ScoreContext, ScoreModuleResult, AuditIssue } from '../types';
+import type { ScoreModule, ScoreContext, ScoreModuleResult, AuditIssue } from '../types';
 
 export class LinkingModule implements ScoreModule {
   key = 'internal_linking_architecture';
@@ -27,7 +27,7 @@ export class LinkingModule implements ScoreModule {
     if (context.url) {
       try {
         baseDomain = new URL(context.url).hostname;
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -48,7 +48,7 @@ export class LinkingModule implements ScoreModule {
           if (baseDomain && linkDomain === baseDomain) {
             isInternal = true;
           }
-        } catch (e) {
+        } catch {
           // ignore
         }
       }

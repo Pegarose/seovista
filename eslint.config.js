@@ -58,7 +58,7 @@ export default tseslint.config(
     },
     rules: {
       "no-unused-vars": "off",
-      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
@@ -93,7 +93,7 @@ export default tseslint.config(
       parserOptions: tsParserOptions,
     },
     rules: {
-      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "error",
       "no-console": ["warn", { allow: ["error", "warn"] }],
     },

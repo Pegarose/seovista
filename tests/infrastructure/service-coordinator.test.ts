@@ -5,17 +5,8 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  createInfrastructureServiceCoordinator,
-  getInfrastructureServiceRecordPath,
-  getInfrastructureServiceStartingRecordPath,
-} from "../../scripts/infrastructure-service-coordinator.js";
-import {
-  createRunContext,
-  getContextPath,
-  getDeterministicContextPath,
-  writeLifecycleContext,
-} from "../../scripts/infrastructure-lifecycle-core.js";
+import { createInfrastructureServiceCoordinator, getInfrastructureServiceRecordPath, getInfrastructureServiceStartingRecordPath, } from "../../scripts/infrastructure-service-coordinator.js";
+import { createRunContext, getContextPath, getDeterministicContextPath, writeLifecycleContext, } from "../../scripts/infrastructure-lifecycle-core.js";
 
 function lockPayload(pid: number, token: string, startIdentity?: string) {
   return `${JSON.stringify({ pid, token, ...(startIdentity ? { startIdentity } : {}) })}\n`;

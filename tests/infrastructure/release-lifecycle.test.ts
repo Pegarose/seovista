@@ -1,4 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
 import { createReleaseRunner } from "../../scripts/release.js";
 
 describe("release lifecycle orchestration", () => {

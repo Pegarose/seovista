@@ -19,7 +19,7 @@ describe("services.yaml infrastructure ownership", () => {
 
   it("assigns Redis start and stop to lifecycle operations while health remains a healthcheck", () => {
     const services = readFileSync(resolve(root, "services.yaml"), "utf8");
-    const redis = services.match(/  redis:\n((?:    .*\n)+)/)?.[1];
+    const redis = services.match(/  redis:\r?\n((?:    .*\r?\n)+)/)?.[1];
 
     expect(redis).toBeDefined();
     expect(redis).toContain("start: node scripts/infrastructure-service-coordinator.js start");
@@ -27,3 +27,4 @@ describe("services.yaml infrastructure ownership", () => {
     expect(redis).toContain("healthcheck: node scripts/infrastructure-service-coordinator.js health redis");
   });
 });
+

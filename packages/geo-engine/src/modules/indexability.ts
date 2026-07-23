@@ -1,4 +1,4 @@
-import { ScoreModule, ScoreContext, ScoreModuleResult, AuditIssue } from '../types';
+import type { ScoreModule, ScoreContext, ScoreModuleResult, AuditIssue } from '../types';
 
 export class IndexabilityModule implements ScoreModule {
   key = 'indexability_crawlability';
@@ -124,7 +124,7 @@ export class IndexabilityModule implements ScoreModule {
             confidence: 0.95,
           });
         }
-      } catch (e) {
+      } catch {
         // Invalid URLs
       }
     }

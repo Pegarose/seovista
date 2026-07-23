@@ -1,6 +1,8 @@
 # SeoVista
 
-AI visibility and GEO readiness platform — Sprint 0 foundation.
+AI visibility and GEO readiness platform — Phase 1+ "Agentic B2B SEO Machine".
+
+Sprint 0 established the contract-first monorepo foundation with deterministic provider mocks. Phase 1+ promotes the platform to a self-hosted scoring engine with real HTML crawling, SPA rendering, NLP semantic enrichment, and an autonomous sales webhook that turns low-scoring audits into qualified lead opportunities.
 
 ## Architecture
 
@@ -19,7 +21,12 @@ packages/
   audit-core/          framework-independent audit and safe URL contracts
   open-seo-adapter/    reviewed third-party adaptations behind owned ports
   dataforseo/          typed provider port and cost-control contracts
-  geo-engine/          versioned readiness-result and scoring contracts
+  geo-engine/          full self-hosted ScoringEngine with scoring modules
+                       (Indexability, Technical, Content, Semantic, Experience,
+                       Linking, AiVisibility) and real provider integrations
+                       (NeuronWriter). Produces overall and platform readiness
+                       scores (ChatGPT, Perplexity, Google AI Overviews, Bing
+                       Copilot), issues, quick wins, and recommendations.
   reports/             private report/storage/email ports
   analytics/           typed analytics event contracts
 ```
@@ -63,9 +70,27 @@ corepack pnpm install --frozen-lockfile
 # 3. Copy environment placeholders (variable names only; never commit secrets)
 cp .env.example .env
 
-# 4. Start local infrastructure (PostgreSQL + Redis)
+# 4. Populate Phase 1+ provider credentials in .env
+#    (see "Environment Variables" below; dummy values are acceptable during
+#     development, real provider traffic requires valid credentials)
+
+# 5. Start local infrastructure (PostgreSQL + Redis)
 corepack pnpm infrastructure:start
 ```
+
+## Environment Variables
+
+Sprint 0 infrastructure variables (PostgreSQL, Redis, `NEXT_PUBLIC_SITE_URL`, etc.) are defined in `.env.example`. Phase 1+ adds the following provider integration keys:
+
+| Variable                  | Purpose                                                                  |
+|---------------------------|--------------------------------------------------------------------------|
+| `BROWSERACT_API_KEY`      | Browseract.com API key for headless SPA rendering of JS-heavy sites      |
+| `NEURONWRITER_API_KEY`    | NeuronWriter API key for NLP semantic enrichment (LSI terms, entities)   |
+| `NEURONWRITER_PROJECT_ID` | NeuronWriter project ID used by `POST /new-query` and `/get-query` polls |
+| `CREW_AGENCY_API_URL`     | Crew Agency API base URL (default: `http://crew.tr4.net/api`)            |
+| `CREW_AGENCY_API_KEY`     | Crew Agency API key for autonomous sales webhook authentication         |
+
+Server-only provider keys must never be importable by client code or committed to tracked files.
 
 ## Commands
 
@@ -88,6 +113,30 @@ pnpm's built-in `install` command is used directly; it is not duplicated as a ro
 
 All commands are non-stub, terminate without watch mode, and preserve the first failing exit code.
 
+## Phase 1+ Pipeline
+
+The worker (`apps/worker/src/queue/geo-worker.ts`) now executes a real end-to-end audit pipeline instead of proxying to an external scoring service:
+
+1. **Fetch & parse.** `apps/worker/src/utils/fetcher.ts` performs a real HTTP fetch and parses HTML with `cheerio`. SSRF protection via `ipaddr.js` and `dns.lookup()` blocks private, loopback, and cloud metadata IPs before any connection is opened. Fetch errors degrade gracefully.
+2. **SPA rendering.** For JavaScript-heavy SPA sites, the fetcher calls the Browseract.com API for headless rendering using `BROWSERACT_API_KEY`. Cheerio remains the fallback when Browseract fails or rate-limits.
+3. **Score.** The worker invokes the self-hosted `ScoringEngine` natively via `import { ScoringEngine } from "@seovista/geo-engine"` — no external GSeoSuite proxy. The engine runs seven modules: Indexability, Technical, Content, Semantic, Experience, Linking, and AiVisibility. It emits an overall score, score band, per-platform readiness (ChatGPT, Perplexity, Google AI Overviews, Bing Copilot), issues, quick wins, and recommendations.
+4. **Semantic enrichment.** The SemanticModule calls NeuronWriter (`packages/geo-engine/src/providers/neuronwriter.ts`) via `POST /new-query` and polls `/get-query` for up to 120 seconds, comparing page content against NeuronWriter's LSI terms and entities and emitting `SEMANTIC_LSI_GAP` and `SEMANTIC_ENTITY_GAP` issues.
+5. **Autonomous sales webhook.** After job completion, the worker sends a POST to `crew.tr4.net/api/teklif-yaz` authenticated with `CREW_AGENCY_API_KEY` and addressed via `CREW_AGENCY_API_URL`. The payload includes the target URL, brand hostname, overall score, score band, a low-scores mapping, top issues, and a `proposalTrigger` flag set to `true` when the score is below 60 or the band is critical/poor. Webhook failures are caught and logged without affecting the geo job status.
+
+## Phase 1+ Integration Status
+
+Sprint 0's mock-only boundary has been superseded by real provider integrations inside the monorepo:
+
+- **ScoringEngine** is self-hosted in `packages/geo-engine` (no external GSeoSuite dependency). The worker calls it directly as a workspace import.
+- **HTML crawling** is real, with SSRF protection blocking private/loopback/metadata IPs before connection.
+- **Browseract.com** provides headless SPA rendering, with cheerio as fallback.
+- **NeuronWriter** provides NLP semantic enrichment (LSI terms and entities) via its async polling API.
+- **Crew Agency** receives an autonomous sales webhook on every completed job, with `proposalTrigger` gating proactive proposal generation for low-scoring targets.
+- **NextG CMS** remains a deterministic mock service on `localhost:3101`.
+- DataForSEO, Google OAuth, object storage, email delivery, and analytics ports remain typed contracts; their mock implementations can still be used for local development and tests.
+
+During development, API keys may be dummy or placeholder values. Real provider traffic — Browseract rendering, NeuronWriter NLP enrichment, and Crew Agency webhook delivery — requires valid credentials in `.env`. Never commit live credentials or production secrets to any tracked file.
+
 ## Teardown
 
 ```bash
@@ -99,13 +148,6 @@ corepack pnpm infrastructure:teardown <context-file>
 ```
 
 Workers must stop every process, container, and listener they start and verify cleanup before handoff.
-
-## Provider-Mock Limitations (Sprint 0)
-
-- NextG CMS is a deterministic mock service on `localhost:3101`.
-- DataForSEO, Google OAuth, object storage, email delivery, and analytics are represented by typed contracts and deterministic mocks only.
-- No live provider credentials, traffic, or production success claims are used in Sprint 0.
-- The GEO Readiness Checker is a non-operational foundation page; no audit, score, report, or live provider call is performed.
 
 ## License
 

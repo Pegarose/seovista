@@ -1,4 +1,4 @@
-import { ScoreModule, ScoreContext, ScoreModuleResult, AuditIssue } from '../types';
+import type { ScoreModule, ScoreContext, ScoreModuleResult, AuditIssue } from '../types';
 
 export class TechnicalModule implements ScoreModule {
   key = 'technical_seo_metadata';

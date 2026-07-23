@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..", "..");
 
 function read(path: string): string {
-  return readFileSync(resolve(root, path), "utf-8");
+  return readFileSync(resolve(root, path), "utf-8").replace(/\r\n/g, "\n");
 }
 
 describe("monorepo bootstrap contract", () => {
@@ -316,8 +316,8 @@ describe("monorepo bootstrap contract", () => {
   });
 
   it("GitHub Actions CI workflows exist for PR and default-branch", () => {
-    const prWorkflow = read(".github/workflows/ci-pull-request.yml");
-    const defaultWorkflow = read(".github/workflows/ci-default-branch.yml");
+    const prWorkflow = read(".github/workflows/ci-pull-request.yml").replace(/\r/g, "");
+    const defaultWorkflow = read(".github/workflows/ci-default-branch.yml").replace(/\r/g, "");
 
     // Both workflows must reference Node 24 and pnpm 10.30.1
     for (const wf of [prWorkflow, defaultWorkflow]) {

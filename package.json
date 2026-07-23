@@ -51,5 +51,8 @@
       "@types/react": "^19.0.0",
       "@types/react-dom": "^19.0.0"
     }
+  },
+  "dependencies": {
+    "pg": "^8.22.0"
   }
 }
