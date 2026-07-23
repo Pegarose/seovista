@@ -8,11 +8,106 @@
 
 ## TL;DR
 
+0. **What SeoVista is**: a global, English-first GEO & Search Visibility platform that helps brands "be found, be understood, be cited" across traditional search and AI-generated answers. A free GEO Readiness Checker produces a 0–100 score with per-platform readiness (ChatGPT, Perplexity, Google AI Overviews, Bing Copilot), turning audits into qualified leads for GMedya Group's Crew Agency. See **Section 0 — Product Foundations** for the full product context.
 1. **Phase 1+ is fully operational**: the E2E pipeline (URL → SSRF validate → Browseract/Cheerio render → 7-module ScoringEngine → NeuronWriter enrichment → PostgreSQL persist → Crew Agency webhook) is verified and self-hosted with zero external scoring dependencies.
 2. **Browseract is the hard ceiling**: at ~20 credits/SPA render and 130k credits/month, capacity is ~6,500 SPA renders/month — the single most constraining resource. NeuronWriter (40k credits, ~1.5 credits/query) supports ~26k audits/month and is not the bottleneck.
 3. **Worker concurrency = 1** (BullMQ default, not overridden): at ~60–120s per audit, the single-worker throughput ceiling is ~700–1,400 audits/month before any credit limit is reached. This is the first scaling wall.
 4. **A 5-layer fallback strategy** (cache → pre-screen → Cheerio-only → off-peak queue → self-hosted Playwright) can extend the paid-API capacity by 3–5× without re-architecting, using incremental additions to `fetcher.ts` and a new Redis cache layer.
 5. **Phase 2 priority features**: Redis result cache (highest ROI, lowest effort), intelligent scrape router, BullMQ concurrency tuning, then SERP preview, continuous monitoring, and bulk audit.
+
+---
+
+## 0. Product Foundations
+
+> This section establishes what SeoVista is, the problem it solves, who it serves, and the boundaries of its current behavior. All positioning language quoted here is taken verbatim from the authoritative PRD (`SeoVista — Global GEO & Search Visibility Website.md`).
+
+### 0.1 What is SeoVista?
+
+SeoVista is a global, English-first **GEO & Search Visibility** platform. Its product thesis, quoted from the authoritative PRD, is that it "helps ambitious brands become **found, understood and cited** across traditional search and AI-generated answers." Its core promise is: **"Be found. Be understood. Be cited."** Its hero headline is **"Become the answer your market trusts."** The primary conversion is **`Get a GEO Audit`**; the secondary conversion is **`Check your AI readiness`** via the flagship free tool.
+
+**Why now — the GEO / AEO / SEO context.** The homepage utility strip states it plainly: **"SEO is evolving into answer visibility."** Google AI Overviews, ChatGPT, Gemini, Perplexity, and Bing Copilot increasingly synthesize answers from crawled content rather than presenting ten blue links. Traditional SEO optimized for crawlers, indexability, and ranking positions; it did not optimize for *being cited inside a synthesized answer*. This new discipline — making content discoverable, understandable, and citation-ready for large language models — is **Generative Engine Optimization (GEO)**, also called **Answer Engine Optimization (AEO)**. SeoVista occupies the intersection of GEO strategy, technical SEO, content intelligence, digital authority, and measurement — connecting "Owned Content + Technical Entity Signals + Earned Media Authority in one operating model." The PRD is explicit that GEO "complements — not replaces — technical SEO, content quality and reputation."
+
+### 0.2 The Problem
+
+Three converging problems create the market gap:
+
+1. **Traditional SEO does not cover AI/LLM search visibility.** Conventional audit tools measure crawlability, backlinks, keyword rankings, and on-page factors. None tell a marketer whether ChatGPT, Perplexity, or Google AI Overviews can actually *read, understand, and cite* their content. A site can rank #1 on Google and be invisible to every generative engine.
+2. **Marketers have no self-serve tool to see how AI search engines "read" their site.** No widely accessible instrument scores a URL across the dimensions that matter for AI citation — entity clarity, structured-data completeness, answer-ready content structure, semantic coverage, and citation readiness. Marketers are flying blind on an entire channel that now mediates a growing share of discovery.
+3. **Manual audits don't scale; agencies charge high fees.** A human GEO consultant produces a credible audit at a cost of thousands of dollars and weeks of turnaround — not repeatable across a portfolio of client sites, and not offerable as a low-friction lead magnet. SeoVista automates the audit into a 60–120 second pipeline that produces a reproducible, versioned score, democratizing a capability previously available only through expensive bespoke engagements.
+
+### 0.3 Target Audience
+
+SeoVista serves three audience tiers, each with distinct needs:
+
+| Tier | Audience | Need | Conversion Path |
+|---|---|---|---|
+| **Primary** | B2B marketing agencies | Lead-gen tool to share with prospects; upsell into paid GEO services | Free tool → captured lead → Crew Agency proposal → engagement |
+| **Secondary** | In-house enterprise marketing teams | Visibility score benchmark + prioritized issues for their properties | Free audit → detailed report (email gate) → consultation |
+| **Tertiary** | Bootstrapped founders / indie hackers | Quick AI-readiness check, no signup friction | Free tool → instant summary → optional email for full report |
+
+**Geography.** SeoVista is a **global** product. Default language is English at `/`; Turkish may launch later under `/tr/` and must not delay the English launch. The company's origin is Turkish — branded as **"A GMedya Group company"** in the footer and About page — but the positioning is explicitly "global, premium search visibility company, not as a Turkish backlink marketplace." GMedya appears as a parent-organization relationship, not the primary brand.
+
+### 0.4 Value Proposition
+
+The value proposition differs by audience tier:
+
+- **For agencies:** The free GEO Readiness Checker is a **lead generation engine**. Agencies point prospects to the tool, capture qualified contact information, and receive an autonomous webhook to Crew Agency that triggers proposal generation when a site scores below 60 — the "Agentic B2B SEO Machine" thesis.
+- **For enterprise teams:** SeoVista delivers a **visibility score** (0–100) with per-platform readiness across ChatGPT, Perplexity, Google AI Overviews, and Bing Copilot, plus prioritized issues and quick wins — a benchmark to track over time with a concrete remediation roadmap.
+- **For indie founders:** A **60-second AI readiness assessment** with no signup required for the summary. The user enters a URL, gets an instant score and top issues, and only encounters an email gate for the detailed report — respecting the PRD mandate to "provide immediate value first and ask for contact information at a natural point."
+
+### 0.5 What SeoVista ACTUALLY Does Today
+
+The Phase 1+ platform is fully operational. These behaviors are verified and live:
+
+1. **Public URL form → audit checkout flow.** A visitor enters a public URL at `/tools/geo-readiness-checker/`. The server action validates input via Zod, blocks internal domains, creates lead + job records in PostgreSQL, and enqueues a BullMQ job. The user is redirected to a result page that polls for completion.
+2. **7-module scoring engine with per-platform readiness.** The self-hosted `ScoringEngine` runs seven weighted modules — Indexability (20), Technical (20), Content (20), Semantic (15), Experience (10), Linking (10), AI Visibility (5) — producing a 0–100 score with cap rules. The AI Visibility module emits **per-platform readiness** for ChatGPT, Perplexity, Google AI Overviews, and Bing Copilot, plus issues, quick wins, and recommendations.
+3. **Gated detailed report (email + marketing consent).** After the instant summary, the user unlocks the detailed report by submitting a work email and explicit, separate marketing consent (never pre-checked) — implementing the PRD's "immediate value before gating" principle.
+4. **Internal CMS for insights/blog.** NextG CMS (mock on port 3101, typed contracts in `packages/content-models`) powers editorial content at `/insights/[slug]`.
+5. **Admin panel (CRM + CMS management).** Protected admin routes (`/admin/(protected)/`) provide a leads dashboard, CMS management, and overview dashboard with session-based auth and RBAC.
+6. **Autonomous webhook to Crew Agency.** After every completed audit, the worker POSTs to `crew.tr4.net/api/teklif-yaz` with brand, score, issues, and a `proposalTrigger` flag (`true` when score < 60 or band is critical/poor) — autonomously generating sales proposals. Webhook failures are fire-and-forget.
+
+### 0.6 What SeoVista Does NOT Do (Boundaries)
+
+Defining what SeoVista is *not* is as important as defining what it is. The PRD prohibits unsupported claims, and the current architecture has clear scope limits:
+
+- **Not a SERP rank tracker.** SeoVista does not track keyword positions in Google. A SERP preview feature (snippet rendering) is planned for Phase 2 but does not track rankings.
+- **Not a backlink analysis tool.** SeoVista does not analyze backlink profiles or domain authority. The AI Visibility module's third-party mention data is explicitly a placeholder (`THIRD_PARTY_MENTION_DATA_UNAVAILABLE`).
+- **Not a content generator.** SeoVista scores and diagnoses content; it recommends improvements but does not produce content.
+- **Not a real-time crawler (Phase 2).** Audits are on-demand, triggered by form submission. No continuous monitoring or scheduled re-crawl exists yet.
+- **Not a guaranteed-citation or guaranteed-ranking tool.** The PRD prohibits claiming "guaranteed AI citations or Google rankings" and prohibits representing `llms.txt` as a ranking factor. SeoVista measures readiness; it does not promise outcomes.
+
+### 0.7 Business Model
+
+The PRD defines the launch business model with deliberate restraint: **"Expert-led services + assessments. Do not present SeoVista as a mature SaaS platform until the tools and recurring product genuinely exist."**
+
+- **Free tool = lead generation.** The GEO Readiness Checker provides genuine value (a real audit with a real score) at zero cost, capturing qualified leads who self-select by submitting their URL and work email.
+- **Paid upsells delegated to Crew Agency.** When an audit scores below 60, the autonomous webhook triggers Crew Agency to generate a proposal. Monetization happens through Crew Agency's sales process, not a SeoVista checkout. SeoVista is the lead engine; Crew Agency is the revenue engine.
+- **White-label / multi-tenant future.** The architecture includes a `tenant_id` field in `ScoreContext` (currently hardcoded to `"worker-tenant"`). Per-tenant auth, API keys, credit budgets, and branded report pages are a Phase 4 capability (Section 11, P4).
+
+### 0.8 Source-of-Truth Hierarchy
+
+When documents conflict, the resolution order is fixed:
+
+1. **SeoVista PRD** (`SeoVista — Global GEO & Search Visibility Website.md`) — authoritative for product behavior, brand, content, public routes, and acceptance criteria. **The PRD wins.**
+2. **SeoVista Implementation Brief** (`SeoVista — AI Developer Implementation Brief v1.md`) — authoritative for engineering sequence, architecture, constraints, and non-functional requirements.
+3. **`AGENTS.md`** — engineering rules, mission boundaries, and tooling. Not an independent product authority; must conform to the PRD and Brief.
+4. **Generated code, fixtures, and third-party dependencies** (including OpenSEO) — must conform to all of the above.
+
+This hierarchy is quoted from AGENTS.md and the Implementation Brief Section 0: "If code, mockups or generated copy conflict with the PRD, the PRD wins."
+
+### 0.9 Glossary
+
+| Term | Definition |
+|---|---|
+| **GEO** | Generative Engine Optimization — optimizing content to be discovered, understood, and cited by AI-powered generative search engines (ChatGPT, Perplexity, Google AI Overviews, Gemini). Distinct from traditional SEO, which targets ranked link placement. |
+| **AEO** | Answer Engine Optimization — a synonym-adjacent term for GEO, emphasizing optimization for engines that synthesize answers rather than rank pages. |
+| **SEO** | Search Engine Optimization — the established discipline of optimizing web content for crawler-based search engines (Google, Bing) to achieve higher organic rankings. SeoVista treats GEO as complementary to, not a replacement for, SEO. |
+| **LLM citation** | An instance where a large language model references or attributes information to a specific source domain in its generated response. The core outcome GEO aims to increase. |
+| **AI Overview** | Google's generative answer feature that synthesizes an AI-generated summary at the top of search results, citing sources inline. One of the four platforms SeoVista scores for readiness. |
+| **SPA** | Single Page Application — a web app that loads a bare HTML shell and renders content client-side via JavaScript (React, Vue, Angular, Next.js CSR). SPAs require headless browser rendering (Browseract) for accurate crawling. |
+| **JSON-LD** | JavaScript Object Notation for Linked Data — a serialization format for schema.org structured data embedded in `<script type="application/ld+json">` tags. SeoVista's `packages/schema` generates server-rendered JSON-LD graphs; the Technical scoring module checks for its presence and validity. |
+| **SSRF** | Server-Side Request Forgery — a vulnerability where an attacker tricks a server into making requests to internal network resources. SeoVista's `validateSSRF()` blocks private, loopback, link-local, and cloud metadata IP ranges before any outbound connection. |
+| **BullMQ** | A Redis-backed distributed job queue library for Node.js. SeoVista uses BullMQ to process `geo_readiness_jobs` asynchronously in a dedicated worker (`apps/worker`). Current worker concurrency = 1, the primary throughput bottleneck (see Section 3). |
 
 ---
 
