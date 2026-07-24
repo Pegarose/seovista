@@ -474,7 +474,7 @@ export class ScoringEngine {
         wordpress: 'Gutenberg uses the post title as H1 by default. Ensure your template renders the post title correctly.',
         custom: 'Replace the top heading tag with a single <h1>Title Text</h1> in the page body.'
       },
-      ARTICLE_JSON_LD_MISSING: {
+      JSON_LD_MISSING_RECOMMENDED_SCHEMA: {
         nextjs: 'Render structured data using <script type="application/ld+json">dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}</script> inside page.tsx.',
         wordpress: 'The SeoSuite plugin handles this. Verify that schema output is enabled in settings.',
         custom: 'Inject structured JSON-LD data block at the bottom of the HTML page.'
@@ -498,25 +498,43 @@ export class ScoringEngine {
 
     const hasIssue = (code: string) => [...standardIssues, ...experimentalSignals].some(iss => iss.code === code);
 
-    // ChatGPT readiness checks: values entity clarity
-    if (hasIssue('ARTICLE_JSON_LD_MISSING') || hasIssue('ORGANIZATION_SCHEMA_MISSING')) chatgpt -= 0.15;
+    // NOTE: every code checked below is a REAL emitted code (verified against
+    // the 7 scoring modules + the enrichment surface). The previous version
+    // referenced 8 "ghost" codes that no module ever emits, so the four
+    // platform readiness values stayed near-static regardless of input. The
+    // remap below (VAL-B-CATALOG-007) restores dynamic, input-driven
+    // readiness without touching the deterministic overall 0-100 score path
+    // (score_version stays `seovista-score-v1.2-decoupled` — only the
+    // experimental per-platform readiness display changes). The previous
+    // ghost-code strings are documented in the feature spec and the
+    // platform-readiness remap test; they are intentionally not repeated
+    // here so the readiness logic stays grep-clean.
+
+    // ChatGPT readiness checks: values structured data / entity clarity.
+    // Remapped to the real emitted schema codes the technical module produces.
+    if (hasIssue('JSON_LD_MISSING_RECOMMENDED_SCHEMA') || hasIssue('BREADCRUMB_SCHEMA_MISSING')) chatgpt -= 0.15;
     if (hasIssue('TITLE_MISSING')) chatgpt -= 0.2;
     if (hasIssue('THIN_CONTENT_RISK')) chatgpt -= 0.15;
 
-    // Perplexity readiness checks: values citation, links
-    if (hasIssue('PLATFORM_SOURCE_FIT_WEAK')) perplexity -= 0.2;
-    if (hasIssue('INTERNAL_LINKS_LOW')) perplexity -= 0.1;
+    // Perplexity readiness checks: values citation / source trust + internal linking.
+    // Remapped to the real emitted citation + internal-linking codes.
+    if (hasIssue('CITATION_READINESS_WEAK')) perplexity -= 0.2;
+    if (hasIssue('NO_INTERNAL_LINKS')) perplexity -= 0.1;
     if (hasIssue('THIN_CONTENT_RISK')) perplexity -= 0.15;
 
-    // Google AI Overviews: closely tied to indexability and Helpful Content
-    if (hasIssue('HTTP_STATUS_NOT_200') || hasIssue('META_NOINDEX_FOUND')) googleAiOverviews -= 0.4;
-    if (hasIssue('THIN_CONTENT_RISK') || hasIssue('CONTENT_DEPTH_LOW')) googleAiOverviews -= 0.2;
+    // Google AI Overviews: closely tied to indexability and Helpful Content.
+    // Remapped to the real emitted indexability + content codes (the former
+    // content-depth ghost code collapses into the already-present real code).
+    if (hasIssue('HTTP_STATUS_NOT_OK') || hasIssue('NOINDEX_DETECTED')) googleAiOverviews -= 0.4;
+    if (hasIssue('THIN_CONTENT_RISK')) googleAiOverviews -= 0.2;
     if (hasIssue('SEMANTIC_GAP_DETECTED')) googleAiOverviews -= 0.15;
 
-    // Bing Copilot
+    // Bing Copilot.
+    // Remapped to the real emitted AI parseability code the ai-visibility
+    // module produces.
     if (hasIssue('CANONICAL_MISSING')) bingCopilot -= 0.1;
     if (hasIssue('TITLE_MISSING') || hasIssue('H1_MISSING')) bingCopilot -= 0.15;
-    if (hasIssue('AI_PARSEABILITY_LOW')) bingCopilot -= 0.1;
+    if (hasIssue('AI_PARSEABILITY_RISK')) bingCopilot -= 0.1;
 
     return {
       chatgpt: Math.max(0.1, Math.min(1.0, chatgpt)),
