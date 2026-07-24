@@ -62,7 +62,7 @@ describe("infrastructure walking skeleton", () => {
       const runner = createMigrationRunner(env.db, defaultMigrationsDir());
       const { appliedIds, pending } = await runner.getState();
       expect(pending.length).toBe(0);
-      expect(appliedIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      expect(appliedIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     });
 
     it("is a no-op on the second run and preserves data", async () => {

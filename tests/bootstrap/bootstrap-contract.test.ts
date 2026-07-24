@@ -56,6 +56,7 @@ describe("monorepo bootstrap contract", () => {
       "verify:production-sentinels",
       "release",
       "verify-package-boundaries",
+      "score:dry",
     ];
 
     expect(Object.keys(pkg.scripts ?? {})).toEqual([
@@ -231,7 +232,7 @@ describe("monorepo bootstrap contract", () => {
     expect(readme).toMatch(/## Setup/i);
     expect(readme).toMatch(/## Commands/i);
     expect(readme).toMatch(/## Teardown/i);
-    expect(readme).toMatch(/## Provider-Mock Limitations/i);
+    expect(readme).toMatch(/## Phase 1\+ Integration Status/i);
     expect(readme).toContain("3200");
     expect(readme).toContain("infrastructure:start");
     expect(readme).toContain("infrastructure:teardown");

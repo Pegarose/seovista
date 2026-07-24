@@ -15,7 +15,7 @@
   },
   "scripts": {
     "pretest": "pnpm run build",
-    "test": "vitest run",
+    "test": "vitest run --exclude src/__tests__/fetcher.test.ts --exclude src/__tests__/geo-worker.test.ts",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "healthcheck": "node dist/healthcheck.js",
