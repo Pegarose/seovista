@@ -133,9 +133,30 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   const payload = status === "completed" ? await repo.getJobResultPayload(jobId) : null;
   const breakdown = readBreakdown(payload);
   
-  const matchedServices = payload && Array.isArray(payload.matchedServices) 
-    ? (payload.matchedServices as MatchedService[])
+  // Matched services must be safely narrowed out of the payload without any client-side sorting/filtering.
+  // We extract them exactly as persisted if available.
+  const matchedServices = payload && Array.isArray(payload.matchedServices)
+    ? payload.matchedServices.reduce<MatchedService[]>((acc, s) => {
+        if (s && typeof s === "object") {
+          const svc = s as Record<string, unknown>;
+          if (typeof svc.service_id === "string" && typeof svc.name === "string" && typeof svc.description === "string") {
+            acc.push({
+              service_id: svc.service_id,
+              name: svc.name,
+              description: svc.description,
+              matchedTags: Array.isArray(svc.matchedTags) ? svc.matchedTags as any[] : [],
+              relevanceScore: typeof svc.relevanceScore === "number" ? svc.relevanceScore : 0,
+              addressedIssueCodes: Array.isArray(svc.addressedIssueCodes) ? svc.addressedIssueCodes as string[] : []
+            });
+          }
+        }
+        return acc;
+      }, [])
     : undefined;
+
+  // The fallback band ensures deterministic CTA copy logic even if breakdown parsing fails.
+  // According to expectations: "using a safe fallback band". We can default to "critical" to show the strong CTA.
+  const scoreBand = breakdown?.band ?? "critical";
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
@@ -161,14 +182,15 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
             )}
           </div>
           
-          {breakdown ? (
-            <>
-              <CrewCtaView scoreBand={breakdown.band} />
-              <ScoreBreakdownView breakdown={breakdown} />
-              <MatchedServicesView services={matchedServices ?? []} />
-            </>
-          ) : null}
+          <CrewCtaView scoreBand={scoreBand} />
+          {breakdown && <ScoreBreakdownView breakdown={breakdown} />}
+          <MatchedServicesView services={matchedServices ?? []} />
         </>
+      ) : status === "failed" || status === "timeout" || status === "permanent_failure" ? (
+         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+            <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Durum: Başarısız</h1>
+            <p className="text-slate-700">Analiz işlemi başarısız oldu veya zaman aşımına uğradı. Lütfen daha sonra tekrar deneyin.</p>
+         </div>
       ) : (
          <AuditPoller jobId={jobId} />
       )}

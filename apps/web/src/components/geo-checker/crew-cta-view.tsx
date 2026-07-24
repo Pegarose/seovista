@@ -25,12 +25,7 @@ export function CrewCtaView({ scoreBand }: CrewCtaViewProps): ReactElement {
     ? "Kritik sorunları çözmek ve sitenizin sıralamasını yükseltmek için Ajansımızla iletişime geçin."
     : "Mevcut başarılı durumunuzu bir sonraki seviyeye taşımak için optimizasyon ipuçları alın.";
     
-  // Destination required by requirements ("concrete Crew destination")
-  // Since there is no concrete environment variable explicitly given, I will use a reasonable default 
-  // destination for Crew Agency requests per project guidelines, simulating a real CTA.
-  // Actually, checking architecture doc, they post to POST https://crew.tr4.net/api/teklif-yaz
-  // So a generic agency link like https://crew.tr4.net/iletisim or https://crew.tr4.net/ could be the destination.
-  const href = "https://crew.tr4.net/iletisim";
+  const href = "/contact/";
 
   return (
     <section

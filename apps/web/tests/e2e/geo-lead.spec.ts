@@ -23,8 +23,8 @@ test('executes end-to-end GEO lead capture workflow', async ({ page }) => {
   // Since db mock runs it fast, we can just wait for the gating form
   
   // Step 4: Wait for the gating form text requesting an email
-  // The gate renders "Audit Complete: Summary"
-  await expect(page.getByRole('heading', { name: 'Audit Complete: Summary' })).toBeVisible({ timeout: 15000 });
+  // The gate renders "Geo Readiness Analiz Sonucu"
+  await expect(page.getByRole('heading', { name: 'Geo Readiness Analiz Sonucu' })).toBeVisible({ timeout: 15000 });
   
   // Fill the email and check the consent checkbox
   // We need to look at GatedReportForm to confirm exact locators, but usually it's "Work Email"
@@ -40,5 +40,10 @@ test('executes end-to-end GEO lead capture workflow', async ({ page }) => {
   await page.getByRole('button', { name: 'Unlock Report' }).click();
   
   // Assert the final metrics screen appears cleanly
-  await expect(page.getByRole('heading', { name: 'Full Raw Dashboard' })).toBeVisible({ timeout: 10000 });
+  // Should wait for Crew CTA heading
+  await expect(page.getByRole('heading', { name: 'Performansınızı Artırın' })).toBeVisible({ timeout: 10000 });
+  
+  // Also expect the mock strings are NOT visible anymore. They were removed.
+  await expect(page.getByText('AI Model A')).not.toBeVisible();
+  await expect(page.getByText('Full Raw Dashboard')).not.toBeVisible();
 });
