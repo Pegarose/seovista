@@ -150,11 +150,25 @@ describe("geo-worker", () => {
       "<body><div id='root'></div></body></html>";
 
     const crewPayloads: unknown[] = [];
+    let crewRequests = 0;
+    let crewAuthHeader = "";
+    let crewApiKeyHeader = "";
 
     const fetchMock = vi.fn().mockImplementation(async (url, options) => {
       if (typeof url === "string" && url.includes("crew.tr4.net")) {
+        crewRequests++;
         crewPayloads.push(JSON.parse(options.body));
-        return { ok: true, status: 200, statusText: "OK" };
+        
+        // Extract headers (handles both Headers object and plain object)
+        if (options.headers && typeof options.headers.get === 'function') {
+          crewAuthHeader = options.headers.get("Authorization") || "";
+          crewApiKeyHeader = options.headers.get("X-API-Key") || "";
+        } else if (options.headers) {
+          crewAuthHeader = options.headers["Authorization"] || options.headers["authorization"] || "";
+          crewApiKeyHeader = options.headers["X-API-Key"] || options.headers["x-api-key"] || "";
+        }
+        
+        return { ok: true, status: 200, statusText: "OK", json: async () => ({ job_id: "test-uuid" }) };
       }
       // Cheerio fallback for the page fetch
       return {
@@ -185,39 +199,53 @@ describe("geo-worker", () => {
     const actualStatus = await waitForJobStatus(env.db, jobIdInDb);
     expect(actualStatus).toBe("completed");
 
+    expect(crewRequests).toBe(1);
+    expect(crewAuthHeader).toBe("Bearer test_crew_api_key");
+    expect(crewApiKeyHeader).toBe("test_crew_api_key");
     expect(crewPayloads).toHaveLength(1);
-    const payload = crewPayloads[0] as {
-      url: string;
-      brand: string;
-      score: number;
-      proposalTrigger: boolean;
-      lowScores: Record<string, number>;
-      topIssues: Array<unknown>;
-      correlationId: string;
-      jobIdentity: string;
-      resultId: string;
-    };
-    expect(payload.url).toBe("https://example.com");
-    expect(payload.brand).toBe("example.com");
-    expect(typeof payload.score).toBe("number");
-    expect(typeof payload.proposalTrigger).toBe("boolean");
-    expect(payload.lowScores).toBeTruthy();
-    expect(payload.topIssues).toBeInstanceOf(Array);
-    expect(payload.correlationId).toBe("geo-test-corr-id-low");
-    expect(payload.jobIdentity).toBe("geo-test-job-identity-low");
-    expect(payload.resultId).toBeTruthy();
+    
+    // Using string index signatures since TS complains without them
+    const payload = crewPayloads[0] as Record<string, unknown>;
+    expect(payload['url']).toBe("https://example.com");
+    expect(payload['brand']).toBe("example.com");
+    expect(typeof payload['score']).toBe("number");
+    expect(typeof payload['proposalTrigger']).toBe("boolean");
+    expect(payload['lowScores']).toBeTruthy();
+    expect(payload['topIssues']).toBeInstanceOf(Array);
+    expect(payload['correlationId']).toBe("geo-test-corr-id-low");
+    expect(payload['jobIdentity']).toBe("geo-test-job-identity-low");
+    expect(payload['resultId']).toBeTruthy();
+    expect(payload['analysisSummary']).toBeTruthy();
+    // Test the fields added by Phase B
+    expect(payload['matchedServices']).toBeInstanceOf(Array);
+    expect(payload['tier']).toBe("free");
+    
+    // Assert persistence happened before notify (since we wait for job completed status)
+    const jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-low"]);
+    expect(jobResults.rows).toHaveLength(1);
+    expect(jobResults.rows[0]?.id).toBe(payload['resultId']);
   });
 
-  it("leaves job completed but audits Crew Agency errors via Breadcrumb", async () => {
+  it("leaves job completed but audits Crew Agency errors via Breadcrumb (503/401/403 and fetch rejection)", async () => {
     process.env.CREW_AGENCY_API_KEY = "test_crew_api_key";
 
     const weakHtml =
       "<!doctype html><html><head><title>Weak Page</title></head>" +
       "<body><div id='root'></div></body></html>";
 
+    let requestCount = 0;
     const fetchMock = vi.fn().mockImplementation(async (url) => {
       if (typeof url === "string" && url.includes("crew.tr4.net")) {
-        return { ok: false, status: 503, statusText: "Service Unavailable" };
+        requestCount++;
+        if (requestCount === 1) {
+          return { ok: false, status: 503, statusText: "Service Unavailable" };
+        } else if (requestCount === 2) {
+          return { ok: false, status: 401, statusText: "Unauthorized" };
+        } else if (requestCount === 3) {
+          return { ok: false, status: 403, statusText: "Forbidden" };
+        } else {
+          return Promise.reject(new Error("Network Error"));
+        }
       }
       return {
         ok: true,
@@ -233,31 +261,132 @@ describe("geo-worker", () => {
     // We'll spy on console.error directly to avoid mocking Sentry bridge since 
     // it writes to stdout and uses the Sentry module internally
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    
+    // Listen for breadcrumbs
+    // Just mock it so we can spy on it
+    const breadcrumbSpy = vi.fn();
+    vi.mock("../utils/sentry.js", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("../utils/sentry.js")>();
+      return {
+        ...actual,
+        emitCrewFailureBreadcrumb: (...args: any[]) => {
+          breadcrumbSpy(...args);
+          return actual.emitCrewFailureBreadcrumb(...(args as [any]));
+        }
+      };
+    });
 
     worker = startGeoWorker({ queueName });
 
-    const res = await env.db.query(
+    // Test 503
+    const res1 = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      ["geo-test-job-identity-fail", queueName, "queued", "https://example.com", "geo-test-corr-id-fail"]
+      ["geo-test-job-identity-fail-1", queueName, "queued", "https://example.com/1", "geo-test-corr-id-fail-1"]
     );
-    const jobIdInDb = res.rows[0]?.id;
+    const jobId1 = res1.rows[0]?.id;
 
     await queue.add("geo_score", {
-      jobId: jobIdInDb,
-      url: "https://example.com",
+      jobId: jobId1,
+      url: "https://example.com/1",
     });
 
-    const actualStatus = await waitForJobStatus(env.db, jobIdInDb);
-    expect(actualStatus).toBe("completed");
+    const status1 = await waitForJobStatus(env.db, jobId1);
+    expect(status1).toBe("completed");
 
     expect(consoleSpy).toHaveBeenCalledWith(
       "Crew Agency notification failed:", 
       expect.objectContaining({ message: expect.stringContaining("503") })
     );
 
-    // Job results should exist despite notification error
-    const jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-fail"]);
+    let jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-fail-1"]);
     expect(jobResults.rows).toHaveLength(1);
+    const jobResult1 = await env.db.query("SELECT * FROM job_records WHERE id = $1", [jobId1]);
+    expect(jobResult1.rows[0]?.completed_at).toBeTruthy();
+    expect(jobResult1.rows[0]?.result_id).toBe(jobResults.rows[0]?.id);
+
+    // Test Network Error
+    // Fast-forward requestCount to map to the rejection path
+    requestCount = 3; 
+    
+    const res2 = await env.db.query(
+      `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      ["geo-test-job-identity-fail-2", queueName, "queued", "https://example.com/2", "geo-test-corr-id-fail-2"]
+    );
+    const jobId2 = res2.rows[0]?.id;
+
+    await queue.add("geo_score", {
+      jobId: jobId2,
+      url: "https://example.com/2",
+    });
+
+    const status2 = await waitForJobStatus(env.db, jobId2);
+    expect(status2).toBe("completed");
+
+    jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-fail-2"]);
+    expect(jobResults.rows).toHaveLength(1);
+    
+    expect(breadcrumbSpy).toHaveBeenCalledWith(expect.objectContaining({
+      url: "https://example.com/2",
+      jobId: String(jobId2),
+      correlationId: "geo-test-corr-id-fail-2",
+      errorMessage: "Network Error"
+    }));
+  });
+
+  it("aborts freezing fetch using AbortSignal without failing the job", async () => {
+    process.env.CREW_AGENCY_API_KEY = "test_crew_api_key";
+
+    const weakHtml =
+      "<!doctype html><html><head><title>Weak Page</title></head>" +
+      "<body><div id='root'></div></body></html>";
+
+    const fetchMock = vi.fn().mockImplementation(async (url, options) => {
+      if (typeof url === "string" && url.includes("crew.tr4.net")) {
+        return new Promise((_, reject) => {
+          if (options.signal) {
+            options.signal.addEventListener('abort', () => {
+              reject(new Error("The operation was aborted"));
+            });
+          }
+          // Intentionally do not resolve to simulate a hang
+        });
+      }
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => weakHtml,
+        json: async () => ({}),
+        headers: { forEach: () => undefined },
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    worker = startGeoWorker({ queueName });
+
+    const res = await env.db.query(
+      `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      ["geo-test-job-identity-timeout", queueName, "queued", "https://example.com/timeout", "geo-test-corr-id-timeout"]
+    );
+    const jobId = res.rows[0]?.id;
+
+    await queue.add("geo_score", {
+      jobId: jobId,
+      url: "https://example.com/timeout",
+    });
+
+    // We manually advance timers because vitest's fake timers affects `waitForJobStatus`
+    // which uses `setTimeout` inside a loop.
+    vi.advanceTimersByTime(11000); // 10s is the timeout
+
+    const actualStatus = await waitForJobStatus(env.db, jobId);
+    expect(actualStatus).toBe("completed");
+
+    vi.useRealTimers();
   });
 });

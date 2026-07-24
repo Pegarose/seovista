@@ -349,8 +349,9 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
   }
 
   if (!response.ok) {
-    const err = new Error(`Crew Agency notification failed: ${response.status} ${response.statusText}`);
-    (err as any).status = response.status;
+    const status = response.status;
+    const err = new Error(`Crew Agency notification failed: ${status} ${response.statusText}`);
+    (err as any).status = status;
     throw err;
   }
 
