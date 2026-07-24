@@ -21,6 +21,7 @@ export class IndexabilityModule implements ScoreModule {
           evidence: { status: context.parsed.statusCode },
           recommendation: 'Check server logs to identify and resolve the crash or timeout.',
           confidence: 1.0,
+          pointLoss: -20,
         });
         score -= 20;
       } else if (context.parsed.statusCode >= 400) {
@@ -33,6 +34,7 @@ export class IndexabilityModule implements ScoreModule {
           evidence: { status: context.parsed.statusCode },
           recommendation: 'Fix broken links pointing to this page or restore the missing content.',
           confidence: 1.0,
+          pointLoss: -20,
         });
         score -= 20;
       } else if (context.parsed.statusCode !== 200) {
@@ -45,6 +47,7 @@ export class IndexabilityModule implements ScoreModule {
           evidence: { status: context.parsed.statusCode },
           recommendation: 'Ensure the primary URL returns a 200 OK status.',
           confidence: 1.0,
+          pointLoss: -10,
         });
         score -= 10;
       }
@@ -64,6 +67,7 @@ export class IndexabilityModule implements ScoreModule {
         evidence: { robots: context.parsed.metaRobots },
         recommendation: 'Remove the noindex directive if this page should be searchable.',
         confidence: 1.0,
+        pointLoss: -20,
       });
       score -= 20;
     }
@@ -78,6 +82,7 @@ export class IndexabilityModule implements ScoreModule {
         evidence: { robots: context.parsed.metaRobots },
         recommendation: 'Change nofollow to index, follow unless these links are untrusted.',
         confidence: 1.0,
+        pointLoss: -10,
       });
       score -= 10;
     }
@@ -93,6 +98,7 @@ export class IndexabilityModule implements ScoreModule {
         evidence: {},
         recommendation: 'Add a self-referencing canonical tag to the head.',
         confidence: 0.9,
+        pointLoss: -5,
       });
       score -= 5;
     } else if (context.url) {
@@ -110,6 +116,7 @@ export class IndexabilityModule implements ScoreModule {
             evidence: { canonicalUrl: context.parsed.canonical, requestUrl: context.url },
             recommendation: 'Ensure the canonical domain is correct. If intentional, this is a cross-domain canonical.',
             confidence: 0.95,
+            pointLoss: -10,
           });
           score -= 10;
         } else if (reqUrl.pathname !== canUrl.pathname) {
@@ -159,6 +166,7 @@ export class IndexabilityModule implements ScoreModule {
           evidence: { wordCount },
           recommendation: 'Ensure critical content is present in the raw HTML response.',
           confidence: 0.9,
+          pointLoss: -5,
         });
         score -= 5;
       } else {
@@ -171,6 +179,7 @@ export class IndexabilityModule implements ScoreModule {
           evidence: { wordCount },
           recommendation: 'Add meaningful text content to the page body.',
           confidence: 0.9,
+          pointLoss: -15,
         });
         score -= 15;
       }

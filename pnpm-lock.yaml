@@ -79,6 +79,9 @@ importers:
       '@seovista/content-models':
         specifier: workspace:*
         version: link:../../packages/content-models
+      '@seovista/geo-engine':
+        specifier: workspace:*
+        version: link:../../packages/geo-engine
       '@seovista/schema':
         specifier: workspace:*
         version: link:../../packages/schema

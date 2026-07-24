@@ -3,7 +3,10 @@ import type {
   ScoreModuleResult, 
   AuditIssue, 
   Recommendation, 
-  ScoreModule
+  ScoreModule,
+  ScoreBreakdown,
+  ScoreBreakdownModule,
+  ScoreBreakdownIssue,
 } from './types';
 import type { NWEnrichmentResult } from './providers/neuronwriter.js';
 import { IndexabilityModule } from "./modules/indexability.js";
@@ -66,6 +69,16 @@ export interface ScoreOutput {
   aiVisibility?: Record<string, unknown> | null;
   providerEnrichments?: (NWEnrichmentResult & { provider?: string })[];
   recommendations: Recommendation[];
+  /**
+   * Structured per-module score breakdown (`VAL-A-UI-001` / `VAL-A-UI-002`).
+   *
+   * A render-ready projection of the deterministic scoring core: one entry
+   * per module with its `score` / `maxScore` / `status` and each issue's
+   * `pointLoss` contribution. The result-page RSC consumes this directly
+   * without recomputing any score. `scoreVersion` mirrors `overall.score_version`
+   * so operators can compare runs across refactors from a single render.
+   */
+  breakdown: ScoreBreakdown;
 }
 
 export class ScoringEngine {
@@ -346,6 +359,33 @@ export class ScoringEngine {
     const recommendationsWithEnrichment = [...recommendations, ...enrichmentRecommendations];
     const topIssuesWithEnrichment = [...standardIssues, ...enrichmentIssues];
 
+    // ── Per-module score breakdown (render-ready projection) ────────────────
+    // Built from the deterministic `moduleResults` so the result-page RSC can
+    // render per-module contributions and per-issue point-loss without
+    // recomputing any score (VAL-A-UI-001 / VAL-A-UI-002). Each issue's
+    // `pointLoss` is the negative deduction the module recorded at the same
+    // call site as its `score -= X` (0 when the issue is info-only / an
+    // opportunity nudge that does not deduct points).
+    const breakdown: ScoreBreakdown = {
+      scoreVersion: SCORE_VERSION,
+      overallScore: finalScore,
+      band: scoreBand,
+      modules: moduleResults.map((res): ScoreBreakdownModule => ({
+        key: res.key,
+        name: res.label,
+        score: res.score,
+        maxScore: res.maxScore,
+        status: res.status,
+        issues: res.issues.map((iss): ScoreBreakdownIssue => ({
+          code: iss.code,
+          message: iss.title,
+          pointLoss: iss.pointLoss ?? 0,
+          severity: iss.severity,
+          module: iss.module,
+        })),
+      })),
+    };
+
     return {
       scoreVersion: SCORE_VERSION,
       overall: {
@@ -373,6 +413,7 @@ export class ScoringEngine {
       semanticAnalysis,
       aiVisibility,
       recommendations: recommendationsWithEnrichment,
+      breakdown,
     };
   }
 

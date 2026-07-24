@@ -31,6 +31,7 @@ export class ContentModule implements ScoreModule {
         evidence: { wordCount, totalHeadings },
         recommendation: 'Break up the content using H2 and H3 subheadings.',
         confidence: 0.9,
+        pointLoss: -3,
       });
       structureScore -= 3;
     }
@@ -45,6 +46,7 @@ export class ContentModule implements ScoreModule {
         evidence: { hasListOrTable, wordCount },
         recommendation: 'Use bullet points, numbered lists, or tables to summarize key steps or data.',
         confidence: 0.8,
+        pointLoss: -2,
       });
       structureScore -= 2;
     }
@@ -78,6 +80,7 @@ export class ContentModule implements ScoreModule {
         evidence: { wordCount, pageType: context.pageType || 'unknown' },
         recommendation: 'Expand the page content to fully satisfy user intent.',
         confidence: 0.9,
+        pointLoss: -thinPenalty,
       });
       score -= thinPenalty;
     }
@@ -100,10 +103,11 @@ export class ContentModule implements ScoreModule {
           module: this.key,
           impact: 'Mentioning the core topic early helps establish immediate relevance for users and bots.',
           evidence: { targetKeyword: context.targetKeyword },
-          recommendation: isProductOrLanding 
+          recommendation: isProductOrLanding
             ? 'Consider ensuring the product/offer name is prominent above the fold.'
             : 'Naturally include your target keyword or core topic within the first paragraph.',
           confidence: 0.8,
+          pointLoss: -penalty,
         });
         score -= penalty;
       }
@@ -126,6 +130,7 @@ export class ContentModule implements ScoreModule {
           evidence: { density: `${(keywordDensity * 100).toFixed(1)}%`, occurrences, wordCount },
           recommendation: 'Reduce repetitions of the exact match keyword and use semantic variations.',
           confidence: 0.9,
+          pointLoss: -5,
         });
         score -= 5;
       }
@@ -147,6 +152,7 @@ export class ContentModule implements ScoreModule {
           evidence: { targetKeyword: context.targetKeyword, pageType: context.pageType },
           recommendation: 'Consider creating a dedicated blog post for this query instead of targeting it on a product page.',
           confidence: 0.7,
+          pointLoss: -2,
         });
         score -= 2;
       }

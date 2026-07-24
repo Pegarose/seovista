@@ -22,6 +22,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: {},
         recommendation: 'Add a descriptive <title> tag between 50-60 characters.',
         confidence: 1.0,
+        pointLoss: -5,
       });
       score -= 5;
     } else {
@@ -35,6 +36,7 @@ export class TechnicalModule implements ScoreModule {
           evidence: { title, length: title.length },
           recommendation: 'Expand the title to 50-60 characters with relevant terms.',
           confidence: 0.9,
+          pointLoss: -2,
         });
         score -= 2;
       } else if (title.length > 65) {
@@ -47,6 +49,7 @@ export class TechnicalModule implements ScoreModule {
           evidence: { title, length: title.length },
           recommendation: 'Reduce title length to under 60 characters.',
           confidence: 0.9,
+          pointLoss: -1,
         });
         score -= 1;
       }
@@ -63,6 +66,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: {},
         recommendation: 'Add a compelling <meta name="description"> tag between 120-160 characters.',
         confidence: 1.0,
+        pointLoss: -3,
       });
       score -= 3;
     } else {
@@ -76,6 +80,7 @@ export class TechnicalModule implements ScoreModule {
           evidence: { description, length: description.length },
           recommendation: 'Expand description to 120-160 characters outlining the page value.',
           confidence: 0.9,
+          pointLoss: -1,
         });
         score -= 1;
       } else if (description.length > 165) {
@@ -88,6 +93,7 @@ export class TechnicalModule implements ScoreModule {
           evidence: { description, length: description.length },
           recommendation: 'Keep the description under 160 characters for desktop and 120 for mobile.',
           confidence: 0.9,
+          pointLoss: -1,
         });
         score -= 1;
       }
@@ -105,6 +111,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: {},
         recommendation: 'Add exactly one <h1> tag containing the primary topic.',
         confidence: 1.0,
+        pointLoss: -3,
       });
       score -= 3;
     } else if (h1s.length > 1) {
@@ -123,6 +130,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: { count: h1s.length, h1s: h1s.slice(0, 3) },
         recommendation: 'Change secondary H1 tags to H2 or H3 tags, unless using strict HTML5 sectioning elements like <article>.',
         confidence: 0.8,
+        pointLoss: severityStr === 'low' ? -1 : 0,
       });
 
       if (severityStr === 'low') {
@@ -142,6 +150,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: { ogKeys: og ? Object.keys(og) : [] },
         recommendation: 'Add og:title, og:description, og:url, and og:image meta tags.',
         confidence: 1.0,
+        pointLoss: -1,
       });
       ogScore -= 1;
     }
@@ -155,6 +164,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: { twitterKeys: twitter ? Object.keys(twitter) : [] },
         recommendation: 'Add twitter:card, twitter:title, and twitter:image meta tags.',
         confidence: 1.0,
+        pointLoss: -1,
       });
       ogScore -= 1;
     }
@@ -189,6 +199,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: {},
         recommendation: 'Validate your schema using the Google Rich Results Test tool.',
         confidence: 1.0,
+        pointLoss: -2,
       });
       schemaScore -= 2;
     }
@@ -208,6 +219,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: { detectedSchemas: schemaTypes },
         recommendation: 'Implement BreadcrumbList JSON-LD to reflect the site navigation path.',
         confidence: 0.9,
+        pointLoss: -0.5,
       });
       schemaScore -= 0.5;
     }
@@ -222,6 +234,7 @@ export class TechnicalModule implements ScoreModule {
         evidence: { pageType: context.pageType, detectedSchemas: schemaTypes },
         recommendation: 'Add Article or BlogPosting JSON-LD schema.',
         confidence: 0.9,
+        pointLoss: -0.5,
       });
       schemaScore -= 0.5;
     }

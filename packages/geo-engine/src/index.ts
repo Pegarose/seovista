@@ -7,6 +7,9 @@ export type {
   GeoReadinessResult,
   PassFailRule,
   ScoringConfiguration,
+  ScoreBreakdown,
+  ScoreBreakdownModule,
+  ScoreBreakdownIssue,
 } from "./types.js";
 
 export type { ScoreContext, ParsedPage } from "./types.js";

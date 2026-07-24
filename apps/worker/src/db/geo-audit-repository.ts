@@ -67,6 +67,37 @@ export function createGeoAuditRepository(client: DbClient) {
       );
       return res.rows[0];
     },
+    /**
+     * Fetch the most recent `job_results.payload` for a `job_records.id`.
+     *
+     * The payload is JSONB; `pg` parses JSONB columns into a JS object
+     * automatically, so the returned value is the parsed result payload
+     * (object) or `null` when no result row exists yet. The result-page RSC
+     * uses this to render the per-module score breakdown
+     * (`ScoreBreakdown`) without recomputing any score.
+     */
+    async getJobResultPayload(id: string): Promise<Record<string, unknown> | null> {
+      const res = await client.query<{ payload: unknown }>(
+        `SELECT r.payload
+         FROM job_records j
+         JOIN job_results r ON r.correlation_id = j.correlation_id
+         WHERE j.id = $1
+         ORDER BY r.created_at DESC
+         LIMIT 1`,
+        [id]
+      );
+      const row = res.rows[0];
+      if (!row) return null;
+      const payload = row.payload;
+      if (typeof payload === "string") {
+        try {
+          return JSON.parse(payload) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      }
+      return (payload ?? null) as Record<string, unknown> | null;
+    },
     async getAllLeadsForAdmin(): Promise<AdminLeadListRow[]> {
       const res = await client.query<any>(
         `SELECT l.id, l.domain, l.brand_name as "brandName", l.primary_market as "primaryMarket", l.work_email as "workEmail", l.marketing_consent as "marketingConsent", l.created_at as "createdAt", j.status AS "jobStatus" FROM geo_audit_leads l LEFT JOIN job_records j ON l.id = j.lead_id ORDER BY l.created_at DESC`

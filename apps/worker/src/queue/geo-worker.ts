@@ -123,6 +123,14 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
 
         const issues = data.topIssues ?? [];
 
+        // Per-module score breakdown (VAL-A-UI-001 / VAL-A-UI-002). Persisted
+        // into the job_results payload so the result-page RSC can render the
+        // module contributions + per-issue point-loss and the score_version
+        // metadata strip WITHOUT recomputing any score. The breakdown is a
+        // deterministic projection of the scoring core, so it is safe to
+        // store alongside the existing trimmed result shape.
+        const breakdown = data.breakdown;
+
         const mockJsonBResult = JSON.stringify({
           methodologyVersion: data.scoreVersion || "v1.1",
           auditedAt: new Date().toISOString(),
@@ -133,6 +141,8 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
             understanding: understandingScore,
             evidence: evidenceScore,
           },
+          scoreVersion: data.scoreVersion,
+          breakdown,
           issues: issues,
         });
 

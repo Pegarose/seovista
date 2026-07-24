@@ -64,6 +64,7 @@ export class SemanticModule implements ScoreModule {
             ? 'Ensure the topic is aligned with the title, though exact keyword match is less critical for docs.' 
             : 'Naturally include the primary topic in the title tag, ideally near the beginning.',
           confidence: isDoc ? 0.70 : 0.92,
+          pointLoss: -(isDoc ? 1 : 3),
         });
         score -= isDoc ? 1 : 3;
       }
@@ -78,6 +79,7 @@ export class SemanticModule implements ScoreModule {
           evidence: { targetKeyword, h1Text: h1s[0]?.text },
           recommendation: 'Align the H1 heading with the target topic naturally.',
           confidence: 0.88,
+          pointLoss: -2,
         });
         score -= 2;
       }
@@ -92,6 +94,7 @@ export class SemanticModule implements ScoreModule {
           evidence: { targetKeyword, introSnippet: first150Words.substring(0, 80) },
           recommendation: 'Introduce the core topic naturally within the first 100-150 words.',
           confidence: 0.85,
+          pointLoss: -2,
         });
         score -= 2;
       }
@@ -107,6 +110,7 @@ export class SemanticModule implements ScoreModule {
           evidence: { targetKeyword },
           recommendation: 'Expand content to cover subtopics and related aspects of the main theme.',
           confidence: 0.80,
+          pointLoss: -2,
         });
         score -= 2;
       } else if (!inBody && !inIntro) {
@@ -119,6 +123,7 @@ export class SemanticModule implements ScoreModule {
           evidence: { targetKeyword },
           recommendation: 'Ensure the core topic is clearly addressed throughout the content.',
           confidence: 0.95,
+          pointLoss: -5,
         });
         score -= 5;
       }
@@ -133,6 +138,7 @@ export class SemanticModule implements ScoreModule {
           evidence: { targetKeyword, h2Count: h2s.length, topicHeadings: topicRelatedHeadings.length },
           recommendation: 'Use subheadings that address subtopics and questions related to the main theme.',
           confidence: 0.78,
+          pointLoss: -1,
         });
         score -= 1;
       }
@@ -199,6 +205,7 @@ export class SemanticModule implements ScoreModule {
         evidence: { titleText: parsed.title, h1Count: h1s.length },
         recommendation: 'Provide a targetKeyword in the API request, or ensure the title and H1 clearly express the page topic.',
         confidence: 0.90,
+        pointLoss: -5,
       });
       score -= 5;
     } else if (topicConfidence < 0.5) {

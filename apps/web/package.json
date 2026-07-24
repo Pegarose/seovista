@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@seovista/content-models": "workspace:*",
+    "@seovista/geo-engine": "workspace:*",
     "@seovista/schema": "workspace:*",
     "@seovista/seo-core": "workspace:*",
     "@seovista/ui": "workspace:*",

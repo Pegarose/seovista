@@ -20,6 +20,7 @@ export class ExperienceModule implements ScoreModule {
         evidence: { url: context.url },
         recommendation: 'Migrate the page to HTTPS and enforce SSL redirects.',
         confidence: 1.0,
+        pointLoss: -5,
       });
       score -= 5;
     }
@@ -36,6 +37,7 @@ export class ExperienceModule implements ScoreModule {
         evidence: { sizeKb: htmlSizeKb.toFixed(2) },
         recommendation: 'Reduce inline CSS/JS and optimize DOM complexity.',
         confidence: 0.9,
+        pointLoss: -2,
       });
       score -= 2;
     }
@@ -52,6 +54,7 @@ export class ExperienceModule implements ScoreModule {
         evidence: { domNodes: domElementCount },
         recommendation: 'Refactor components to render fewer nested nodes.',
         confidence: 0.7,
+        pointLoss: -1,
       });
       score -= 1;
     }

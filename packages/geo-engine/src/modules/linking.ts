@@ -70,6 +70,7 @@ export class LinkingModule implements ScoreModule {
         evidence: { internalLinks: internalCount },
         recommendation: 'Add contextual links to other relevant pages on your site.',
         confidence: 0.9,
+        pointLoss: -5,
       });
       score -= 5;
     }
@@ -84,6 +85,7 @@ export class LinkingModule implements ScoreModule {
         evidence: { genericLinkCount: genericCount },
         recommendation: 'Use descriptive anchor text that explains the destination content.',
         confidence: 1.0,
+        pointLoss: -2,
       });
       score -= 2;
     }
@@ -98,6 +100,7 @@ export class LinkingModule implements ScoreModule {
         evidence: { emptyLinkCount: emptyCount },
         recommendation: 'Ensure all <a> tags contain descriptive text or images with alt text.',
         confidence: 0.9,
+        pointLoss: -1,
       });
       score -= 1;
     }
@@ -112,6 +115,7 @@ export class LinkingModule implements ScoreModule {
         evidence: { externalLinks: externalCount },
         recommendation: 'Audit your external links and ensure they are editorially justified.',
         confidence: 0.8,
+        pointLoss: -2,
       });
       score -= 2;
     }

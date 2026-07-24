@@ -5,6 +5,7 @@ import type {
   ModuleStatus,
   ParsedPage,
   ScoreContext,
+  ScoreBreakdown,
 } from "./types.js";
 
 /**
@@ -60,6 +61,7 @@ export interface DryRunOutput {
   };
   modules: DryRunModule[];
   issues: DryRunIssue[];
+  breakdown: ScoreBreakdown;
   platformReadiness: {
     chatgpt: number;
     perplexity: number;
@@ -144,6 +146,7 @@ export async function runDryScore(
       recommendation: i.recommendation,
       confidence: i.confidence,
     })),
+    breakdown: out.breakdown,
     platformReadiness: {
       chatgpt: out.platformReadiness.chatgpt,
       perplexity: out.platformReadiness.perplexity,

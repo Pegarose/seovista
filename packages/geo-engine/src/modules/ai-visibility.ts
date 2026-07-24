@@ -28,6 +28,7 @@ export class AiVisibilityModule implements ScoreModule {
         evidence: { hasFaqSchema, hasQuestionHeadings },
         recommendation: 'Add an FAQ section or use headings phrased as questions immediately followed by direct, factual answers.',
         confidence: 0.8,
+        pointLoss: -0.5,
       });
       score -= 0.5;
     }
@@ -60,6 +61,7 @@ export class AiVisibilityModule implements ScoreModule {
         evidence: { externalLinkCount: externalLinks.length },
         recommendation: 'Link out to primary research, statistics, and reputable sources to justify claims.',
         confidence: 0.75,
+        pointLoss: -1,
       });
       score -= 1;
     }
@@ -78,6 +80,7 @@ export class AiVisibilityModule implements ScoreModule {
         evidence: { hasListsOrTabular: false },
         recommendation: 'Use tables, bullet lists, and summary paragraphs to present data clearly.',
         confidence: 0.85,
+        pointLoss: -0.5,
       });
       score -= 0.5;
     }
@@ -98,6 +101,7 @@ export class AiVisibilityModule implements ScoreModule {
         evidence: { wordCount },
         recommendation: 'Use clear, unambiguous terminology and define key concepts explicitly in the text.',
         confidence: 0.6,
+        pointLoss: -0.5,
       });
       score -= 0.5;
     }

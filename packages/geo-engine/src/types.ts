@@ -114,6 +114,64 @@ export interface AuditIssue {
   recommendation: string;
   implementationHint?: string;
   confidence: number;
+  /**
+   * Per-issue point-loss contribution to the owning module's score, expressed
+   * as a negative number (e.g. `-2` for a 2-point deduction). Issues that do
+   * not deduct points (info-only / opportunity nudges) omit this field or set
+   * it to `0`. Populated by each scoring module at the same call site as the
+   * corresponding `score -= X` deduction so the value is truthful and never
+   * recomputed downstream. The RSC renders this inline (e.g. `−2 puan`) so
+   * users can see exactly how each issue shaped the module score.
+   */
+  pointLoss?: number;
+}
+
+/**
+ * Per-issue projection surfaced in the {@link ScoreBreakdown} contract. This
+ * is a render-friendly subset of {@link AuditIssue} — the RSC consumes it
+ * directly without recomputation. `message` mirrors {@link AuditIssue.title}
+ * (the human-readable summary); `pointLoss` is the negative point-loss
+ * contribution (0 when the issue is info-only).
+ */
+export interface ScoreBreakdownIssue {
+  code: string;
+  message: string;
+  pointLoss: number;
+  severity: Severity;
+  module: string;
+}
+
+/**
+ * Per-module row in the {@link ScoreBreakdown} contract. `name` mirrors
+ * {@link ScoreModuleResult.label} (e.g. "Indexability & Crawlability"); the
+ * RSC renders one row per module with `score` / `maxScore` (e.g. 18/20) and
+ * the module's issues with their point-loss contributions.
+ */
+export interface ScoreBreakdownModule {
+  key: string;
+  name: string;
+  score: number;
+  maxScore: number;
+  status: ModuleStatus;
+  issues: ScoreBreakdownIssue[];
+}
+
+/**
+ * Structured per-module score breakdown emitted by the scoring engine so the
+ * result-page RSC can render explainability without recomputing any score.
+ *
+ * The contract is intentionally a projection of {@link ScoreModuleResult}:
+ * it carries the module-level `score` / `maxScore` / `status` plus each
+ * issue's `pointLoss` contribution. `scoreVersion` is the formula identity
+ * (see {@link SCORE_VERSION}) so operators can compare runs across refactors
+ * and detect formula drift. `overallScore` and `band` mirror
+ * `ScoreOutput.overall` for a single-source-of-truth render.
+ */
+export interface ScoreBreakdown {
+  scoreVersion: string;
+  overallScore: number;
+  band: 'excellent' | 'good' | 'needs_improvement' | 'poor' | 'critical';
+  modules: ScoreBreakdownModule[];
 }
 
 export interface Recommendation {
