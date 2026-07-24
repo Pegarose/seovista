@@ -71,7 +71,7 @@ function readBreakdown(payload: Record<string, unknown> | null): ScoreBreakdown 
   return {
     scoreVersion: b.scoreVersion,
     overallScore: b.overallScore,
-    band: (typeof b.band === "string" ? b.band : "needs_improvement") as ScoreBreakdown["band"],
+    band: (typeof b.band === "string" && ["excellent", "good", "needs_improvement", "poor", "critical"].includes(b.band) ? b.band : "critical") as ScoreBreakdown["band"],
     modules: safeModules,
     // Per-platform readiness projection (VAL-A-UI-CONF-001 /
     // VAL-A-UI-CONF-002). Defensive parse: legacy payloads persisted before
@@ -144,9 +144,9 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
               service_id: svc.service_id,
               name: svc.name,
               description: svc.description,
-              matchedTags: Array.isArray(svc.matchedTags) ? svc.matchedTags as any[] : [],
+              matchedTags: Array.isArray(svc.matchedTags) ? svc.matchedTags.filter(tag => typeof tag === "string") as any[] : [],
               relevanceScore: typeof svc.relevanceScore === "number" ? svc.relevanceScore : 0,
-              addressedIssueCodes: Array.isArray(svc.addressedIssueCodes) ? svc.addressedIssueCodes as string[] : []
+              addressedIssueCodes: Array.isArray(svc.addressedIssueCodes) ? svc.addressedIssueCodes.filter(code => typeof code === "string") : []
             });
           }
         }
@@ -186,13 +186,18 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
           {breakdown && <ScoreBreakdownView breakdown={breakdown} />}
           <MatchedServicesView services={matchedServices ?? []} />
         </>
-      ) : status === "failed" || status === "timeout" || status === "permanent_failure" ? (
+      ) : status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure" ? (
          <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
             <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Durum: Başarısız</h1>
             <p className="text-slate-700">Analiz işlemi başarısız oldu veya zaman aşımına uğradı. Lütfen daha sonra tekrar deneyin.</p>
          </div>
-      ) : (
+      ) : status === "queued" || status === "running" || status === "pending" ? (
          <AuditPoller jobId={jobId} />
+      ) : (
+         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+            <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Durum: Başarısız</h1>
+            <p className="text-slate-700">Analiz işlemi başarısız oldu veya zaman aşımına uğradı. Lütfen daha sonra tekrar deneyin.</p>
+         </div>
       )}
     </main>
   );
