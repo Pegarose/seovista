@@ -269,9 +269,9 @@ describe("geo-worker", () => {
       const actual = await importOriginal<typeof import("../utils/sentry.js")>();
       return {
         ...actual,
-        emitCrewFailureBreadcrumb: (...args: any[]) => {
-          breadcrumbSpy(...args);
-          return actual.emitCrewFailureBreadcrumb(...(args as [any]));
+        emitCrewFailureBreadcrumb: (arg: any) => {
+          breadcrumbSpy(arg);
+          return actual.emitCrewFailureBreadcrumb(arg);
         }
       };
     });

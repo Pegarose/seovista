@@ -350,8 +350,10 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
 
   if (!response.ok) {
     const status = response.status;
-    const err = new Error(`Crew Agency notification failed: ${status} ${response.statusText}`);
-    (err as any).status = status;
+    const err = Object.assign(
+      new Error(`Crew Agency notification failed: ${status} ${response.statusText}`),
+      { statusCode: status }
+    );
     throw err;
   }
 
