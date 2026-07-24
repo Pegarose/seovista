@@ -121,17 +121,27 @@ describe("recommendation-matcher (VAL-B-REC-001..011)", () => {
       }
     });
 
-    it("falls back to severity weight when pointLoss is 0 or undefined", () => {
+    it("falls back to severity weight when pointLoss is undefined", () => {
       const service = makeService({ service_id: "svc", target_issue_tags: ["schema"] });
-      const issueWith0 = makeIssue({ code: "I1", issueTags: ["schema"], severity: "high", pointLoss: 0 });
       const issueWithUndef = makeIssue({ code: "I2", issueTags: ["schema"], severity: "high" });
 
-      const res0 = matchServices([issueWith0], [service]);
       const resUndef = matchServices([issueWithUndef], [service]);
 
-      expect(res0[0]!.relevanceScore).toBeGreaterThan(0);
       expect(resUndef[0]!.relevanceScore).toBeGreaterThan(0);
-      expect(res0[0]!.relevanceScore).toBe(resUndef[0]!.relevanceScore);
+    });
+
+    it("explicit pointLoss: 0 contributes exactly zero and never receives severity fallback", () => {
+       const service = makeService({ service_id: "svc", target_issue_tags: ["schema", "citations"] });
+       
+       // Target issue with explicit pointLoss: 0
+       const issueZero = makeIssue({ code: "I_ZERO", issueTags: ["schema"], severity: "critical", pointLoss: 0 });
+       // Valid issue to make sure the service is still returned
+       const issueValid = makeIssue({ code: "I_VALID", issueTags: ["citations"], severity: "high", pointLoss: -5 });
+       
+       const res = matchServices([issueZero, issueValid], [service]);
+       expect(res).toHaveLength(1);
+       // Score should be 5 from issueValid + 0 from issueZero
+       expect(res[0]!.relevanceScore).toBe(5);
     });
   });
 
@@ -187,6 +197,24 @@ describe("recommendation-matcher (VAL-B-REC-001..011)", () => {
 
       // addressedIssueCodes: contributing issue codes, deduped, input-order stable
       expect(res.addressedIssueCodes).toEqual(["SCHEMA_MISSING", "ENTITY_WEAK"]);
+    });
+
+    it("deduplicates matchedTags even when schema-valid catalog contains duplicate target tags, preserving first occurrence order", () => {
+      // In practice Zod schema validation passes duplicate tags since it just checks types
+      // The array has duplicate "schema"
+      const service = makeService({
+        service_id: "svc-dupe",
+        target_issue_tags: ["content-depth", "schema", "entity-clarity", "schema"],
+      });
+      
+      const issue = makeIssue({ code: "DUAL_ISSUE", issueTags: ["schema", "content-depth"], pointLoss: -5 });
+      const results = matchServices([issue], [service]);
+      
+      expect(results).toHaveLength(1);
+      const res = results[0]!;
+
+      // Order should be target_issue_tags order (first occurrence), deduped
+      expect(res.matchedTags).toEqual(["content-depth", "schema"]);
     });
   });
 

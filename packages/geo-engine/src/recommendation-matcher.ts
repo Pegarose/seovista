@@ -31,7 +31,7 @@ const SEVERITY_WEIGHTS: Readonly<Record<Severity, number>> = Object.freeze({
  * Calculate the deterministic relevance score contribution of a single issue.
  */
 function getIssueContribution(issue: AuditIssue): number {
-  if (typeof issue.pointLoss === 'number' && issue.pointLoss !== 0) {
+  if (typeof issue.pointLoss === 'number') {
     return Math.abs(issue.pointLoss);
   }
   const weight = SEVERITY_WEIGHTS[issue.severity];
@@ -99,9 +99,15 @@ export function matchServices(
 
     if (relevanceScore > 0) {
       // Preserve service.target_issue_tags order for matchedTags
-      const matchedTags: IssueTag[] = service.target_issue_tags.filter((tag) =>
-        intersectingTagsInServiceOrder.has(tag),
-      );
+      const matchedTags: IssueTag[] = [];
+      const seenMatchedTags = new Set<IssueTag>();
+      
+      for (const tag of service.target_issue_tags) {
+        if (intersectingTagsInServiceOrder.has(tag) && !seenMatchedTags.has(tag)) {
+          seenMatchedTags.add(tag);
+          matchedTags.push(tag);
+        }
+      }
 
       matchedServices.push({
         service_id: service.service_id,

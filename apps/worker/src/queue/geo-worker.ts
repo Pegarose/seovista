@@ -1,7 +1,13 @@
 import { Worker, type Job } from "bullmq";
 import { createDbClient } from "../db/client.js";
-import { ScoringEngine, type ScoreContext, type ScoreOutput } from "@seovista/geo-engine";
-import { matchServices, type MatchedService, loadCrewCatalog } from "@seovista/geo-engine";
+import {
+  ScoringEngine,
+  loadCrewCatalog,
+  matchServices,
+  type MatchedService,
+  type ScoreContext,
+  type ScoreOutput,
+} from "@seovista/geo-engine";
 import { fetchAndParseUrlWithMeta } from "../utils/fetcher.js";
 import { computeLockKey, releaseSingleFlightLock } from "../utils/single-flight.js";
 import { emitAuditCompleted, type PerPlatformConfidence } from "../utils/sentry.js";

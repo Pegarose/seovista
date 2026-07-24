@@ -1,0 +1,56 @@
+ [33m[1m⚠[22m[39m ../../node_modules/.pnpm/bullmq@5.80.1/node_modules/bullmq/dist/esm/classes/child-processor.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+../../node_modules/.pnpm/bullmq@5.80.1/node_modules/bullmq/dist/esm/classes/child-processor.js
+../../node_modules/.pnpm/bullmq@5.80.1/node_modules/bullmq/dist/esm/classes/index.js
+../../node_modules/.pnpm/bullmq@5.80.1/node_modules/bullmq/dist/esm/index.js
+../worker/dist/queue/geo-submission.js
+../worker/dist/index.js
+./src/lib/admin/db.ts
+./app/tools/geo-readiness-checker/result/[jobId]/page.tsx
+
+../../node_modules/.pnpm/require-in-the-middle@8.0.1/node_modules/require-in-the-middle/index.js
+Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
+
+Import trace for requested module:
+../../node_modules/.pnpm/require-in-the-middle@8.0.1/node_modules/require-in-the-middle/index.js
+../../node_modules/.pnpm/@opentelemetry+instrumentat_1ad6a0a9759fd13d0c7cf454d56add20/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+../../node_modules/.pnpm/@opentelemetry+instrumentat_1ad6a0a9759fd13d0c7cf454d56add20/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+../../node_modules/.pnpm/@opentelemetry+instrumentat_1ad6a0a9759fd13d0c7cf454d56add20/node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+../../node_modules/.pnpm/@opentelemetry+instrumentat_1ad6a0a9759fd13d0c7cf454d56add20/node_modules/@opentelemetry/instrumentation/build/esm/index.js
+../../node_modules/.pnpm/@sentry+node@10.67.0_@opent_2868f2274285814d1f28f224e0b9b16f/node_modules/@sentry/node/build/esm/integrations/tracing/express.js
+../../node_modules/.pnpm/@sentry+node@10.67.0_@opent_2868f2274285814d1f28f224e0b9b16f/node_modules/@sentry/node/build/esm/index.js
+../worker/dist/utils/sentry.js
+../worker/dist/queue/geo-submission.js
+../worker/dist/index.js
+./src/lib/admin/db.ts
+./app/tools/geo-readiness-checker/result/[jobId]/page.tsx
+ [33m[1m⚠[22m[39m ../../node_modules/.pnpm/bullmq@5.80.1/node_modules/bullmq/dist/esm/classes/child-processor.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+../../node_modules/.pnpm/bullmq@5.80.1/node_modules/bullmq/dist/esm/classes/child-processor.js
+../../node_modules/.pnpm/bullmq@5.80.1/node_modules/bullmq/dist/esm/classes/index.js
+../../node_modules/.pnpm/bullmq@5.80.1/node_modules/bullmq/dist/esm/index.js
+../worker/dist/queue/geo-submission.js
+../worker/dist/index.js
+./src/lib/admin/db.ts
+./app/tools/geo-readiness-checker/result/[jobId]/page.tsx
+
+../../node_modules/.pnpm/require-in-the-middle@8.0.1/node_modules/require-in-the-middle/index.js
+Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
+
+Import trace for requested module:
+../../node_modules/.pnpm/require-in-the-middle@8.0.1/node_modules/require-in-the-middle/index.js
+../../node_modules/.pnpm/@opentelemetry+instrumentat_1ad6a0a9759fd13d0c7cf454d56add20/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+../../node_modules/.pnpm/@opentelemetry+instrumentat_1ad6a0a9759fd13d0c7cf454d56add20/node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+../../node_modules/.pnpm/@opentelemetry+instrumentat_1ad6a0a9759fd13d0c7cf454d56add20/node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+../../node_modules/.pnpm/@opentelemetry+instrumentat_1ad6a0a9759fd13d0c7cf454d56add20/node_modules/@opentelemetry/instrumentation/build/esm/index.js
+../../node_modules/.pnpm/@sentry+node@10.67.0_@opent_2868f2274285814d1f28f224e0b9b16f/node_modules/@sentry/node/build/esm/integrations/tracing/express.js
+../../node_modules/.pnpm/@sentry+node@10.67.0_@opent_2868f2274285814d1f28f224e0b9b16f/node_modules/@sentry/node/build/esm/index.js
+../worker/dist/utils/sentry.js
+../worker/dist/queue/geo-submission.js
+../worker/dist/index.js
+./src/lib/admin/db.ts
+./app/tools/geo-readiness-checker/result/[jobId]/page.tsx
