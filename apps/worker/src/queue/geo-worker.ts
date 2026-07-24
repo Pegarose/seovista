@@ -1,6 +1,7 @@
 import { Worker, type Job } from "bullmq";
 import { createDbClient } from "../db/client.js";
 import { ScoringEngine, type ScoreContext, type ScoreOutput } from "@seovista/geo-engine";
+import { matchServices, type MatchedService, loadCrewCatalog } from "@seovista/geo-engine";
 import { fetchAndParseUrlWithMeta } from "../utils/fetcher.js";
 import { computeLockKey, releaseSingleFlightLock } from "../utils/single-flight.js";
 import { emitAuditCompleted, type PerPlatformConfidence } from "../utils/sentry.js";
@@ -17,6 +18,8 @@ export interface CrewAgencyPayload {
   jobIdentity: string;
   resultId: string;
   analysisSummary: string;
+  matchedServices: MatchedService[];
+  tier: string;
 }
 
 // Helper to parse redis url for bullmq
@@ -59,6 +62,7 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
     options?.queueName ?? "geo_readiness_jobs",
     async (job: Job) => {
       const { jobId, url, forceAudit } = job.data;
+      const tier = (job.data.tier && ['free', 'pro', 'agency'].includes(job.data.tier)) ? job.data.tier : 'free';
       
       try {
         await db.query(`UPDATE job_records SET status = 'running', updated_at = now() WHERE id = $1`, [jobId]);
@@ -125,6 +129,8 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         const evidenceScore = mean(dimensionScores.evidence);
 
         const issues = data.topIssues ?? [];
+        const catalog = loadCrewCatalog();
+        const matchedServices = matchServices(issues, catalog);
 
         // Per-module score breakdown (VAL-A-UI-001 / VAL-A-UI-002). Persisted
         // into the job_results payload so the result-page RSC can render the
@@ -147,6 +153,8 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
           scoreVersion: data.scoreVersion,
           breakdown,
           issues: issues,
+          matchedServices,
+          tier,
         });
 
         const jobRecordRes = await db.query(`SELECT job_identity, correlation_id FROM job_records WHERE id = $1`, [jobId]);
@@ -189,7 +197,7 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
           score_value: overallScore,
           per_platform_confidence: buildPerPlatformConfidence(data),
           cache_hit: cacheHit,
-          tier: data.scoreBand,
+          tier: tier,
         });
 
         // Fire Crew Agency webhook immediately after DB update completes
@@ -213,6 +221,8 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
           jobIdentity: job_identity,
           resultId: resultId,
           analysisSummary: buildAnalysisSummary(url, overallScore, data.scoreBand, issues),
+          matchedServices,
+          tier,
         }).catch((notifyErr) => {
           // Webhook failures must not fail the geo job; log and continue
           console.error("Crew Agency notification failed:", notifyErr);
@@ -290,15 +300,20 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
   // Map internal analysis data to the Crew Agency API's expected payload format.
   // The API is async: POST returns a job_id immediately, results are fetched via
   // GET /api/jobs/{job_id}. We fire-and-forget but log job_id for tracking.
-  const topIssuesText = payload.topIssues
-    .slice(0, 3)
-    .map((issue) => issue.title)
-    .join(", ");
-
   const apiPayload = {
-    musteri_ihtiyaci: `GEO visibility analysis for ${payload.url}: Score ${payload.score}/100 (${payload.scoreBand}). Critical issues: ${topIssuesText || "none"}. Needs SEO/AEO improvement services.`,
-    brand_context: `SeoVista analysis for ${payload.brand}: Overall score ${payload.score}, issues detected: ${payload.analysisSummary}`,
-    dil: "tr",
+    url: payload.url,
+    brand: payload.brand,
+    score: payload.score,
+    scoreBand: payload.scoreBand,
+    lowScores: payload.lowScores,
+    topIssues: payload.topIssues,
+    proposalTrigger: Boolean(payload.proposalTrigger),
+    correlationId: payload.correlationId,
+    jobIdentity: payload.jobIdentity,
+    resultId: payload.resultId,
+    analysisSummary: payload.analysisSummary,
+    matchedServices: payload.matchedServices,
+    tier: payload.tier,
   };
 
   const response = await fetch(targetUrl, {
