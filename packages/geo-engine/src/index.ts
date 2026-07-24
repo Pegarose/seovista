@@ -20,6 +20,14 @@ export { ScoringEngine, SCORE_VERSION } from "./engine.js";
 export { ISSUE_TAGS, CODE_TO_TAGS, attachIssueTags } from "./issue-tags.js";
 export type { IssueTag } from "./issue-tags.js";
 
+export {
+  loadCrewCatalog,
+  crewServiceSchema,
+  crewCatalogSchema,
+  type CrewService,
+  type CrewServiceTier,
+} from "./catalog/index.js";
+
 export { defaultScoringConfiguration, defaultLimitations, getScoringConfiguration } from "./scoring.js";
 
 export { parseGeoReadinessResult, GeoReadinessValidationError } from "./result.js";

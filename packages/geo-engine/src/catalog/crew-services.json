@@ -1,0 +1,58 @@
+[
+  {
+    "service_id": "geo-schema-pack",
+    "name": "Schema & Varlık Paketi",
+    "description": "JSON-LD schema işaretlemesi ve varlık netliği için eksiksiz paket; önerilen şemaları ekler ve eksik breadcrumb yapısını tamamlar.",
+    "target_issue_tags": ["schema", "entity-clarity"],
+    "tier": "pro",
+    "sla": "5 gün"
+  },
+  {
+    "service_id": "indexability-rescue",
+    "name": "İndeksleme Kurtarma",
+    "description": "noindex, canonical uyuşmazlığı ve tarama engellerini çözerek sayfaların indekse girmesini sağlar.",
+    "target_issue_tags": ["indexability", "technical-seo"],
+    "tier": "free",
+    "sla": "3 gün"
+  },
+  {
+    "service_id": "content-depth-boost",
+    "name": "İçerik Derinliği Boost",
+    "description": "İnce içerik ve yapı kalitesi sorunlarını giderir; liste/tablo ile kompleks konuları cevaplanabilir hale getirir.",
+    "target_issue_tags": ["content-depth", "answerability"],
+    "tier": "pro",
+    "sla": "7 gün"
+  },
+  {
+    "service_id": "internal-linking-audit",
+    "name": "İç Bağlantı Denetimi",
+    "description": "Jenerik ve boş çapa metinlerini düzeltir, iç bağlantı boşluklarını kapatarak tarama verimliliğini artırır.",
+    "target_issue_tags": ["internal-linking"],
+    "tier": "free",
+    "sla": "2 gün"
+  },
+  {
+    "service_id": "citation-readiness-pro",
+    "name": "Atıf Hazırlığı Pro",
+    "description": "Üçüncü parti anılımlarını ve kaynak güven sinyallerini güçlendirerek sayfayı AI atıflarına hazırlar.",
+    "target_issue_tags": ["citations", "source-trust"],
+    "tier": "agency",
+    "sla": "14 gün"
+  },
+  {
+    "service_id": "ai-visibility-optimization",
+    "name": "AI Görünürlük Optimizasyonu",
+    "description": "Cevap verilebilirlik, varlık netliği ve AI parse edilebilirliği çalışmasıyla modellerdeki görünürlüğü yükseltir.",
+    "target_issue_tags": ["ai-visibility", "answerability", "entity-clarity"],
+    "tier": "agency",
+    "sla": "21 gün"
+  },
+  {
+    "service_id": "technical-seo-tuneup",
+    "name": "Teknik SEO İnce Ayar",
+    "description": "Title, meta açıklama, başlık yapısı ve deneyim metriklerini düzelterek teknik sağlamlaştırma yapar.",
+    "target_issue_tags": ["technical-seo", "experience"],
+    "tier": "pro",
+    "sla": "4 gün"
+  }
+]
