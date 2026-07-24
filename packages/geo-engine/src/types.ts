@@ -62,6 +62,8 @@ export interface ScoringConfiguration {
   limitations: readonly GeoReadinessLimitation[];
 }
 
+import type { IssueTag } from './issue-tags.js';
+
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'experimental';
 export type ModuleStatus = 'excellent' | 'good' | 'needs_improvement' | 'poor' | 'critical';
 
@@ -124,6 +126,16 @@ export interface AuditIssue {
    * users can see exactly how each issue shaped the module score.
    */
   pointLoss?: number;
+  /**
+   * Normalized issue tags from the canonical {@link IssueTag} vocabulary.
+   * Populated by the centralized `attachIssueTags` post-process in
+   * `issue-tags.ts` (wired into the scoring aggregator in `engine.ts`), never
+   * by the individual scoring modules. Additive / backward-compatible: a
+   * consumer that ignores the field is unaffected. Carried verbatim onto the
+   * {@link Recommendation} projected from this issue so the recommendation
+   * matcher can tag-match without recomputing.
+   */
+  issueTags?: IssueTag[];
 }
 
 /**
@@ -211,6 +223,16 @@ export interface Recommendation {
   estimatedEffort: 'low' | 'medium' | 'high';
   estimatedImpact: 'low' | 'medium' | 'high';
   confidence: number;
+  /**
+   * Normalized issue tags carried verbatim from the source {@link AuditIssue}
+   * by `recommendationFromIssue` in `engine.ts`. Same members, same order as
+   * the source issue's `issueTags`. Additive / backward-compatible: a
+   * consumer (or a recommendation built from an untagged issue) is
+   * unaffected. The recommendation matcher consumes these tags to rank
+   * catalog services, so a dropped/mutated tag array would silently break
+   * service matching.
+   */
+  issueTags?: IssueTag[];
 }
 
 export interface AiVisibilityData {

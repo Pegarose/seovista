@@ -18,6 +18,7 @@ import { ExperienceModule } from './modules/experience.js';
 import { LinkingModule } from './modules/linking.js';
 import { AiVisibilityModule } from './modules/ai-visibility.js';
 import { enrichWithNeuronWriter } from './providers/neuronwriter.js';
+import { attachIssueTags } from './issue-tags.js';
 
 export type { NWEnrichmentResult } from './providers/neuronwriter.js';
 
@@ -153,6 +154,13 @@ export class ScoringEngine {
       }
     });
 
+    // Attach normalized issue tags from the centralized CODE_TO_TAGS map.
+    // This is the single place where tag literals are assigned to issues —
+    // the module files emit plain `code` strings and stay tag-free. Every
+    // emitted AuditIssue (and the Recommendation projected from it below)
+    // carries `issueTags` after this point.
+    attachIssueTags(allIssues);
+
     // 2. Evaluate Cap Rules
     let capLimit = 100;
     let appliedCapCode: string | null = null;
@@ -217,6 +225,12 @@ export class ScoringEngine {
       estimatedEffort: (iss.severity === 'critical' || iss.severity === 'high') ? 'low' : 'medium',
       estimatedImpact: (iss.severity === 'critical' || iss.severity === 'high') ? 'high' : 'medium',
       confidence: iss.confidence,
+      // Carry the normalized tags verbatim from the source issue so the
+      // recommendation matcher can tag-match without recomputing. Same
+      // members, same order as the source issue's `issueTags`. Conditional
+      // spread keeps the field absent (not `undefined`) when the source issue
+      // was never tagged, satisfying `exactOptionalPropertyTypes`.
+      ...(iss.issueTags ? { issueTags: iss.issueTags } : {}),
     });
 
     const recommendations = standardIssues.map(recommendationFromIssue);
@@ -355,7 +369,10 @@ export class ScoringEngine {
 
     // Append enrichment-surface issues to the recommendation list and the
     // top-issues surface. They are severity `info` so they never bubble into
-    // quickWins (high/critical/medium) or dominate nextActions.
+    // quickWins (high/critical/medium) or dominate nextActions. Tags are
+    // attached via the same centralized post-process so enrichment issues
+    // carry `issueTags` just like module-emitted issues.
+    attachIssueTags(enrichmentIssues);
     const enrichmentRecommendations = enrichmentIssues.map(recommendationFromIssue);
     const recommendationsWithEnrichment = [...recommendations, ...enrichmentRecommendations];
     const topIssuesWithEnrichment = [...standardIssues, ...enrichmentIssues];
