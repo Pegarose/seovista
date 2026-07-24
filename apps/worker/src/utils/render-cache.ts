@@ -31,6 +31,9 @@ export const BROWSERACT_CREDIT_COUNTER_PREFIX = "browseract:credits:consumed:";
 /** Default cache TTL in hours when `BROWSERACT_CACHE_TTL_HOURS` is unset/invalid. */
 export const DEFAULT_CACHE_TTL_HOURS = 24;
 
+/** Default daily Browseract credit cap when `BROWSERACT_DAILY_CREDIT_LIMIT` is unset/invalid. */
+export const DEFAULT_BROWSERACT_DAILY_CREDIT_LIMIT = 4000;
+
 let cacheRedisClient: IORedis | null = null;
 let cacheRedisUnavailable = false;
 /**
@@ -54,6 +57,21 @@ export function getCacheTtlSeconds(): number {
     return 0;
   }
   return Math.floor(parsed * 3600);
+}
+
+/**
+ * Returns the daily Browseract credit limit, derived from
+ * `BROWSERACT_DAILY_CREDIT_LIMIT` (default 4000). A non-finite or negative
+ * value falls back to the default so a misconfigured env var can never
+ * disable the guard (VAL-A-MIT-003).
+ */
+export function getDailyCreditLimit(): number {
+  const raw = process.env.BROWSERACT_DAILY_CREDIT_LIMIT;
+  const parsed = raw !== undefined && raw.trim() !== "" ? Number(raw) : DEFAULT_BROWSERACT_DAILY_CREDIT_LIMIT;
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_BROWSERACT_DAILY_CREDIT_LIMIT;
+  }
+  return Math.floor(parsed);
 }
 
 /**
@@ -283,6 +301,31 @@ export async function incrementBrowseractCreditCounter(): Promise<void> {
         timestamp: new Date().toISOString(),
       })
     );
+  }
+}
+
+/**
+ * Reads the current daily Browseract credit counter value from Redis DB 1.
+ * Returns `0` on a missing key, Redis unavailability, or parse failure so the
+ * credit guard (VAL-A-MIT-003) degrades to "under limit" when Redis is down
+ * — the audit pipeline never blocks on credit accounting.
+ */
+export async function getDailyCreditConsumed(): Promise<number> {
+  const redis = await ensureCacheRedisReady();
+  if (!redis) {
+    return 0;
+  }
+  const counterKey = getDailyCreditCounterKey();
+  try {
+    const raw = await redis.get(counterKey);
+    if (!raw) {
+      return 0;
+    }
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  } catch (err) {
+    logCacheRedisError("credit_counter_read_failed", err);
+    return 0;
   }
 }
 

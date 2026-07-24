@@ -8,6 +8,7 @@ import {
   setCachedRender,
   incrementBrowseractCreditCounter,
 } from "./render-cache.js";
+import { getDailyCreditStatus } from "./credit-guard.js";
 
 /**
  * Options passed to {@link fetchAndParseUrl}.
@@ -454,13 +455,18 @@ async function fetchViaCheerio(targetUrl: string): Promise<{ rawHtml: string; st
  *     in Redis DB 1. On a hit the cached `ParsedPage` is returned without invoking
  *     Browseract and the fetcher logs `cache=true`.
  *   - On a cache miss or when `options.forceAudit === true`, the daily Browseract
- *     credit counter (`browseract:credits:consumed:{YYYY-MM-DD}`) is incremented
+ *     credit guard is evaluated (VAL-A-MIT-003). When
+ *     `browseract:credits:consumed:{YYYY-MM-DD} >= BROWSERACT_DAILY_CREDIT_LIMIT`
+ *     (default 4000), the Browseract call is skipped, the credit counter is NOT
+ *     incremented, the audit proceeds with the Cheerio-only path, and a warning
+ *     is logged with the remaining-counter value.
+ *   - When the guard allows the call, the daily credit counter is incremented
  *     and a fresh render is performed. The fetcher logs `cache=false`.
  *   - A successful fresh render is written back to the cache with TTL
  *     `BROWSERACT_CACHE_TTL_HOURS` (default 24h), even on `forceAudit` bypass
  *     so subsequent audits reuse the refreshed snapshot.
- *   - If Redis is unavailable, the cache layer degrades gracefully to a
- *     permanent miss and the fetch proceeds.
+ *   - If Redis is unavailable, the cache + counter layers degrade gracefully
+ *     to a permanent miss / zero consumed and the fetch proceeds.
  *
  * First validates against SSRF.
  * If BROWSERACT_API_KEY is configured:
@@ -503,11 +509,38 @@ export async function fetchAndParseUrl(
     }
   }
 
-  // 3. Cache miss / bypass → consume a Browseract credit and render fresh.
-  //    The counter is incremented once per fresh-render decision, regardless
-  //    of whether Browseract ultimately succeeds or falls back to Cheerio
-  //    (VAL-A-SPA-001 evidence: credit counter increments on miss/bypass).
-  await incrementBrowseractCreditCounter();
+  // 3. Cache miss / bypass → check the daily Browseract credit guard BEFORE
+  //    consuming a credit or invoking Browseract (VAL-A-MIT-003). When the
+  //    daily counter has reached `BROWSERACT_DAILY_CREDIT_LIMIT`, the
+  //    Browseract call is skipped, the credit counter is NOT incremented
+  //    (no render is being attempted), and the audit proceeds with the
+  //    Cheerio-only path. A warning is logged carrying the remaining-counter
+  //    value so operators can see the budget state.
+  const creditStatus = await getDailyCreditStatus();
+  const creditExhausted = creditStatus.exhausted;
+
+  if (creditExhausted) {
+    console.warn(
+      JSON.stringify({
+        name: "@seovista/worker",
+        layer: "fetcher",
+        event: "browseract_credit_guard",
+        message:
+          "Browseract credit guard: limit reached, falling back to Cheerio",
+        remaining: creditStatus.remaining,
+        limit: creditStatus.limit,
+        consumed: creditStatus.consumed,
+        canonicalUrl: targetUrl,
+        timestamp: new Date().toISOString(),
+      })
+    );
+  } else {
+    // Under the daily limit → consume a credit and proceed with a fresh
+    // render decision. The counter increments once per miss/bypass regardless
+    // of whether Browseract ultimately succeeds or falls back to Cheerio
+    // (VAL-A-SPA-001 evidence: credit counter increments on miss/bypass).
+    await incrementBrowseractCreditCounter();
+  }
 
   console.log(
     JSON.stringify({
@@ -518,13 +551,20 @@ export async function fetchAndParseUrl(
       forceAudit,
       cacheKey,
       canonicalUrl: targetUrl,
+      browseractSkippedByCreditGuard: creditExhausted,
       timestamp: new Date().toISOString(),
     })
   );
 
   const apiKey = process.env.BROWSERACT_API_KEY;
   const workflowId = process.env.BROWSERACT_WORKFLOW_ID;
-  const browseractEnabled = Boolean(apiKey && apiKey !== "your_key_here" && workflowId);
+  // When the credit guard has fired, Browseract MUST NOT be invoked even if
+  // the API key + workflow id are configured — the audit falls through to the
+  // Cheerio-only path below (VAL-A-MIT-003: "audit completes without 2xx
+  // from Browseract API").
+  const browseractEnabled =
+    !creditExhausted &&
+    Boolean(apiKey && apiKey !== "your_key_here" && workflowId);
 
   let parsed: ParsedPage;
 

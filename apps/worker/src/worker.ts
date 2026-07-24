@@ -6,6 +6,7 @@ import { createDbClient, type DbClient } from "./db/client.js";
 import { createPingQueue, createPingWorker } from "./queue/ping.js";
 import { startGeoWorker } from "./queue/geo-worker.js";
 import { closeCacheRedis } from "./utils/render-cache.js";
+import { logDailyCreditBudgetOnBoot } from "./utils/credit-guard.js";
 import { getWorkerEnv, getProjectId } from "./env.js";
 import { checkWorkerHealth } from "./health.js";
 import type { Queue, Worker } from "bullmq";
@@ -65,6 +66,13 @@ async function run(): Promise<void> {
   const geoWorker = startGeoWorker();
 
   running = { db, queue, worker, geoWorker };
+
+  // Phase A — VAL-A-MIT-004: on boot, log the remaining daily Browseract
+  // credit budget so operators can see the daily cap state at startup. Reads
+  // `browseract:credits:consumed:{YYYY-MM-DD}` from Redis DB 1 and compares
+  // against `BROWSERACT_DAILY_CREDIT_LIMIT` (default 4000). Degrades to a
+  // full-budget line when Redis is unreachable.
+  await logDailyCreditBudgetOnBoot();
 
   worker.on("completed", (job) => {
     console.log(
