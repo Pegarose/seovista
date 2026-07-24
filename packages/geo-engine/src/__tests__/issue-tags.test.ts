@@ -5,9 +5,8 @@ import {
   attachIssueTags,
   type IssueTag,
 } from "../issue-tags.js";
-import type { AuditIssue } from "../types.js";
+import type { AuditIssue, ScoreContext, ParsedPage } from "../types.js";
 import { ScoringEngine, SCORE_VERSION } from "../engine.js";
-import type { ScoreContext, ParsedPage } from "../types.js";
 
 /**
  * Issue-tag vocabulary tests for the `issue-tag-vocabulary` feature.
