@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "sourceUrl": "https://noindex.example-blog.dev/private-draft",
+    "canonicalUrl": "https://noindex.example-blog.dev/private-draft",
+    "sourceDate": "2026-07-24",
+    "captureMethod": "Cheerio parse of a server-rendered draft page with robots noindex directive; representative of pages that should be excluded from indexing",
+    "category": "noindex",
+    "description": "A draft/private blog post page with meta robots noindex,follow. Exercises the engine's NOINDEX_DETECTED cap path (cap to 45). Used to verify variance stays bounded on cap-triggering fixtures."
+  },
+  "parsedPage": {
+    "statusCode": 200,
+    "headers": {
+      "content-type": "text/html; charset=UTF-8",
+      "x-robots-tag": "noindex, follow"
+    },
+    "title": "Draft: Internal Strategy Notes",
+    "metaDescription": "Internal draft document, not for public indexing.",
+    "canonical": "https://noindex.example-blog.dev/private-draft",
+    "metaRobots": { "noindex": true, "nofollow": false },
+    "headings": [
+      { "level": 1, "text": "Internal Strategy Notes" },
+      { "level": 2, "text": "Q3 Priorities" },
+      { "level": 2, "text": "Open Questions" }
+    ],
+    "links": [
+      { "href": "/about", "text": "About", "isInternal": true },
+      { "href": "/contact", "text": "Contact", "isInternal": true }
+    ],
+    "images": [
+      { "src": "/images/draft-header.png", "alt": "Draft header image" }
+    ],
+    "jsonLd": [],
+    "og": { "title": "Draft: Internal Strategy Notes" },
+    "rawHtml": "<!doctype html><html lang=\"en\"><head><title>Draft: Internal Strategy Notes</title><meta name=\"description\" content=\"Internal draft document, not for public indexing.\"/><meta name=\"robots\" content=\"noindex, follow\"/><link rel=\"canonical\" href=\"https://noindex.example-blog.dev/private-draft\"/></head><body><main><h1>Internal Strategy Notes</h1><h2>Q3 Priorities</h2><p>This quarter we focus on improving the scoring engine determinism and shipping the trust foundation milestone.</p><h2>Open Questions</h2><p>We need to confirm the variance threshold across a wider fixture set before sealing the milestone.</p></main></body></html>",
+    "textContent": "Internal Strategy Notes Q3 Priorities This quarter we focus on improving the scoring engine determinism and shipping the trust foundation milestone. Open Questions We need to confirm the variance threshold across a wider fixture set before sealing the milestone. About Contact"
+  }
+}

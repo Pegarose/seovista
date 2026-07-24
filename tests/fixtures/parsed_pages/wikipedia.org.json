@@ -1,0 +1,104 @@
+{
+  "metadata": {
+    "sourceUrl": "https://en.wikipedia.org/wiki/Search_engine_optimization",
+    "canonicalUrl": "https://en.wikipedia.org/wiki/Search_engine_optimization",
+    "sourceDate": "2026-07-24",
+    "captureMethod": "Cheerio parse of server-rendered MediaWiki HTML (no JS rendering); representative of large-text rich content pages with deep heading hierarchy and many internal links",
+    "category": "large-text",
+    "description": "Wikipedia article on Search engine optimization. Deep heading hierarchy (H1/H2/H3), hundreds of internal links, large body text, citation references, infobox. Representative of rich-text content pages."
+  },
+  "parsedPage": {
+    "statusCode": 200,
+    "headers": {
+      "content-type": "text/html; charset=UTF-8",
+      "server": "mw-api.eqiad.main-7f9f9f9f-wdqf",
+      "x-content-type-options": "nosniff"
+    },
+    "title": "Search engine optimization - Wikipedia",
+    "metaDescription": "Search engine optimization (SEO) is the process of improving the quality and quantity of website traffic to a website or a web page from search engines.",
+    "canonical": "https://en.wikipedia.org/wiki/Search_engine_optimization",
+    "metaRobots": { "noindex": false, "nofollow": false },
+    "headings": [
+      { "level": 1, "text": "Search engine optimization" },
+      { "level": 2, "text": "History" },
+      { "level": 3, "text": "Early versions of search algorithms" },
+      { "level": 3, "text": "Increasing prominence" },
+      { "level": 2, "text": "Relationship with Google" },
+      { "level": 2, "text": "Methods" },
+      { "level": 3, "text": "Getting indexed" },
+      { "level": 3, "text": "Increasing prominence" },
+      { "level": 3, "text": "White hat versus black hat techniques" },
+      { "level": 2, "text": "As a marketing strategy" },
+      { "level": 2, "text": "International markets" },
+      { "level": 2, "text": "Legal precedents" },
+      { "level": 2, "text": "See also" },
+      { "level": 2, "text": "References" },
+      { "level": 2, "text": "Further reading" },
+      { "level": 2, "text": "External links" }
+    ],
+    "links": [
+      { "href": "/wiki/Web_search_engine", "text": "web search engines", "isInternal": true },
+      { "href": "/wiki/Website_traffic", "text": "website traffic", "isInternal": true },
+      { "href": "/wiki/Google_Search", "text": "Google", "isInternal": true },
+      { "href": "/wiki/Bing_(search_engine)", "text": "Bing", "isInternal": true },
+      { "href": "/wiki/Yahoo!", "text": "Yahoo!", "isInternal": true },
+      { "href": "/wiki/Search_engine_results_page", "text": "search engine results page", "isInternal": true },
+      { "href": "/wiki/Pay-per-click", "text": "pay-per-click", "isInternal": true },
+      { "href": "/wiki/Digital_marketing", "text": "digital marketing", "isInternal": true },
+      { "href": "/wiki/Meta_tag", "text": "meta tags", "isInternal": true },
+      { "href": "/wiki/Keyword_research", "text": "keyword research", "isInternal": true },
+      { "href": "/wiki/Backlink", "text": "backlinks", "isInternal": true },
+      { "href": "/wiki/Article_(publishing)", "text": "article", "isInternal": true },
+      { "href": "/wiki/Web_crawler", "text": "crawled", "isInternal": true },
+      { "href": "/wiki/Robot_exclusion_standard", "text": "robots.txt", "isInternal": true },
+      { "href": "/wiki/Sitemaps", "text": "sitemap", "isInternal": true },
+      { "href": "/wiki/PageRank", "text": "PageRank", "isInternal": true },
+      { "href": "/wiki/Hyperlink", "text": "hyperlinks", "isInternal": true },
+      { "href": "/wiki/Alt_text", "text": "alt attribute", "isInternal": true },
+      { "href": "/wiki/Structured_data", "text": "structured data", "isInternal": true },
+      { "href": "/wiki/Schema.org", "text": "Schema.org", "isInternal": true },
+      { "href": "/wiki/Mobile_friendliness", "text": "mobile-friendly", "isInternal": true },
+      { "href": "/wiki/Page_speed", "text": "page speed", "isInternal": true },
+      { "href": "/wiki/Core_Web_Vitals", "text": "Core Web Vitals", "isInternal": true },
+      { "href": "/wiki/HTTP_Secure", "text": "HTTPS", "isInternal": true },
+      { "href": "/wiki/Canonical_link_element", "text": "canonical link", "isInternal": true },
+      { "href": "/wiki/Search_algorithms", "text": "search algorithms", "isInternal": true },
+      { "href": "/wiki/Archie_search_engine", "text": "Archie", "isInternal": true },
+      { "href": "/wiki/AltaVista", "text": "AltaVista", "isInternal": true },
+      { "href": "/wiki/Ask_Jeeves", "text": "Ask Jeeves", "isInternal": true },
+      { "href": "https://en.wikipedia.org/wiki/Main_Page", "text": "Main page", "isInternal": true },
+      { "href": "https://en.wikipedia.org/wiki/Wikipedia:About", "text": "About Wikipedia", "isInternal": true },
+      { "href": "https://en.wikipedia.org/wiki/Wikipedia:General_disclaimer", "text": "Disclaimers", "isInternal": true },
+      { "href": "https://foundation.wikimedia.org/wiki/Privacy_policy", "text": "Privacy policy", "isInternal": false }
+    ],
+    "images": [
+      { "src": "//upload.wikimedia.org/wikipedia/commons/thumb/9/94/Seo-history.svg/440px-Seo-history.svg.png", "alt": "Timeline of SEO history" },
+      { "src": "//upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Google_Search_Engine.png/300px-Google_Search_Engine.png", "alt": "Google search engine results page" },
+      { "src": "//upload.wikimedia.org/wikipedia/en/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png", "alt": "Edit this page" }
+    ],
+    "jsonLd": [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "name": "Search engine optimization",
+        "url": "https://en.wikipedia.org/wiki/Search_engine_optimization",
+        "mainEntityOfPage": "https://en.wikipedia.org/wiki/Search_engine_optimization",
+        "author": { "@type": "Organization", "name": "Wikipedia contributors" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Wikimedia Foundation, Inc.",
+          "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Wikipedia-logo-v2.svg/200px-Wikipedia-logo-v2.svg.png"
+        },
+        "dateModified": "2026-07-20T12:34:56Z",
+        "headline": "Search engine optimization"
+      }
+    ],
+    "og": {
+      "title": "Search engine optimization - Wikipedia",
+      "type": "article",
+      "url": "https://en.wikipedia.org/wiki/Search_engine_optimization"
+    },
+    "rawHtml": "<!doctype html><html class=\"client-nojs\" lang=\"en\" dir=\"ltr\"><head><meta charset=\"UTF-8\"/><title>Search engine optimization - Wikipedia</title><meta name=\"description\" content=\"Search engine optimization (SEO) is the process of improving the quality and quantity of website traffic to a website or a web page from search engines.\"/><link rel=\"canonical\" href=\"https://en.wikipedia.org/wiki/Search_engine_optimization\"/><meta property=\"og:title\" content=\"Search engine optimization - Wikipedia\"/><meta property=\"og:type\" content=\"article\"/></head><body class=\"mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject page-Search_engine_optimization\"><div id=\"content\"><h1 id=\"firstHeading\">Search engine optimization</h1><div class=\"mw-parser-output\"><p><b>Search engine optimization</b> (SEO) is the process of improving the quality and quantity of website traffic to a website or a web page from search engines. SEO targets unpaid traffic (known as natural or organic results) rather than direct traffic, paid traffic, or referral traffic.</p><h2><span class=\"mw-headline\" id=\"History\">History</span></h2><p>Webmasters and content providers began optimizing sites for search engines in the mid-1990s, as the first search engines were cataloging the early Web. Initially, all webmasters only needed to submit the address of a page, or URL, to the various engines which would send a web crawler to crawl that page, extract links to other pages from it, and return information found on the page to be indexed.</p><h3><span class=\"mw-headline\" id=\"Early_versions_of_search_algorithms\">Early versions of search algorithms</span></h3><p>Early versions of search algorithms relied on webmaster-provided information such as the keyword meta tags, or index files in engines like ALIWEB. Meta tags provide a guide to each page's content.</p><h2><span class=\"mw-headline\" id=\"Methods\">Methods</span></h2><h3><span class=\"mw-headline\" id=\"Getting_indexed\">Getting indexed</span></h3><p>Search engines use complex mathematical algorithms to interpret which websites a user seeks. In general, the earlier a site appears in the search results list, the more visitors it will receive from the search engine's users.</p><h3><span class=\"mw-headline\" id=\"White_hat_versus_black_hat_techniques\">White hat versus black hat techniques</span></h3><p>An SEO technique is considered white hat if it conforms to the search engines' guidelines and involves no deception. Black hat SEO attempts to improve rankings in ways that are disapproved of by the search engines.</p></div></div></body></html>",
+    "textContent": "Search engine optimization Search engine optimization (SEO) is the process of improving the quality and quantity of website traffic to a website or a web page from search engines. SEO targets unpaid traffic (known as natural or organic results) rather than direct traffic, paid traffic, or referral traffic. History Webmasters and content providers began optimizing sites for search engines in the mid-1990s, as the first search engines were cataloging the early Web. Initially, all webmasters only needed to submit the address of a page, or URL, to the various engines which would send a web crawler to crawl that page, extract links to other pages from it, and return information found on the page to be indexed. Early versions of search algorithms Early versions of search algorithms relied on webmaster-provided information such as the keyword meta tags, or index files in engines like ALIWEB. Meta tags provide a guide to each page's content. Relationship with Google Google attracted a loyal following among the growing number of Internet users, who liked its simple design and relevant results. Methods Search engines use complex mathematical algorithms to interpret which websites a user seeks. In general, the earlier a site appears in the search results list, the more visitors it will receive from the search engine's users. Getting indexed Leading search engines, such as Google, Bing, and Yahoo, use crawlers to find pages for their algorithmic search results. Pages that are linked from other search engine indexed pages do not need to be submitted because they are found automatically. Increasing prominence A variety of methods can increase the prominence of a webpage within the search results. Cross linking between pages of the same website to provide more links to important pages may improve its visibility. White hat versus black hat techniques An SEO technique is considered white hat if it conforms to the search engines' guidelines and involves no deception. Black hat SEO attempts to improve rankings in ways that are disapproved of by the search engines. As a marketing strategy SEO is not an appropriate strategy for every website, and other Internet marketing strategies can be more effective, such as paid advertising through pay-per-click campaigns. International markets SEO techniques can be tailored to the dominant search engines in the target market. Legal precedents On October 17, 2002, SearchKing filed suit in the United States District Court for the Western District of Oklahoma against the search engine Google. See also Search engine marketing Web indexing References Further reading External links"
+  }
+}

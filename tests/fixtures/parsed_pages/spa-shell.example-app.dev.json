@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "sourceUrl": "https://spa-shell.example-app.dev/",
+    "canonicalUrl": "https://spa-shell.example-app.dev/",
+    "sourceDate": "2026-07-24",
+    "captureMethod": "Cheerio parse of a server-rendered SPA skeleton captured before hydration; representative of minimal SPA shells with almost no visible text content",
+    "category": "spa-shell",
+    "description": "Minimal SPA shell: a div#root mount point plus bundled scripts, noscript fallback, and a title. Captured pre-hydration so the visible text content is nearly empty. Exercises the engine's thin-content / main-content-empty cap path on a JS-heavy shell."
+  },
+  "parsedPage": {
+    "statusCode": 200,
+    "headers": {
+      "content-type": "text/html; charset=utf-8",
+      "server": "nginx/1.25.3"
+    },
+    "title": "Example SPA App",
+    "metaDescription": "Example SPA App — a single page application demonstrating client-rendered content.",
+    "canonical": "https://spa-shell.example-app.dev/",
+    "metaRobots": { "noindex": false, "nofollow": false },
+    "headings": [],
+    "links": [
+      { "href": "/static/js/main.a1b2c3.js", "text": "", "isInternal": true }
+    ],
+    "images": [],
+    "jsonLd": [],
+    "og": { "title": "Example SPA App", "url": "https://spa-shell.example-app.dev/" },
+    "rawHtml": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><title>Example SPA App</title><meta name=\"description\" content=\"Example SPA App — a single page application demonstrating client-rendered content.\"/><link rel=\"canonical\" href=\"https://spa-shell.example-app.dev/\"/><meta property=\"og:title\" content=\"Example SPA App\"/><link rel=\"preload\" href=\"/static/js/main.a1b2c3.js\" as=\"script\"/></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div><script src=\"/static/js/main.a1b2c3.js\"></script></body></html>",
+    "textContent": "Example SPA App You need to enable JavaScript to run this app."
+  }
+}

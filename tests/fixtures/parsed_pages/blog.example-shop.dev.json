@@ -1,0 +1,97 @@
+{
+  "metadata": {
+    "sourceUrl": "https://blog.example-shop.dev/how-to-choose-running-shoes",
+    "canonicalUrl": "https://blog.example-shop.dev/how-to-choose-running-shoes",
+    "sourceDate": "2026-07-24",
+    "captureMethod": "Cheerio parse of a server-rendered article page with rich JSON-LD Article schema, breadcrumbs, and editorial content; representative of rich-text content with structured data",
+    "category": "rich-text-jsonld",
+    "description": "Editorial blog article with Article + BreadcrumbList JSON-LD, deep heading hierarchy, multiple images with alt text, internal links, and substantial body text. Representative of well-structured rich-text content pages."
+  },
+  "parsedPage": {
+    "statusCode": 200,
+    "headers": {
+      "content-type": "text/html; charset=UTF-8",
+      "server": "cloudflare"
+    },
+    "title": "How to Choose Running Shoes: A 2026 Buyer's Guide | Example Shop Blog",
+    "metaDescription": "A practical 2026 guide to choosing running shoes: fit, cushioning, drop, terrain, and gait analysis explained for beginners and experienced runners.",
+    "canonical": "https://blog.example-shop.dev/how-to-choose-running-shoes",
+    "metaRobots": { "noindex": false, "nofollow": false },
+    "headings": [
+      { "level": 1, "text": "How to Choose Running Shoes: A 2026 Buyer's Guide" },
+      { "level": 2, "text": "Why the Right Running Shoe Matters" },
+      { "level": 2, "text": "Step 1: Know Your Foot Type" },
+      { "level": 3, "text": "Neutral arch" },
+      { "level": 3, "text": "Low arch (flat feet)" },
+      { "level": 3, "text": "High arch" },
+      { "level": 2, "text": "Step 2: Pick the Right Cushioning" },
+      { "level": 2, "text": "Step 3: Match the Shoe to Your Terrain" },
+      { "level": 3, "text": "Road running" },
+      { "level": 3, "text": "Trail running" },
+      { "level": 2, "text": "Step 4: Consider the Heel-to-Toe Drop" },
+      { "level": 2, "text": "Step 5: Get a Gait Analysis" },
+      { "level": 2, "text": "Common Mistakes to Avoid" },
+      { "level": 2, "text": "Frequently Asked Questions" },
+      { "level": 2, "text": "Conclusion" }
+    ],
+    "links": [
+      { "href": "https://blog.example-shop.dev/", "text": "Blog home", "isInternal": true },
+      { "href": "https://blog.example-shop.dev/best-running-shoes-2026", "text": "Best running shoes 2026", "isInternal": true },
+      { "href": "https://blog.example-shop.dev/gait-analysis-explained", "text": "gait analysis", "isInternal": true },
+      { "href": "https://blog.example-shop.dev/trail-running-gear-checklist", "text": "trail running gear checklist", "isInternal": true },
+      { "href": "https://www.example-shop.dev/products/running-shoes", "text": "shop running shoes", "isInternal": false },
+      { "href": "https://www.example-shop.dev/about", "text": "About Example Shop", "isInternal": false },
+      { "href": "https://blog.example-shop.dev/contact", "text": "Contact us", "isInternal": true },
+      { "href": "https://blog.example-shop.dev/privacy", "text": "Privacy policy", "isInternal": true },
+      { "href": "https://blog.example-shop.dev/terms", "text": "Terms of service", "isInternal": true }
+    ],
+    "images": [
+      { "src": "https://blog.example-shop.dev/images/running-shoes-hero.jpg", "alt": "Pair of running shoes on a track" },
+      { "src": "https://blog.example-shop.dev/images/foot-arch-types.svg", "alt": "Diagram of neutral, low, and high foot arches" },
+      { "src": "https://blog.example-shop.dev/images/cushioning-comparison.jpg", "alt": "Comparison of maximalist and minimalist cushioning" },
+      { "src": "https://blog.example-shop.dev/images/trail-vs-road.jpg", "alt": "Trail running shoe next to a road running shoe" },
+      { "src": "https://blog.example-shop.dev/images/gait-analysis.jpg", "alt": "Runner on a treadmill undergoing gait analysis" }
+    ],
+    "jsonLd": [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "How to Choose Running Shoes: A 2026 Buyer's Guide",
+        "description": "A practical 2026 guide to choosing running shoes: fit, cushioning, drop, terrain, and gait analysis explained for beginners and experienced runners.",
+        "image": "https://blog.example-shop.dev/images/running-shoes-hero.jpg",
+        "datePublished": "2026-06-12",
+        "dateModified": "2026-07-18",
+        "author": { "@type": "Person", "name": "Jordan Runner" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Example Shop Blog",
+          "logo": { "@type": "ImageObject", "url": "https://blog.example-shop.dev/images/logo.png" }
+        },
+        "mainEntityOfPage": "https://blog.example-shop.dev/how-to-choose-running-shoes"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Blog", "item": "https://blog.example-shop.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://blog.example-shop.dev/guides" },
+          { "@type": "ListItem", "position": 3, "name": "How to Choose Running Shoes" }
+        ]
+      }
+    ],
+    "og": {
+      "title": "How to Choose Running Shoes: A 2026 Buyer's Guide | Example Shop Blog",
+      "description": "A practical 2026 guide to choosing running shoes: fit, cushioning, drop, terrain, and gait analysis explained.",
+      "url": "https://blog.example-shop.dev/how-to-choose-running-shoes",
+      "image": "https://blog.example-shop.dev/images/running-shoes-hero.jpg",
+      "type": "article"
+    },
+    "twitter": {
+      "card": "summary_large_image",
+      "title": "How to Choose Running Shoes: A 2026 Buyer's Guide",
+      "description": "A practical 2026 guide to choosing running shoes."
+    },
+    "rawHtml": "<!doctype html><html lang=\"en\"><head><title>How to Choose Running Shoes: A 2026 Buyer's Guide | Example Shop Blog</title><meta name=\"description\" content=\"A practical 2026 guide to choosing running shoes: fit, cushioning, drop, terrain, and gait analysis explained for beginners and experienced runners.\"/><link rel=\"canonical\" href=\"https://blog.example-shop.dev/how-to-choose-running-shoes\"/><meta property=\"og:title\" content=\"How to Choose Running Shoes: A 2026 Buyer's Guide\"/><script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"Article\",\"headline\":\"How to Choose Running Shoes: A 2026 Buyer's Guide\"}</script></head><body><main><article><h1>How to Choose Running Shoes: A 2026 Buyer's Guide</h1><h2>Why the Right Running Shoe Matters</h2><p>Choosing the right running shoe is one of the most consequential decisions a runner can make. The wrong shoe can lead to discomfort, inefficiency, and over time, injury.</p><h2>Step 1: Know Your Foot Type</h2><p>Your foot arch shape determines how your foot distributes load and pronates through the gait cycle.</p><h3>Neutral arch</h3><p>A neutral arch generally pairs well with neutral cushioned shoes.</p><h3>Low arch (flat feet)</h3><p>Runners with low arches often benefit from stability or motion-control shoes.</p><h3>High arch</h3><p>High-arched feet tend to underpronate, so well-cushioned neutral shoes are usually recommended.</p><h2>Step 2: Pick the Right Cushioning</h2><p>Cushioning absorbs impact. Maximalist shoes offer thick foam stacks; minimalist shoes favor ground feel.</p><h2>Step 3: Match the Shoe to Your Terrain</h2><h3>Road running</h3><p>Road shoes prioritize smooth outsoles and lightweight cushioning.</p><h3>Trail running</h3><p>Trail shoes feature aggressive lugs for grip and rock plates for protection.</p><h2>Step 4: Consider the Heel-to-Toe Drop</h2><p>Drop is the height difference between heel and forefoot. Traditional shoes use 8-12mm; lower drops shift load to the calf and Achilles.</p><h2>Step 5: Get a Gait Analysis</h2><p>A gait analysis records your running form to identify pronation patterns and recommend appropriate shoe categories.</p><h2>Common Mistakes to Avoid</h2><p>Buying based on looks alone, ignoring sizing up for swelling, and replacing shoes too late are frequent pitfalls.</p><h2>Frequently Asked Questions</h2><p>How often should I replace running shoes? Most runners replace them every 500-800 kilometers.</p><h2>Conclusion</h2><p>The right running shoe balances fit, cushioning, terrain, drop, and your unique gait. Use this guide to narrow your options and get a gait analysis before you commit.</p></article></main></body></html>",
+    "textContent": "How to Choose Running Shoes: A 2026 Buyer's Guide Why the Right Running Shoe Matters Choosing the right running shoe is one of the most consequential decisions a runner can make. The wrong shoe can lead to discomfort, inefficiency, and over time, injury. Step 1: Know Your Foot Type Your foot arch shape determines how your foot distributes load and pronates through the gait cycle. Neutral arch A neutral arch generally pairs well with neutral cushioned shoes. Low arch (flat feet) Runners with low arches often benefit from stability or motion-control shoes. High arch High-arched feet tend to underpronate, so well-cushioned neutral shoes are usually recommended. Step 2: Pick the Right Cushioning Cushioning absorbs impact. Maximalist shoes offer thick foam stacks; minimalist shoes favor ground feel. Step 3: Match the Shoe to Your Terrain Road running Road shoes prioritize smooth outsoles and lightweight cushioning. Trail running Trail shoes feature aggressive lugs for grip and rock plates for protection. Step 4: Consider the Heel-to-Toe Drop Drop is the height difference between heel and forefoot. Traditional shoes use 8-12mm; lower drops shift load to the calf and Achilles. Step 5: Get a Gait Analysis A gait analysis records your running form to identify pronation patterns and recommend appropriate shoe categories. Common Mistakes to Avoid Buying based on looks alone, ignoring sizing up for swelling, and replacing shoes too late are frequent pitfalls. Frequently Asked Questions How often should I replace running shoes? Most runners replace them every 500-800 kilometers. Conclusion The right running shoe balances fit, cushioning, terrain, drop, and your unique gait. Use this guide to narrow your options and get a gait analysis before you commit."
+  }
+}

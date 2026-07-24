@@ -1,0 +1,71 @@
+{
+  "metadata": {
+    "sourceUrl": "https://react.dev/",
+    "canonicalUrl": "https://react.dev/",
+    "sourceDate": "2026-07-24",
+    "captureMethod": "Cheerio parse of server-rendered SPA shell (pre-hydration HTML captured without full client render); representative of JS-heavy SPA marketing/docs shells",
+    "category": "spa-rich",
+    "description": "React.dev homepage SPA shell. Server-rendered skeleton with bundled scripts, div#root mount point, navigation links, and metadata. Captured before client hydration so it represents the HTML the crawler sees on first paint."
+  },
+  "parsedPage": {
+    "statusCode": 200,
+    "headers": {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=0, must-revalidate",
+      "x-nextjs-data": "1"
+    },
+    "title": "React – The library for web and native user interfaces",
+    "metaDescription": "React lets you build user interfaces out of individual pieces called components. Combine components to build screens, pages, and entire apps.",
+    "canonical": "https://react.dev/",
+    "metaRobots": { "noindex": false, "nofollow": false },
+    "headings": [
+      { "level": 1, "text": "React" },
+      { "level": 2, "text": "Create user interfaces from components" },
+      { "level": 2, "text": "Add interactivity wherever you need it" },
+      { "level": 2, "text": "Go full-stack with React" }
+    ],
+    "links": [
+      { "href": "/learn", "text": "Learn React", "isInternal": true },
+      { "href": "/reference/react", "text": "API Reference", "isInternal": true },
+      { "href": "/community", "text": "Community", "isInternal": true },
+      { "href": "/blog", "text": "Blog", "isInternal": true },
+      { "href": "https://github.com/facebook/react", "text": "GitHub", "isInternal": false },
+      { "href": "/learn/start-a-new-react-project", "text": "Start a New React Project", "isInternal": true },
+      { "href": "/learn/tutorial-tic-tac-toe", "text": "Learn React Tutorial", "isInternal": true },
+      { "href": "/learn/thinking-in-react", "text": "Thinking in React", "isInternal": true },
+      { "href": "/learn/installation", "text": "Installation", "isInternal": true },
+      { "href": "/learn/describing-the-ui", "text": "Describing the UI", "isInternal": true },
+      { "href": "/learn/adding-interactivity", "text": "Adding Interactivity", "isInternal": true },
+      { "href": "/learn/managing-state", "text": "Managing State", "isInternal": true },
+      { "href": "/learn/escape-hatches", "text": "Escape Hatches", "isInternal": true }
+    ],
+    "images": [
+      { "src": "/og-facebook.png", "alt": "React" },
+      { "src": "/images/home-page/React-Components.svg", "alt": "React components illustration" },
+      { "src": "/images/home-page/React-Interactivity.svg", "alt": "React interactivity illustration" }
+    ],
+    "jsonLd": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "url": "https://react.dev/",
+        "name": "React",
+        "description": "The library for web and native user interfaces."
+      }
+    ],
+    "og": {
+      "title": "React – The library for web and native user interfaces",
+      "description": "React lets you build user interfaces out of individual pieces called components.",
+      "url": "https://react.dev/",
+      "image": "https://react.dev/og-facebook.png",
+      "type": "website"
+    },
+    "twitter": {
+      "card": "summary_large_image",
+      "title": "React – The library for web and native user interfaces",
+      "description": "React lets you build user interfaces out of individual pieces called components."
+    },
+    "rawHtml": "<!doctype html><html lang=\"en\"><head><meta charSet=\"utf-8\"/><title>React – The library for web and native user interfaces</title><meta name=\"description\" content=\"React lets you build user interfaces out of individual pieces called components.\"/><link rel=\"canonical\" href=\"https://react.dev/\"/><meta property=\"og:title\" content=\"React\"/><meta property=\"og:url\" content=\"https://react.dev/\"/><meta name=\"twitter:card\" content=\"summary_large_image\"/><link rel=\"preload\" href=\"/_next/static/chunks/main.js\" as=\"script\"/></head><body><div id=\"__next\"><header><nav><a href=\"/learn\">Learn React</a><a href=\"/reference/react\">API Reference</a><a href=\"/community\">Community</a><a href=\"/blog\">Blog</a></nav></header><main><h1>React</h1><h2>Create user interfaces from components</h2><p>React lets you build user interfaces out of individual pieces called components. Combine components to build screens, pages, and entire apps.</p><h2>Add interactivity wherever you need it</h2><p>React components receive data and display it. You can add interactivity by attaching event handlers to them.</p><h2>Go full-stack with React</h2><p>Use React with frameworks like Next.js to build full-stack apps.</p></main><footer><a href=\"https://github.com/facebook/react\">GitHub</a></footer></div><script src=\"/_next/static/chunks/main.js\"></script></body></html>",
+    "textContent": "React Learn React API Reference Community Blog GitHub React Create user interfaces from components React lets you build user interfaces out of individual pieces called components. Combine components to build screens, pages, and entire apps. Add interactivity wherever you need it React components receive data and display it. You can add interactivity by attaching event handlers to them. Go full-stack with React Use React with frameworks like Next.js to build full-stack apps. Start a New React Project Learn React Tutorial Thinking in React Installation Describing the UI Adding Interactivity Managing State Escape Hatches GitHub"
+  }
+}
