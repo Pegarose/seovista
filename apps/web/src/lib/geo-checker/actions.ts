@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { getAdminDb } from "../admin/db";
-import { createGeoAuditRepository } from "@seovista/worker";
+import { createGeoAuditRepository, submitGeoAudit } from "@seovista/worker";
 
 // Ensure schema handles edge cases matching user specifications.
 const GeoAuditFormSchema = z.object({
@@ -71,26 +71,37 @@ export async function startGeoAuditAction(
   const repo = createGeoAuditRepository(db);
 
   try {
+    // Capture a lead for every form submission (each submission is a distinct
+    // lead even when the audit job is deduped).
     const lead = await repo.createLead({
       domain,
       brandName,
       primaryMarket,
     });
 
-    const jobId = await repo.createJobRecord({
-      target: lead.domain,
-      service: "geo_audit",
-      status: "queued",
+    // Single-flight dedupe (VAL-A-MIT-001 / VAL-A-MIT-002): before enqueuing,
+    // the worker attempts `SET geo:lock:{sha256(url)} <jobId> NX EX 300` in
+    // Redis DB 1. When the lock is acquired, one job_records row + one BullMQ
+    // job are created. When the lock is already held, the submission is
+    // deduped onto the in-flight job and the client polls its status instead
+    // of enqueuing a duplicate.
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      throw new Error("REDIS_URL is required to submit a geo audit");
+    }
+
+    const result = await submitGeoAudit({
+      db,
+      redisUrl,
+      url: domain,
       leadId: lead.id,
+      forceAudit: false,
     });
 
-    // Assume BullMQ worker catches this dynamically if configured to read 'queued' status on job_records, 
-    // or trigger explicit event queue processing here if required, though task says:
-    // "Trigger background BullMQ event theoretically OR just assume the background worker catches "queued" records dynamically."
-
-    // Redirect uses returning action block natively inside standard next actions handling, but since this executes server-side:
-    // we use `redirect` here.
-    return redirect(`/tools/geo-readiness-checker/result/${jobId}`);
+    // Whether a new audit was enqueued or this submission was deduped onto an
+    // in-flight job, the client polls the same result page (which renders the
+    // AuditPoller until `job_records.status === 'completed'`).
+    return redirect(`/tools/geo-readiness-checker/result/${result.jobId}`);
   } catch (error) {
     console.error("Geo audit start error:", error);
     return {

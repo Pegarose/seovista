@@ -2,6 +2,7 @@ import { Worker, type Job } from "bullmq";
 import { createDbClient } from "../db/client.js";
 import { ScoringEngine, type ScoreContext } from "@seovista/geo-engine";
 import { fetchAndParseUrl } from "../utils/fetcher.js";
+import { computeLockKey, releaseSingleFlightLock } from "../utils/single-flight.js";
 
 export interface CrewAgencyPayload {
   url: string;
@@ -170,6 +171,12 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         
         await db.query(`UPDATE job_records SET status = 'completed', result_id = $2, completed_at = now(), updated_at = now() WHERE id = $1`, [jobId, resultId]);
 
+        // Release the single-flight lock (VAL-A-MIT-002). The 300s TTL is the
+        // crash backstop; an explicit release on completion lets a re-audit of
+        // the same URL proceed immediately instead of waiting for expiry.
+        // Compare-and-delete ensures we only release our own lock.
+        await releaseSingleFlightLock(computeLockKey(url), String(jobId));
+
         // Fire Crew Agency webhook immediately after DB update completes
         await notifyCrewAgency({
           url,
@@ -199,6 +206,10 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
       } catch (err) {
         console.error("Worker failed job:", err);
         await db.query(`UPDATE job_records SET status = 'failed', updated_at = now() WHERE id = $1`, [jobId]);
+        // Release the single-flight lock on failure too, so the URL is not
+        // pinned until TTL expiry when the job errors out. Compare-and-delete
+        // guards against deleting a re-acquired lock.
+        await releaseSingleFlightLock(computeLockKey(url), String(jobId));
         throw err;
       }
     },

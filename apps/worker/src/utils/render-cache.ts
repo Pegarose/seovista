@@ -33,6 +33,14 @@ export const DEFAULT_CACHE_TTL_HOURS = 24;
 
 let cacheRedisClient: IORedis | null = null;
 let cacheRedisUnavailable = false;
+/**
+ * In-flight connect promise. Concurrent callers (e.g. 10 simultaneous form
+ * submissions) all await the SAME promise so ioredis' `.connect()` is invoked
+ * exactly once — without this guard, parallel `.connect()` calls throw
+ * `Redis is already connecting/connected` and every caller degrades to a
+ * graceful no-op, defeating the single-flight lock.
+ */
+let cacheRedisConnectPromise: Promise<IORedis | null> | null = null;
 
 /**
  * Returns the configured cache TTL in seconds, derived from
@@ -143,6 +151,53 @@ export function getCacheRedis(): IORedis | null {
 }
 
 /**
+ * Ensures the singleton cache Redis client is connected before issuing
+ * commands, serializing the first connect so concurrent callers do not race
+ * on ioredis' `.connect()` (which throws `Redis is already connecting/connected`
+ * when invoked in parallel). Returns the ready client, or `null` when Redis is
+ * not configured/unavailable. Subsequent calls return immediately once the
+ * client reaches the `ready` state.
+ */
+export async function ensureCacheRedisReady(): Promise<IORedis | null> {
+  const redis = getCacheRedis();
+  if (!redis) {
+    return null;
+  }
+  if (redis.status === "ready") {
+    return redis;
+  }
+  if (!cacheRedisConnectPromise) {
+    cacheRedisConnectPromise = (async () => {
+      try {
+        await redis.connect();
+        return redis;
+      } catch (err) {
+        logCacheRedisError("connect_failed", err);
+        // Mark unavailable so repeated attempts don't spin; reset clears it.
+        cacheRedisUnavailable = true;
+        cacheRedisClient = null;
+        return null;
+      } finally {
+        cacheRedisConnectPromise = null;
+      }
+    })();
+  }
+  return cacheRedisConnectPromise;
+}
+
+function logCacheRedisError(event: string, err: unknown): void {
+  console.warn(
+    JSON.stringify({
+      name: "@seovista/worker",
+      layer: "render-cache",
+      event,
+      error: err instanceof Error ? err.message : String(err),
+      timestamp: new Date().toISOString(),
+    }),
+  );
+}
+
+/**
  * Reads a cached `ParsedPage` for the given cache key.
  * Returns `null` on miss, disabled cache, or Redis failure (graceful miss).
  */
@@ -150,14 +205,11 @@ export async function getCachedRender(cacheKey: string): Promise<ParsedPage | nu
   if (getCacheTtlSeconds() <= 0) {
     return null;
   }
-  const redis = getCacheRedis();
+  const redis = await ensureCacheRedisReady();
   if (!redis) {
     return null;
   }
   try {
-    if (redis.status !== "ready") {
-      await redis.connect();
-    }
     const raw = await redis.get(cacheKey);
     if (!raw) {
       return null;
@@ -187,14 +239,11 @@ export async function setCachedRender(cacheKey: string, parsedPage: ParsedPage):
   if (ttl <= 0) {
     return;
   }
-  const redis = getCacheRedis();
+  const redis = await ensureCacheRedisReady();
   if (!redis) {
     return;
   }
   try {
-    if (redis.status !== "ready") {
-      await redis.connect();
-    }
     await redis.set(cacheKey, JSON.stringify(parsedPage), "EX", ttl);
   } catch (err) {
     console.warn(
@@ -216,15 +265,12 @@ export async function setCachedRender(cacheKey: string, parsedPage: ParsedPage):
  * audit pipeline. The counter carries no TTL (it rolls over by date).
  */
 export async function incrementBrowseractCreditCounter(): Promise<void> {
-  const redis = getCacheRedis();
+  const redis = await ensureCacheRedisReady();
   if (!redis) {
     return;
   }
   const counterKey = getDailyCreditCounterKey();
   try {
-    if (redis.status !== "ready") {
-      await redis.connect();
-    }
     await redis.incr(counterKey);
   } catch (err) {
     console.warn(
@@ -252,6 +298,7 @@ export async function closeCacheRedis(): Promise<void> {
     }
     cacheRedisClient = null;
   }
+  cacheRedisConnectPromise = null;
 }
 
 /**
@@ -261,4 +308,5 @@ export async function closeCacheRedis(): Promise<void> {
 export function __resetCacheRedisForTests(): void {
   cacheRedisClient = null;
   cacheRedisUnavailable = false;
+  cacheRedisConnectPromise = null;
 }
