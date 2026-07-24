@@ -236,9 +236,10 @@ describe("geo-worker", () => {
     expect(payload['url']).toBe("https://example.com");
     expect(payload['brand']).toBe("example.com");
     expect(typeof payload['score']).toBe("number");
-    expect(typeof payload['proposalTrigger']).toBe("boolean");
+    expect(payload['scoreBand']).toBeTruthy();
     expect(payload['lowScores']).toBeTruthy();
     expect(payload['topIssues']).toBeInstanceOf(Array);
+    expect(typeof payload['proposalTrigger']).toBe("boolean");
     expect(payload['correlationId']).toBe("geo-test-corr-id-low");
     expect(payload['jobIdentity']).toBe("geo-test-job-identity-low");
     expect(payload['resultId']).toBeTruthy();
@@ -246,7 +247,31 @@ describe("geo-worker", () => {
     // Test the fields added by Phase B
     expect(payload['matchedServices']).toBeInstanceOf(Array);
     expect(payload['tier']).toBe("free");
-    
+
+    // Crew Agency still consumes these legacy aliases alongside the complete
+    // canonical payload. Keep this as one captured POST with no extra fields.
+    expect(payload['musteri_ihtiyaci']).toBe(payload['analysisSummary']);
+    expect(payload['brand_context']).toBe(payload['brand']);
+    expect(payload['dil']).toBe("tr");
+    expect(Object.keys(payload).sort()).toEqual([
+      "analysisSummary",
+      "brand",
+      "brand_context",
+      "correlationId",
+      "dil",
+      "jobIdentity",
+      "lowScores",
+      "matchedServices",
+      "musteri_ihtiyaci",
+      "proposalTrigger",
+      "resultId",
+      "score",
+      "scoreBand",
+      "tier",
+      "topIssues",
+      "url",
+    ].sort());
+
     // Assert persistence happened before notify (since we wait for job completed status)
     const jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-low"]);
     expect(jobResults.rows).toHaveLength(1);

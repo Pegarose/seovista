@@ -327,6 +327,9 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
     analysisSummary: payload.analysisSummary,
     matchedServices: payload.matchedServices,
     tier: payload.tier,
+    musteri_ihtiyaci: payload.analysisSummary,
+    brand_context: payload.brand,
+    dil: "tr",
   };
 
   const controller = new AbortController();
