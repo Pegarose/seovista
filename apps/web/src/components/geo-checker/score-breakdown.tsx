@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import type { ScoreBreakdown, ScoreBreakdownModule } from "@seovista/geo-engine";
+import { PlatformConfidenceView } from "./platform-confidence";
 
 /**
  * Render-friendly Turkish status labels for a scoring module's `status` band.
@@ -65,6 +66,7 @@ interface ScoreBreakdownProps {
  */
 export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactElement {
   return (
+    <>
     <section
       aria-labelledby="score-breakdown-heading"
       className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm w-full max-w-4xl mx-auto"
@@ -180,5 +182,10 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
         </span>
       </footer>
     </section>
+
+    {breakdown.platformReadiness.length > 0 ? (
+      <PlatformConfidenceView platforms={breakdown.platformReadiness} />
+    ) : null}
+    </>
   );
 }

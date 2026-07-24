@@ -4,7 +4,7 @@ import { GatedReportForm } from "../../../../../src/components/geo-checker/gated
 import { ScoreBreakdownView } from "../../../../../src/components/geo-checker/score-breakdown";
 import { notFound } from "next/navigation";
 import { createGeoAuditRepository } from "@seovista/worker";
-import type { ScoreBreakdown, ScoreBreakdownModule } from "@seovista/geo-engine";
+import type { ScoreBreakdown, ScoreBreakdownModule, ScoreBreakdownPlatformReadiness } from "@seovista/geo-engine";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +71,45 @@ function readBreakdown(payload: Record<string, unknown> | null): ScoreBreakdown 
     overallScore: b.overallScore,
     band: (typeof b.band === "string" ? b.band : "needs_improvement") as ScoreBreakdown["band"],
     modules: safeModules,
+    // Per-platform readiness projection (VAL-A-UI-CONF-001 /
+    // VAL-A-UI-CONF-002). Defensive parse: legacy payloads persisted before
+    // the platformReadiness field was added to the ScoreBreakdown contract
+    // degrade to an empty array so the result page simply omits the platform
+    // section instead of crashing.
+    platformReadiness: readPlatformReadiness(b.platformReadiness),
   };
+}
+
+/**
+ * Narrow the persisted `breakdown.platformReadiness` array to the
+ * `ScoreBreakdownPlatformReadiness[]` contract. Each entry must carry a
+ * numeric `score` and `confidence` and a boolean `experimental`; entries
+ * that fail the guard are dropped so a single malformed row cannot break the
+ * whole section. Returns `[]` for missing / non-array fields so the result
+ * page degrades gracefully on legacy payloads.
+ */
+function readPlatformReadiness(raw: unknown): ScoreBreakdownPlatformReadiness[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ScoreBreakdownPlatformReadiness[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const p = entry as Record<string, unknown>;
+    if (
+      typeof p.platform !== "string" ||
+      typeof p.score !== "number" ||
+      typeof p.confidence !== "number"
+    ) {
+      continue;
+    }
+    out.push({
+      platform: p.platform,
+      score: p.score,
+      confidence: p.confidence,
+      rationale: typeof p.rationale === "string" ? p.rationale : "",
+      experimental: Boolean(p.experimental),
+    });
+  }
+  return out;
 }
 
 export default async function JobResultPage({ params }: { params: Promise<{ jobId: string }> }) {

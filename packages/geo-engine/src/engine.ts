@@ -7,6 +7,7 @@ import type {
   ScoreBreakdown,
   ScoreBreakdownModule,
   ScoreBreakdownIssue,
+  ScoreBreakdownPlatformReadiness,
 } from './types';
 import type { NWEnrichmentResult } from './providers/neuronwriter.js';
 import { IndexabilityModule } from "./modules/indexability.js";
@@ -366,6 +367,19 @@ export class ScoringEngine {
     // `pointLoss` is the negative deduction the module recorded at the same
     // call site as its `score -= X` (0 when the issue is info-only / an
     // opportunity nudge that does not deduct points).
+    //
+    // `platformReadiness` is the per-platform AI readiness projection
+    // (VAL-A-UI-CONF-001 / VAL-A-UI-CONF-002): it carries each platform's
+    // numeric readiness score plus its confidence metadata so the result page
+    // can render confidence-band labels ("Düşük — deneysel" etc.) without
+    // recomputing any value. Sourced from the AI Visibility module's
+    // `aiVisibilityData.platformReadiness`; if that module produced no
+    // platform data (e.g. it errored and fell back to a perfect-score
+    // placeholder), the projection degrades to an empty array rather than
+    // fabricating confidence values.
+    const aiVisibilityPlatformReadiness: ScoreBreakdownPlatformReadiness[] =
+      extractPlatformReadiness(aiVisibility);
+
     const breakdown: ScoreBreakdown = {
       scoreVersion: SCORE_VERSION,
       overallScore: finalScore,
@@ -384,6 +398,7 @@ export class ScoringEngine {
           module: iss.module,
         })),
       })),
+      platformReadiness: aiVisibilityPlatformReadiness,
     };
 
     return {
@@ -504,4 +519,43 @@ export class ScoringEngine {
       default: return 0;
     }
   }
+}
+
+/**
+ * Narrow the AI Visibility module's `aiVisibilityData.platformReadiness`
+ * payload (typed loosely as `Record<string, unknown> | null` on the engine
+ * surface) into the render-friendly {@link ScoreBreakdownPlatformReadiness}
+ * contract. Returns an empty array when the payload is missing / malformed
+ * so the breakdown degrades gracefully instead of crashing the score path.
+ *
+ * Each entry must carry a string `platform`, a numeric `score`, and a numeric
+ * `confidence`; entries that fail the guard are dropped. `rationale` defaults
+ * to `""` and `experimental` defaults to `false` when absent.
+ */
+function extractPlatformReadiness(
+  aiVisibility: Record<string, unknown> | null,
+): ScoreBreakdownPlatformReadiness[] {
+  if (!aiVisibility) return [];
+  const raw = aiVisibility.platformReadiness;
+  if (!Array.isArray(raw)) return [];
+  const out: ScoreBreakdownPlatformReadiness[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const p = entry as Record<string, unknown>;
+    if (
+      typeof p.platform !== "string" ||
+      typeof p.score !== "number" ||
+      typeof p.confidence !== "number"
+    ) {
+      continue;
+    }
+    out.push({
+      platform: p.platform,
+      score: p.score,
+      confidence: p.confidence,
+      rationale: typeof p.rationale === "string" ? p.rationale : "",
+      experimental: Boolean(p.experimental),
+    });
+  }
+  return out;
 }

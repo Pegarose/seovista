@@ -10,6 +10,7 @@ export type {
   ScoreBreakdown,
   ScoreBreakdownModule,
   ScoreBreakdownIssue,
+  ScoreBreakdownPlatformReadiness,
 } from "./types.js";
 
 export type { ScoreContext, ParsedPage } from "./types.js";

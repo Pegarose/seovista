@@ -157,6 +157,29 @@ export interface ScoreBreakdownModule {
 }
 
 /**
+ * Per-platform AI readiness projection surfaced in the
+ * {@link ScoreBreakdown} contract (VAL-A-UI-CONF-001 / VAL-A-UI-CONF-002).
+ *
+ * This is a render-friendly subset of the `AiVisibilityData.platformReadiness`
+ * array produced by {@link AiVisibilityModule}: each entry carries the
+ * platform's display `name` (e.g. "ChatGPT", "Perplexity", "Google AI
+ * Overviews", "Bing Copilot"), its numeric readiness `score` (0–100), the
+ * `confidence` the engine has in that estimate (0–1), a short `rationale`
+ * explaining how the score was derived, and an `experimental` flag that marks
+ * heuristic / non-validated estimates. The RSC renders this as a confidence
+ * band label (Turkish, e.g. "Düşük — deneysel") with an icon + text pattern;
+ * the raw numeric `score` is preserved inside a `<details>` / `aria-label` so
+ * debug paths still see the underlying value.
+ */
+export interface ScoreBreakdownPlatformReadiness {
+  platform: string;
+  score: number;
+  confidence: number;
+  rationale: string;
+  experimental: boolean;
+}
+
+/**
  * Structured per-module score breakdown emitted by the scoring engine so the
  * result-page RSC can render explainability without recomputing any score.
  *
@@ -166,12 +189,16 @@ export interface ScoreBreakdownModule {
  * (see {@link SCORE_VERSION}) so operators can compare runs across refactors
  * and detect formula drift. `overallScore` and `band` mirror
  * `ScoreOutput.overall` for a single-source-of-truth render.
+ * `platformReadiness` carries the per-platform AI readiness estimates with
+ * their confidence metadata so the result page can render confidence-band
+ * labels without recomputing any value.
  */
 export interface ScoreBreakdown {
   scoreVersion: string;
   overallScore: number;
   band: 'excellent' | 'good' | 'needs_improvement' | 'poor' | 'critical';
   modules: ScoreBreakdownModule[];
+  platformReadiness: ScoreBreakdownPlatformReadiness[];
 }
 
 export interface Recommendation {
