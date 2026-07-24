@@ -56,13 +56,15 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
   const worker = new Worker(
     options?.queueName ?? "geo_readiness_jobs",
     async (job: Job) => {
-      const { jobId, url } = job.data;
+      const { jobId, url, forceAudit } = job.data;
       
       try {
         await db.query(`UPDATE job_records SET status = 'running', updated_at = now() WHERE id = $1`, [jobId]);
 
-        // Actually fetch and parse the page
-        const parsedPage = await fetchAndParseUrl(url);
+        // Actually fetch and parse the page. `forceAudit: true` bypasses the
+        // render cache (VAL-A-SPA-002) so a fresh Browseract render is forced
+        // regardless of whether `geo:cache:{sha256(url)}` already holds a hit.
+        const parsedPage = await fetchAndParseUrl(url, { forceAudit: forceAudit === true });
 
         const scoreContext: ScoreContext = {
           tenantId: "worker-tenant",

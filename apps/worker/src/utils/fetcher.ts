@@ -2,6 +2,23 @@ import * as cheerio from "cheerio";
 import dns from "node:dns/promises";
 import ipaddr from "ipaddr.js";
 import { type ParsedPage } from "@seovista/geo-engine";
+import {
+  computeCacheKey,
+  getCachedRender,
+  setCachedRender,
+  incrementBrowseractCreditCounter,
+} from "./render-cache.js";
+
+/**
+ * Options passed to {@link fetchAndParseUrl}.
+ *
+ * `forceAudit: true` bypasses the render cache and triggers a fresh render
+ * (the fresh result is written back to the cache so subsequent non-forced
+ * audits benefit from it). See VAL-A-SPA-002.
+ */
+export interface FetchAndParseUrlOptions {
+  forceAudit?: boolean;
+}
 
 /**
  * Validates a hostname to prevent SSRF (Server-Side Request Forgery).
@@ -431,7 +448,20 @@ async function fetchViaCheerio(targetUrl: string): Promise<{ rawHtml: string; st
 
 /**
  * Fetches the HTML content of a given URL and parses it into the structure expected by the Geo-Engine.
- * 
+ *
+ * Phase A — Render cache (see VAL-A-SPA-001/002/003):
+ *   - Before any network call, the cache is checked at `geo:cache:{sha256(canonicalUrl)}`
+ *     in Redis DB 1. On a hit the cached `ParsedPage` is returned without invoking
+ *     Browseract and the fetcher logs `cache=true`.
+ *   - On a cache miss or when `options.forceAudit === true`, the daily Browseract
+ *     credit counter (`browseract:credits:consumed:{YYYY-MM-DD}`) is incremented
+ *     and a fresh render is performed. The fetcher logs `cache=false`.
+ *   - A successful fresh render is written back to the cache with TTL
+ *     `BROWSERACT_CACHE_TTL_HOURS` (default 24h), even on `forceAudit` bypass
+ *     so subsequent audits reuse the refreshed snapshot.
+ *   - If Redis is unavailable, the cache layer degrades gracefully to a
+ *     permanent miss and the fetch proceeds.
+ *
  * First validates against SSRF.
  * If BROWSERACT_API_KEY is configured:
  *   - Attempts headless SPA rendering via Browseract API.
@@ -441,40 +471,96 @@ async function fetchViaCheerio(targetUrl: string): Promise<{ rawHtml: string; st
  *   - Performs standard HTTP/Cheerio fetch.
  * 
  * @param targetUrl The URL of the page to fetch and analyze.
+ * @param options Optional flags. `forceAudit: true` bypasses the render cache.
  * @returns A Promise resolving to a strongly-typed `ParsedPage`.
  */
-export async function fetchAndParseUrl(targetUrl: string): Promise<ParsedPage> {
+export async function fetchAndParseUrl(
+  targetUrl: string,
+  options: FetchAndParseUrlOptions = {},
+): Promise<ParsedPage> {
   // 1. Validate against SSRF
   await validateSSRF(targetUrl);
+
+  const forceAudit = options.forceAudit === true;
+  const cacheKey = computeCacheKey(targetUrl);
+
+  // 2. Cache lookup (skipped on forceAudit bypass)
+  if (!forceAudit) {
+    const cached = await getCachedRender(cacheKey);
+    if (cached) {
+      console.log(
+        JSON.stringify({
+          name: "@seovista/worker",
+          layer: "fetcher",
+          event: "render_cache_hit",
+          cache: true,
+          cacheKey,
+          canonicalUrl: targetUrl,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      return cached;
+    }
+  }
+
+  // 3. Cache miss / bypass → consume a Browseract credit and render fresh.
+  //    The counter is incremented once per fresh-render decision, regardless
+  //    of whether Browseract ultimately succeeds or falls back to Cheerio
+  //    (VAL-A-SPA-001 evidence: credit counter increments on miss/bypass).
+  await incrementBrowseractCreditCounter();
+
+  console.log(
+    JSON.stringify({
+      name: "@seovista/worker",
+      layer: "fetcher",
+      event: "render_cache_miss",
+      cache: false,
+      forceAudit,
+      cacheKey,
+      canonicalUrl: targetUrl,
+      timestamp: new Date().toISOString(),
+    })
+  );
 
   const apiKey = process.env.BROWSERACT_API_KEY;
   const workflowId = process.env.BROWSERACT_WORKFLOW_ID;
   const browseractEnabled = Boolean(apiKey && apiKey !== "your_key_here" && workflowId);
 
+  let parsed: ParsedPage;
+
   if (browseractEnabled) {
     try {
       // Primary: Headfull engine via Browseract workflow API
       const rawHtml = await fetchViaBrowseract(targetUrl, apiKey as string);
-      const parsed = parseHtmlToParsedPage(rawHtml, targetUrl);
-      return parsed;
+      parsed = parseHtmlToParsedPage(rawHtml, targetUrl);
     } catch (browseractError) {
       console.warn(`Browseract engine failed or rate limited, falling back to Cheerio: ${(browseractError as Error).message}`);
+      const cheerioResult = await fetchViaCheerio(targetUrl);
+      parsed = parseHtmlToParsedPage(cheerioResult.rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
+
+      // Secondary check: if Cheerio output looks like a JS bundle shell, retry Browseract once.
+      if (isJsBundleRendering(cheerioResult.rawHtml, parsed)) {
+        try {
+          const rawHtml = await fetchViaBrowseract(targetUrl, apiKey as string);
+          parsed = parseHtmlToParsedPage(rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
+        } catch (browseractRetryError) {
+          console.warn(`Browseract retry for JS bundle failed: ${(browseractRetryError as Error).message}`);
+        }
+      }
+    }
+  } else {
+    // Default path when Browseract is not configured: Cheerio fetch only.
+    const cheerioResult = await fetchViaCheerio(targetUrl);
+    parsed = parseHtmlToParsedPage(cheerioResult.rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
+
+    if (isJsBundleRendering(cheerioResult.rawHtml, parsed)) {
+      console.warn(`Cheerio output looks like a JS bundle shell for ${targetUrl}, but Browseract is disabled — returning static parse.`);
     }
   }
 
-  // Fallback or default path: Cheerio fetch
-  const cheerioResult = await fetchViaCheerio(targetUrl);
-  let parsed = parseHtmlToParsedPage(cheerioResult.rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
-
-  // Secondary check: if Cheerio succeeded but output looks like JS bundle rendering and Browseract is enabled, retry with Browseract
-  if (browseractEnabled && isJsBundleRendering(cheerioResult.rawHtml, parsed)) {
-    try {
-      const rawHtml = await fetchViaBrowseract(targetUrl, apiKey as string);
-      parsed = parseHtmlToParsedPage(rawHtml, targetUrl, cheerioResult.statusCode, cheerioResult.headers);
-    } catch (browseractError) {
-      console.warn(`Browseract retry for JS bundle failed: ${(browseractError as Error).message}`);
-    }
-  }
+  // 4. Persist the successful render back into the cache for future audits.
+  //    Done after parsing so a parse failure does not poison the cache.
+  await setCachedRender(cacheKey, parsed);
 
   return parsed;
 }

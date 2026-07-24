@@ -5,6 +5,7 @@ import console from "node:console";
 import { createDbClient, type DbClient } from "./db/client.js";
 import { createPingQueue, createPingWorker } from "./queue/ping.js";
 import { startGeoWorker } from "./queue/geo-worker.js";
+import { closeCacheRedis } from "./utils/render-cache.js";
 import { getWorkerEnv, getProjectId } from "./env.js";
 import { checkWorkerHealth } from "./health.js";
 import type { Queue, Worker } from "bullmq";
@@ -126,6 +127,9 @@ async function shutdown(signal: string): Promise<void> {
     await current.queue.close();
     await current.db.close();
   }
+
+  // Close the Phase A render-cache Redis client (DB 1), if one was opened.
+  await closeCacheRedis();
 
   exit(0);
 }
