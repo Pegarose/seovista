@@ -1,0 +1,27 @@
+{
+  "statusCode": 200,
+  "headers": {
+    "content-type": "text/html; charset=UTF-8",
+    "server": "ECS (dcb/7F84/568D)",
+    "x-cache": "HIT"
+  },
+  "title": "Example Domain",
+  "metaDescription": "Example domain for use in illustrative examples.",
+  "canonical": "https://example.com/",
+  "metaRobots": { "noindex": false, "nofollow": false },
+  "headings": [
+    { "level": 1, "text": "Example Domain" }
+  ],
+  "links": [
+    {
+      "href": "https://www.iana.org/domains/example",
+      "text": "More information...",
+      "isInternal": false
+    }
+  ],
+  "images": [],
+  "jsonLd": [],
+  "og": { "title": "Example Domain", "url": "https://example.com/" },
+  "rawHtml": "<!doctype html>\n<html>\n<head>\n    <title>Example Domain</title>\n    <meta name=\"description\" content=\"Example domain for use in illustrative examples.\" />\n    <link rel=\"canonical\" href=\"https://example.com/\" />\n    <meta property=\"og:title\" content=\"Example Domain\" />\n    <meta property=\"og:url\" content=\"https://example.com/\" />\n</head>\n<body>\n<div>\n    <h1>Example Domain</h1>\n    <p>This domain is for use in illustrative examples in documents. You may use this domain without prior coordination or asking for permission.</p>\n    <p><a href=\"https://www.iana.org/domains/example\">More information...</a></p>\n</div>\n</body>\n</html>",
+  "textContent": "Example Domain This domain is for use in illustrative examples in documents. You may use this domain without prior coordination or asking for permission. More information..."
+}

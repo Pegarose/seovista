@@ -17,4 +17,13 @@ export { defaultScoringConfiguration, defaultLimitations, getScoringConfiguratio
 
 export { parseGeoReadinessResult, GeoReadinessValidationError } from "./result.js";
 
+export {
+  runDryScore,
+  buildDryRunContext,
+  type DryRunOutput,
+  type DryRunOptions,
+  type DryRunModule,
+  type DryRunIssue,
+} from "./dry-run.js";
+
 export const name: string = "@seovista/geo-engine";
