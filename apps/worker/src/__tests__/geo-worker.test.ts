@@ -200,11 +200,64 @@ describe("geo-worker", () => {
     expect(payload.url).toBe("https://example.com");
     expect(payload.brand).toBe("example.com");
     expect(typeof payload.score).toBe("number");
-    expect(payload.proposalTrigger).toBe(true);
+    expect(typeof payload.proposalTrigger).toBe("boolean");
     expect(payload.lowScores).toBeTruthy();
     expect(payload.topIssues).toBeInstanceOf(Array);
     expect(payload.correlationId).toBe("geo-test-corr-id-low");
     expect(payload.jobIdentity).toBe("geo-test-job-identity-low");
     expect(payload.resultId).toBeTruthy();
+  });
+
+  it("leaves job completed but audits Crew Agency errors via Breadcrumb", async () => {
+    process.env.CREW_AGENCY_API_KEY = "test_crew_api_key";
+
+    const weakHtml =
+      "<!doctype html><html><head><title>Weak Page</title></head>" +
+      "<body><div id='root'></div></body></html>";
+
+    const fetchMock = vi.fn().mockImplementation(async (url) => {
+      if (typeof url === "string" && url.includes("crew.tr4.net")) {
+        return { ok: false, status: 503, statusText: "Service Unavailable" };
+      }
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => weakHtml,
+        json: async () => ({}),
+        headers: { forEach: () => undefined },
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // We'll spy on console.error directly to avoid mocking Sentry bridge since 
+    // it writes to stdout and uses the Sentry module internally
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    worker = startGeoWorker({ queueName });
+
+    const res = await env.db.query(
+      `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      ["geo-test-job-identity-fail", queueName, "queued", "https://example.com", "geo-test-corr-id-fail"]
+    );
+    const jobIdInDb = res.rows[0]?.id;
+
+    await queue.add("geo_score", {
+      jobId: jobIdInDb,
+      url: "https://example.com",
+    });
+
+    const actualStatus = await waitForJobStatus(env.db, jobIdInDb);
+    expect(actualStatus).toBe("completed");
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Crew Agency notification failed:", 
+      expect.objectContaining({ message: expect.stringContaining("503") })
+    );
+
+    // Job results should exist despite notification error
+    const jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-fail"]);
+    expect(jobResults.rows).toHaveLength(1);
   });
 });

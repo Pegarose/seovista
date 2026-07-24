@@ -204,6 +204,8 @@ export interface PerPlatformConfidence {
 export interface AuditCompletedPayload {
   /** job_records id that completed. */
   jobId: string;
+  /** Correlation ID thread spanning API to Worker to Crew. */
+  correlationId?: string;
   /** Canonical audit target URL. */
   url: string;
   /** Deterministic 0–100 overall score. */
@@ -243,6 +245,35 @@ export function emitAuditCompleted(payload: AuditCompletedPayload): void {
     timestamp: new Date().toISOString(),
   };
   emit(event, "audit_completed");
+}
+
+export interface CrewFailurePayload {
+  url: string;
+  jobId: string;
+  correlationId: string;
+  statusCode?: number;
+  errorMessage: string;
+}
+
+export function emitCrewFailureBreadcrumb(payload: CrewFailurePayload): void {
+  if (currentMode === SENTRY_MODE_REAL) {
+    try {
+      Sentry.addBreadcrumb({
+        category: "crew_webhook",
+        message: "Crew Agency webhook failed",
+        level: "error",
+        data: payload,
+      });
+    } catch {
+      // Telemetry must never block
+    }
+  } else {
+    // Stub mode logging for observability
+    writeStubSink({
+      event: "crew_webhook_failure",
+      ...payload
+    });
+  }
 }
 
 /**

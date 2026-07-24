@@ -10,7 +10,7 @@ import {
 } from "@seovista/geo-engine";
 import { fetchAndParseUrlWithMeta } from "../utils/fetcher.js";
 import { computeLockKey, releaseSingleFlightLock } from "../utils/single-flight.js";
-import { emitAuditCompleted, type PerPlatformConfidence } from "../utils/sentry.js";
+import { emitAuditCompleted, emitCrewFailureBreadcrumb, type PerPlatformConfidence } from "../utils/sentry.js";
 
 export interface CrewAgencyPayload {
   url: string;
@@ -199,6 +199,7 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         // `tier`. Fire-and-forget — telemetry must never fail the job.
         emitAuditCompletedOnce({
           jobId: String(jobId),
+          correlationId: correlation_id,
           url,
           score_value: overallScore,
           per_platform_confidence: buildPerPlatformConfidence(data),
@@ -232,6 +233,12 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         }).catch((notifyErr) => {
           // Webhook failures must not fail the geo job; log and continue
           console.error("Crew Agency notification failed:", notifyErr);
+          emitCrewFailureBreadcrumb({
+            url,
+            jobId: String(jobId),
+            correlationId: correlation_id,
+            errorMessage: notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
+          });
         });
 
       } catch (err) {
@@ -322,31 +329,43 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
     tier: payload.tier,
   };
 
-  const response = await fetch(targetUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-      "X-API-Key": apiKey,
-    },
-    body: JSON.stringify(apiPayload),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  let response: Response;
+  try {
+    response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "X-API-Key": apiKey,
+      },
+      body: JSON.stringify(apiPayload),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
-    throw new Error(`Crew Agency notification failed: ${response.status} ${response.statusText}`);
+    const err = new Error(`Crew Agency notification failed: ${response.status} ${response.statusText}`);
+    (err as any).status = response.status;
+    throw err;
   }
 
   // The API returns { "job_id": "<uuid>" } for the async job. Log it for tracking.
   try {
     const responseBody = await response.json() as { job_id?: string };
     if (responseBody.job_id) {
-      console.log("Crew Agency job started:", responseBody.job_id);
+      console.log(`Crew Agency job started: ${responseBody.job_id} for ${payload.url} [correlationId: ${payload.correlationId}]`);
+    } else {
+      console.log(`Crew Agency notification sent for ${payload.url} [correlationId: ${payload.correlationId}]`);
     }
   } catch {
     // Response wasn't JSON or didn't contain job_id; non-fatal.
+    console.log(`Crew Agency notification sent for ${payload.url} [correlationId: ${payload.correlationId}]`);
   }
-
-  console.log(`Crew Agency notification sent to ${targetUrl} for ${payload.url}`);
 }
 
 /**
@@ -357,6 +376,7 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
  */
 function emitAuditCompletedOnce(payload: {
   jobId: string;
+  correlationId?: string;
   url: string;
   score_value: number;
   per_platform_confidence: PerPlatformConfidence;
