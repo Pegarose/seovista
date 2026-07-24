@@ -22,6 +22,19 @@ export interface FetchAndParseUrlOptions {
 }
 
 /**
+ * Extended fetch result carrying render-cache metadata. `cacheHit` is `true`
+ * when the parsed page was served from `geo:cache:{sha256(canonicalUrl)}`
+ * without invoking Browseract / Cheerio (VAL-A-SPA-001). Callers that need the
+ * cache-hit flag for telemetry (e.g. the `audit_completed` Sentry event,
+ * VAL-A-OBS-002) should use {@link fetchAndParseUrlWithMeta}; callers that
+ * only need the page can keep using {@link fetchAndParseUrl}.
+ */
+export interface FetchAndParseUrlResult {
+  parsedPage: ParsedPage;
+  cacheHit: boolean;
+}
+
+/**
  * Validates a hostname to prevent SSRF (Server-Side Request Forgery).
  * Rejects IP addresses that map to private, loopback, link-local, or otherwise internal/reserved ranges.
  * 
@@ -484,6 +497,20 @@ export async function fetchAndParseUrl(
   targetUrl: string,
   options: FetchAndParseUrlOptions = {},
 ): Promise<ParsedPage> {
+  const result = await fetchAndParseUrlWithMeta(targetUrl, options);
+  return result.parsedPage;
+}
+
+/**
+ * Same as {@link fetchAndParseUrl} but also returns whether the parsed page
+ * came from the render cache (`cacheHit: true`) or a fresh network render
+ * (`cacheHit: false`). The geo-worker uses this flag to populate the
+ * `cache_hit` field of the `audit_completed` Sentry event (VAL-A-OBS-002).
+ */
+export async function fetchAndParseUrlWithMeta(
+  targetUrl: string,
+  options: FetchAndParseUrlOptions = {},
+): Promise<FetchAndParseUrlResult> {
   // 1. Validate against SSRF
   await validateSSRF(targetUrl);
 
@@ -505,7 +532,7 @@ export async function fetchAndParseUrl(
           timestamp: new Date().toISOString(),
         })
       );
-      return cached;
+      return { parsedPage: cached, cacheHit: true };
     }
   }
 
@@ -602,6 +629,6 @@ export async function fetchAndParseUrl(
   //    Done after parsing so a parse failure does not poison the cache.
   await setCachedRender(cacheKey, parsed);
 
-  return parsed;
+  return { parsedPage: parsed, cacheHit: false };
 }
 
