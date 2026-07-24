@@ -28,6 +28,8 @@ export {
   type CrewServiceTier,
 } from "./catalog/index.js";
 
+export { matchServices, type MatchedService } from "./recommendation-matcher.js";
+
 export { defaultScoringConfiguration, defaultLimitations, getScoringConfiguration } from "./scoring.js";
 
 export { parseGeoReadinessResult, GeoReadinessValidationError } from "./result.js";
