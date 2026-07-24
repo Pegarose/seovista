@@ -330,7 +330,8 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const crewWebhookTimeoutMs = Number(process.env.CREW_WEBHOOK_TIMEOUT_MS) || 10000;
+  const timeoutId = setTimeout(() => controller.abort(), crewWebhookTimeoutMs);
 
   let response: Response;
   try {

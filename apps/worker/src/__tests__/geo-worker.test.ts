@@ -1,7 +1,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Queue, type Worker } from "bullmq";
 import { startGeoWorker } from "../queue/geo-worker.js";
+// vi.mock's importOriginal must be typed with `typeof <module>`; an `import type * as`
+// namespace cannot be used inside `typeof`, and `typeof import("...")` is forbidden by
+// consistent-type-imports, so a value import is the only viable typing here.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import * as sentryModule from "../utils/sentry.js";
 import { setupTestEnvironment, type TestEnvironment } from "./helpers/test-env.js";
+
+// Hoisted spy shared with the top-level vi.mock below. vi.hoisted runs before any
+// import resolves, so the mock factory can close over the spy and the mock is in
+// place before geo-worker.ts loads the sentry module (an in-test vi.mock would be
+// too late and leave the spy uncalled).
+const { crewBreadcrumbSpy } = vi.hoisted(() => ({
+  crewBreadcrumbSpy: vi.fn(),
+}));
+
+vi.mock("../utils/sentry.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof sentryModule>();
+  return {
+    ...actual,
+    emitCrewFailureBreadcrumb: (arg: Parameters<typeof actual.emitCrewFailureBreadcrumb>[0]) => {
+      crewBreadcrumbSpy(arg);
+      return actual.emitCrewFailureBreadcrumb(arg);
+    },
+  };
+});
 
 /**
  * Polls job_records until the worker drives the job to a terminal status
@@ -44,6 +68,9 @@ describe("geo-worker", () => {
     delete process.env.BROWSERACT_API_KEY;
     delete process.env.NEURONWRITER_API_KEY;
     delete process.env.CREW_AGENCY_API_KEY;
+    // Reset the shared breadcrumb spy between tests so prior Crew failures don't
+    // leak into later assertions.
+    crewBreadcrumbSpy.mockClear();
     queueName = `geo_readiness_jobs_${env.projectId}`;
 
     queue = new Queue(queueName, {
@@ -258,23 +285,12 @@ describe("geo-worker", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    // We'll spy on console.error directly to avoid mocking Sentry bridge since 
-    // it writes to stdout and uses the Sentry module internally
+    // Crew webhook failures are observed two ways: (1) console.error carries the
+    // failure log, and (2) emitCrewFailureBreadcrumb records a breadcrumb. The
+    // breadcrumb is spied via the top-level hoisted vi.mock (an in-test vi.mock
+    // would be too late; spying on console.log doesn't intercept sentry.ts's
+    // `import console from "node:console"` binding).
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    
-    // Listen for breadcrumbs
-    // Just mock it so we can spy on it
-    const breadcrumbSpy = vi.fn();
-    vi.mock("../utils/sentry.js", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("../utils/sentry.js")>();
-      return {
-        ...actual,
-        emitCrewFailureBreadcrumb: (arg: any) => {
-          breadcrumbSpy(arg);
-          return actual.emitCrewFailureBreadcrumb(arg);
-        }
-      };
-    });
 
     worker = startGeoWorker({ queueName });
 
@@ -327,12 +343,14 @@ describe("geo-worker", () => {
     jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-fail-2"]);
     expect(jobResults.rows).toHaveLength(1);
     
-    expect(breadcrumbSpy).toHaveBeenCalledWith(expect.objectContaining({
-      url: "https://example.com/2",
-      jobId: String(jobId2),
-      correlationId: "geo-test-corr-id-fail-2",
-      errorMessage: "Network Error"
-    }));
+    expect(crewBreadcrumbSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://example.com/2",
+        jobId: String(jobId2),
+        correlationId: "geo-test-corr-id-fail-2",
+        errorMessage: "Network Error",
+      }),
+    );
   });
 
   it("aborts freezing fetch using AbortSignal without failing the job", async () => {
@@ -363,8 +381,12 @@ describe("geo-worker", () => {
       };
     });
     vi.stubGlobal("fetch", fetchMock);
-    
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    // Use a short, env-configured Crew webhook timeout with REAL timers so the
+    // hanging fetch is aborted quickly. Fake timers + vi.advanceTimersByTime
+    // corrupt BullMQ's internal heartbeats and hang worker.close() in afterEach,
+    // so we drive the abort through the real, configurable production timeout.
+    process.env.CREW_WEBHOOK_TIMEOUT_MS = "300";
 
     worker = startGeoWorker({ queueName });
 
@@ -380,13 +402,9 @@ describe("geo-worker", () => {
       url: "https://example.com/timeout",
     });
 
-    // We manually advance timers because vitest's fake timers affects `waitForJobStatus`
-    // which uses `setTimeout` inside a loop.
-    vi.advanceTimersByTime(11000); // 10s is the timeout
-
     const actualStatus = await waitForJobStatus(env.db, jobId);
     expect(actualStatus).toBe("completed");
 
-    vi.useRealTimers();
+    delete process.env.CREW_WEBHOOK_TIMEOUT_MS;
   });
 });
