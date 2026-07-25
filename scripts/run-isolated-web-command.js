@@ -124,6 +124,31 @@ async function main() {
           `Cannot start ${profile} runtime because its active output does not exist at ${ownership.activeOutputDirectory}.`
         );
       }
+      const requiredServerFilesPath = resolve(
+        ownership.activeOutputDirectory,
+        "required-server-files.json"
+      );
+      if (!existsSync(requiredServerFilesPath)) {
+        throw new BuildOwnershipError(
+          `Cannot start ${profile} runtime: missing required-server-files.json at ${requiredServerFilesPath}.`
+        );
+      }
+      try {
+        const requiredServerFiles = JSON.parse(readFileSync(requiredServerFilesPath, "utf8"));
+        if (!requiredServerFiles?.config || typeof requiredServerFiles.config !== "object") {
+          throw new BuildOwnershipError(
+            `Cannot start ${profile} runtime: invalid config in ${requiredServerFilesPath}.`
+          );
+        }
+        environment.__NEXT_PRIVATE_STANDALONE_CONFIG = JSON.stringify(requiredServerFiles.config);
+      } catch (error) {
+        if (error instanceof BuildOwnershipError) throw error;
+        throw new BuildOwnershipError(
+          `Cannot start ${profile} runtime: failed to read ${requiredServerFilesPath}: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
     }
     const specification = commandFor(action);
     const exitCode = await run(
