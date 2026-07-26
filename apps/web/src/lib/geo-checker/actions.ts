@@ -4,8 +4,10 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getAdminDb } from "../admin/db";
-import { createGeoAuditRepository, submitGeoAudit } from "@seovista/worker";
+import { createGeoAuditRepository, submitGeoAudit, checkIpRateLimit } from "@seovista/worker";
+import { extractClientIp } from "./ip";
 
 // Ensure schema handles edge cases matching user specifications.
 const GeoAuditFormSchema = z.object({
@@ -71,6 +73,30 @@ export async function startGeoAuditAction(
   const repo = createGeoAuditRepository(db);
 
   try {
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      throw new Error("REDIS_URL is required to submit a geo audit");
+    }
+
+    const reqHeaders = await headers();
+    const clientIp = extractClientIp(reqHeaders);
+    const limit = Number(process.env.AUDIT_PER_IP_RATE_LIMIT) || 10;
+
+    const rateLimit = await checkIpRateLimit({
+      redisUrl,
+      ip: clientIp,
+      limit,
+    });
+
+    if (!rateLimit.success) {
+      return {
+        status: "error",
+        errors: {
+          form: [`Rate limit exceeded. Maximum ${limit} audits per hour allowed. Please try again later.`],
+        },
+      };
+    }
+
     // Capture a lead for every form submission (each submission is a distinct
     // lead even when the audit job is deduped).
     const lead = await repo.createLead({
@@ -78,17 +104,6 @@ export async function startGeoAuditAction(
       brandName,
       primaryMarket,
     });
-
-    // Single-flight dedupe (VAL-A-MIT-001 / VAL-A-MIT-002): before enqueuing,
-    // the worker attempts `SET geo:lock:{sha256(url)} <jobId> NX EX 300` in
-    // Redis DB 1. When the lock is acquired, one job_records row + one BullMQ
-    // job are created. When the lock is already held, the submission is
-    // deduped onto the in-flight job and the client polls its status instead
-    // of enqueuing a duplicate.
-    const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      throw new Error("REDIS_URL is required to submit a geo audit");
-    }
 
     const result = await submitGeoAudit({
       db,

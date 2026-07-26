@@ -18,3 +18,8 @@ export {
   SINGLE_FLIGHT_LOCK_PREFIX,
   SINGLE_FLIGHT_LOCK_TTL_SECONDS,
 } from "./utils/single-flight.js";
+export {
+  checkIpRateLimit,
+  type CheckIpRateLimitInput,
+  type RateLimitResult,
+} from "./utils/rate-limiter.js";
