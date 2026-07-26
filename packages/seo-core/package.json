@@ -32,6 +32,11 @@
       "types": "./dist/security/headers.d.ts",
       "default": "./dist/security/headers.js"
     },
+    "./security/report-signer": {
+      "import": "./dist/security/report-signer.js",
+      "types": "./dist/security/report-signer.d.ts",
+      "default": "./dist/security/report-signer.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

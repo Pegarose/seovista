@@ -71,6 +71,7 @@ export interface ScoreOutput {
   aiVisibility?: Record<string, unknown> | null;
   providerEnrichments?: (NWEnrichmentResult & { provider?: string })[];
   recommendations: Recommendation[];
+  degraded?: boolean;
   /**
    * Structured per-module score breakdown (`VAL-A-UI-001` / `VAL-A-UI-002`).
    *
@@ -111,6 +112,7 @@ export class ScoringEngine {
    */
   async scorePage(context: ScoreContext, startTime: number): Promise<ScoreOutput> {
     const moduleResults: ScoreModuleResult[] = [];
+    let isDegraded = false;
     
     // Execute all modules. NeuronWriter enrichment is intentionally NOT
     // attached to `context.enrichments` here — modules must derive their score
@@ -121,6 +123,7 @@ export class ScoringEngine {
         moduleResults.push(result);
       } catch (err) {
         console.error(`Error executing module ${mod.key}:`, err);
+        isDegraded = true;
         // Fallback for failed module
         moduleResults.push({
           key: mod.key,
@@ -416,6 +419,7 @@ export class ScoringEngine {
         })),
       })),
       platformReadiness: aiVisibilityPlatformReadiness,
+      ...(isDegraded ? { degraded: true } : {}),
     };
 
     return {
@@ -446,6 +450,7 @@ export class ScoringEngine {
       aiVisibility,
       recommendations: recommendationsWithEnrichment,
       breakdown,
+      ...(isDegraded ? { degraded: true } : {}),
     };
   }
 

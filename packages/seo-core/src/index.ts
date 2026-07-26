@@ -47,3 +47,8 @@ export {
   DEFAULT_DISALLOWED_PREFIXES,
   DEFAULT_APPROVED_AI_CRAWLERS,
 } from "./policies.js";
+
+export {
+  generateReportSignature,
+  verifyReportSignature,
+} from "./security/report-signer.js";

@@ -211,6 +211,7 @@ export interface ScoreBreakdown {
   band: 'excellent' | 'good' | 'needs_improvement' | 'poor' | 'critical';
   modules: ScoreBreakdownModule[];
   platformReadiness: ScoreBreakdownPlatformReadiness[];
+  degraded?: boolean;
 }
 
 export interface Recommendation {
