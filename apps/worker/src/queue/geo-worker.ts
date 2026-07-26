@@ -4,27 +4,15 @@ import {
   ScoringEngine,
   loadCrewCatalog,
   matchServices,
-  type MatchedService,
   type ScoreContext,
 } from "@seovista/geo-engine";
 import { fetchAndParseUrlWithMeta } from "../utils/fetcher.js";
 import { computeLockKey, releaseSingleFlightLock } from "../utils/single-flight.js";
-
-export interface CrewAgencyPayload {
-  url: string;
-  brand: string;
-  score: number;
-  scoreBand: string;
-  lowScores: Record<string, number>;
-  topIssues: Array<{ code: string; title: string; severity: string }>;
-  proposalTrigger: boolean;
-  correlationId: string;
-  jobIdentity: string;
-  resultId: string;
-  analysisSummary: string;
-  matchedServices: MatchedService[];
-  tier: string;
-}
+import {
+  createCrewQueue,
+  createCrewWorker,
+  enqueueCrewNotification,
+} from "./crew-queue.js";
 
 // Helper to parse redis url for bullmq
 function parseRedisUrl(redisUrl: string | undefined): { host: string; port: number } {
@@ -76,6 +64,9 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
 
   const db = createDbClient({ connectionString: process.env.DATABASE_URL, max: 2 });
   const engine = new ScoringEngine();
+
+  const crewQueue = createCrewQueue(connection);
+  const crewWorker = createCrewWorker(connection);
 
   const worker = new Worker(
     options?.queueName ?? "geo_readiness_jobs",
@@ -205,8 +196,8 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         // Compare-and-delete ensures we only release our own lock.
         await releaseSingleFlightLock(computeLockKey(url), String(jobId));
 
-        // Fire Crew Agency webhook immediately after DB update completes
-        await notifyCrewAgency({
+        // Fire Crew Agency webhook via Async Queue with retry (3 attempts & backoff)
+        await enqueueCrewNotification(crewQueue, {
           url,
           brand: extractBrandFromUrl(url),
           score: overallScore,
@@ -226,11 +217,11 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
           jobIdentity: job_identity,
           resultId: resultId,
           analysisSummary: buildAnalysisSummary(url, overallScore, data.scoreBand, issues),
-          matchedServices,
+          matchedServices: matchedServices.map((s) => s.name),
           tier,
         }).catch((notifyErr) => {
-          // Webhook failures must not fail the geo job; log and continue
-          console.error("Crew Agency notification failed:", notifyErr);
+          // Webhook queueing failure must not fail the geo job; log and continue
+          console.error("Crew Agency notification queueing failed:", notifyErr);
         });
 
       } catch (err) {
@@ -246,9 +237,11 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
     { connection, autorun: true, concurrency: getGeoWorkerConcurrency(options) }
   );
   
-  // Close db client when worker closes to avoid hanging connection
+  // Close db client and crew queue/worker when worker closes to avoid hanging connection
   worker.on('closed', () => {
     db.close().catch(console.error);
+    crewQueue.close().catch(console.error);
+    crewWorker.close().catch(console.error);
   });
   
   return worker;
@@ -279,91 +272,5 @@ function buildAnalysisSummary(
   }
 
   return summaryLines.join(". ");
-}
-
-function buildCrewAgencyUrl(): string {
-  const baseUrl = (process.env.CREW_AGENCY_API_URL ?? "https://crew.tr4.net/api").replace(/\/$/, "");
-  // Ensure the path always includes `/api` before `/teklif-yaz`.
-  // Handles both `http://crew.tr4.net` and `http://crew.tr4.net/api`.
-  const withApi = /\/api$/.test(baseUrl) ? baseUrl : `${baseUrl}/api`;
-  return `${withApi}/teklif-yaz`;
-}
-
-function resolveCrewAgencyApiKey(): string | undefined {
-  return process.env.CREW_AGENCY_API_KEY;
-}
-
-async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
-  const apiKey = resolveCrewAgencyApiKey();
-  if (!apiKey) {
-    console.warn("CREW_AGENCY_API_KEY is not configured; skipping Crew Agency notification");
-    return;
-  }
-
-  const targetUrl = buildCrewAgencyUrl();
-
-  // Map internal analysis data to the Crew Agency API's expected payload format.
-  // The API is async: POST returns a job_id immediately, results are fetched via
-  // GET /api/jobs/{job_id}. We fire-and-forget but log job_id for tracking.
-  const apiPayload = {
-    url: payload.url,
-    brand: payload.brand,
-    score: payload.score,
-    scoreBand: payload.scoreBand,
-    lowScores: payload.lowScores,
-    topIssues: payload.topIssues,
-    proposalTrigger: Boolean(payload.proposalTrigger),
-    correlationId: payload.correlationId,
-    jobIdentity: payload.jobIdentity,
-    resultId: payload.resultId,
-    analysisSummary: payload.analysisSummary,
-    matchedServices: payload.matchedServices,
-    tier: payload.tier,
-    musteri_ihtiyaci: payload.analysisSummary,
-    brand_context: payload.brand,
-    dil: "tr",
-  };
-
-  const controller = new AbortController();
-  const crewWebhookTimeoutMs = Number(process.env.CREW_WEBHOOK_TIMEOUT_MS) || 10000;
-  const timeoutId = setTimeout(() => controller.abort(), crewWebhookTimeoutMs);
-
-  let response: Response;
-  try {
-    response = await fetch(targetUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "X-API-Key": apiKey,
-      },
-      body: JSON.stringify(apiPayload),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-
-  if (!response.ok) {
-    const status = response.status;
-    const err = Object.assign(
-      new Error(`Crew Agency notification failed: ${status} ${response.statusText}`),
-      { statusCode: status }
-    );
-    throw err;
-  }
-
-  // The API returns { "job_id": "<uuid>" } for the async job. Log it for tracking.
-  try {
-    const responseBody = await response.json() as { job_id?: string };
-    if (responseBody.job_id) {
-      console.log(`Crew Agency job started: ${responseBody.job_id} for ${payload.url} [correlationId: ${payload.correlationId}]`);
-    } else {
-      console.log(`Crew Agency notification sent for ${payload.url} [correlationId: ${payload.correlationId}]`);
-    }
-  } catch {
-    // Response wasn't JSON or didn't contain job_id; non-fatal.
-    console.log(`Crew Agency notification sent for ${payload.url} [correlationId: ${payload.correlationId}]`);
-  }
 }
 

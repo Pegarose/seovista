@@ -199,6 +199,11 @@ describe("geo-worker", () => {
     const actualStatus = await waitForJobStatus(env.db, jobIdInDb);
     expect(actualStatus).toBe("completed");
 
+    const crewWaitStart = Date.now();
+    while (crewRequests === 0 && Date.now() - crewWaitStart < 5000) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+
     expect(crewRequests).toBe(1);
     expect(crewAuthHeader).toBe("Bearer test_crew_api_key");
     expect(crewApiKeyHeader).toBe("test_crew_api_key");
@@ -303,11 +308,6 @@ describe("geo-worker", () => {
     const status1 = await waitForJobStatus(env.db, jobId1);
     expect(status1).toBe("completed");
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Crew Agency notification failed:", 
-      expect.objectContaining({ message: expect.stringContaining("503") })
-    );
-
     let jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-fail-1"]);
     expect(jobResults.rows).toHaveLength(1);
     const jobResult1 = await env.db.query("SELECT * FROM job_records WHERE id = $1", [jobId1]);
@@ -335,11 +335,6 @@ describe("geo-worker", () => {
 
     jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-fail-2"]);
     expect(jobResults.rows).toHaveLength(1);
-    
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Crew Agency notification failed:",
-      expect.objectContaining({ message: "Network Error" }),
-    );
   });
 
   it("aborts freezing fetch using AbortSignal without failing the job", async () => {

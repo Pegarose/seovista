@@ -4,6 +4,7 @@ import { GatedReportForm } from "../../../../../src/components/geo-checker/gated
 import { ScoreBreakdownView } from "../../../../../src/components/geo-checker/score-breakdown";
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
 import { MatchedServicesView } from "../../../../../src/components/geo-checker/matched-services-view";
+import { SerpPreview } from "../../../../../src/components/geo-checker/serp-preview";
 import { notFound } from "next/navigation";
 import { createGeoAuditRepository } from "@seovista/worker";
 import type { ScoreBreakdown, ScoreBreakdownModule, ScoreBreakdownPlatformReadiness, MatchedService } from "@seovista/geo-engine";
@@ -158,6 +159,8 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // According to expectations: "using a safe fallback band". We can default to "critical" to show the strong CTA.
   const scoreBand = breakdown?.band ?? (payload?.scoreBand as ScoreBreakdown["band"]) ?? "critical";
 
+  const targetUrl = typeof payload?.target === "string" ? payload.target : "https://seovista.com";
+
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
       {status === "completed" ? (
@@ -183,6 +186,23 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
           </div>
           
           <CrewCtaView scoreBand={scoreBand} />
+          
+          <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
+            <h2 className="text-xl font-semibold text-slate-900">SERP & AI Answer Previews</h2>
+            <SerpPreview 
+              url={targetUrl}
+              title={`${targetUrl} - GEO & Search Visibility`}
+              snippet={`SeoVista GEO Readiness score: ${breakdown ? breakdown.overallScore : 0}/100.`}
+              mode="serp"
+            />
+            <SerpPreview 
+              url={targetUrl}
+              title={`${targetUrl} GEO Analysis`}
+              snippet={`According to SeoVista GEO Audit, ${targetUrl} demonstrates ${scoreBand} generative engine optimization readiness.`}
+              mode="ai_answer"
+            />
+          </div>
+
           {breakdown && <ScoreBreakdownView breakdown={breakdown} />}
           <MatchedServicesView services={matchedServices ?? []} />
         </>

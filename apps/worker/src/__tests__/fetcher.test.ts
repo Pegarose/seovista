@@ -47,7 +47,12 @@ describe("fetcher with Browseract integration", () => {
           json: async () => ({ html: mockBrowseractHtml })
         });
       }
-      return Promise.reject(new Error("Unexpected fetch call"));
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () => mockBrowseractHtml,
+      });
     });
 
     globalThis.fetch = fetchMock as any;

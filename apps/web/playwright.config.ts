@@ -19,12 +19,12 @@ export default defineConfig({
     {
       name: "chromium-desktop",
       use: { ...devices["Desktop Chrome"] },
-      testMatch: /(routes|workflow)\.spec\.ts/,
+      testMatch: /(routes|workflow|geo-lead)\.spec\.ts/,
     },
     {
       name: "chromium-mobile",
       use: { ...devices["Pixel 5"] },
-      testMatch: /(routes|workflow)\.spec\.ts/,
+      testMatch: /(routes|workflow|geo-lead)\.spec\.ts/,
     },
     {
       name: "a11y",

@@ -29,3 +29,18 @@ export {
   type CostRepository,
   type CheckDailyCostLimitResult,
 } from "./db/cost.js";
+export {
+  enqueueCrewNotification,
+  processCrewNotification,
+  createCrewQueue,
+  createCrewWorker,
+  CREW_QUEUE_NAME,
+  type CrewAgencyPayload,
+} from "./queue/crew-queue.js";
+export {
+  enqueueScheduledAudit,
+  processScheduledAuditCheck,
+  createScheduledMonitorQueue,
+  SCHEDULED_QUEUE_NAME,
+  type ScheduledAuditPayload,
+} from "./queue/scheduled-monitor.js";
