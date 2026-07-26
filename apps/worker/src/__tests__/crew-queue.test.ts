@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { enqueueCrewNotification, processCrewNotification, CrewAgencyPayload } from "../queue/crew-queue.js";
+import { describe, it, expect, vi } from "vitest";
+import type { CrewAgencyPayload } from "../queue/crew-queue.js";
+import { processCrewNotification } from "../queue/crew-queue.js";
 
 describe("Crew Async Queue & Retry Mechanism", () => {
   const samplePayload: CrewAgencyPayload = {
@@ -55,7 +56,6 @@ describe("Crew Async Queue & Retry Mechanism", () => {
     const mockFetch = vi.fn();
     const result = await processCrewNotification(samplePayload, {
       fetch: mockFetch as unknown as typeof fetch,
-      apiKey: undefined,
     });
 
     expect(result.success).toBe(false);

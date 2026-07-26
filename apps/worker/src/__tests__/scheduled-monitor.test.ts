@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
+import type {
+  ScheduledAuditPayload} from "../queue/scheduled-monitor.js";
 import {
   enqueueScheduledAudit,
-  processScheduledAuditCheck,
-  ScheduledAuditPayload,
+  processScheduledAuditCheck
 } from "../queue/scheduled-monitor.js";
 
 describe("Scheduled Recrawl & Continuous Monitoring", () => {

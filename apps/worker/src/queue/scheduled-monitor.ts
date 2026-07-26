@@ -1,4 +1,5 @@
-import { Queue, ConnectionOptions } from "bullmq";
+import type { ConnectionOptions } from "bullmq";
+import { Queue } from "bullmq";
 
 export interface ScheduledAuditPayload {
   url: string;

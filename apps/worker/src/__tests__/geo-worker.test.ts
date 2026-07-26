@@ -288,8 +288,6 @@ describe("geo-worker", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     worker = startGeoWorker({ queueName });
 
     // Test 503

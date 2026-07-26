@@ -1,4 +1,5 @@
-import { Queue, Worker, Job, ConnectionOptions } from "bullmq";
+import type { Job, ConnectionOptions } from "bullmq";
+import { Queue, Worker } from "bullmq";
 
 export interface CrewAgencyPayload {
   url: string;
