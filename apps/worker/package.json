@@ -24,7 +24,6 @@
     "seed": "tsx src/db/dev-seed.ts"
   },
   "dependencies": {
-    "@sentry/node": "^10.67.0",
     "@seovista/audit-core": "workspace:*",
     "@seovista/content-models": "workspace:*",
     "@seovista/geo-engine": "workspace:*",

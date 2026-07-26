@@ -44,7 +44,6 @@ export const serverEnvSchema = z.object({
   OBJECT_STORAGE_SECRET_KEY: optionalString,
   EMAIL_PROVIDER_API_KEY: optionalString,
   EMAIL_FROM: optionalEmail,
-  SENTRY_DSN: optionalUrl,
   REPORT_SIGNING_SECRET: optionalString,
   AUDIT_DAILY_COST_LIMIT: optionalNonNegativeFinite,
   AUDIT_PER_IP_RATE_LIMIT: optionalPositiveFinite,
@@ -64,7 +63,6 @@ export const webEnvSchema = publicEnvSchema.merge(
     GOOGLE_CLIENT_ID: true,
     GOOGLE_CLIENT_SECRET: true,
     GOOGLE_REDIRECT_URI: true,
-    SENTRY_DSN: true,
   }),
 );
 

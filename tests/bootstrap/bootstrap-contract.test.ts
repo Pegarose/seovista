@@ -11,7 +11,8 @@ function read(path: string): string {
 describe("monorepo bootstrap contract", () => {
   it("pnpm-workspace.yaml lists all 3 apps and all 11 packages", () => {
     const workspaceYaml = read("pnpm-workspace.yaml");
-    const lines = workspaceYaml
+    const packagesSection = workspaceYaml.slice(workspaceYaml.indexOf("packages:"));
+    const lines = packagesSection
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.startsWith("- "));
@@ -153,6 +154,27 @@ describe("monorepo bootstrap contract", () => {
     expect(read("scripts/dev.js")).toContain('PORT: "3101"');
   });
 
+  it("starts pnpm without Node shell interpolation", () => {
+    const devScript = read("scripts/dev.js");
+
+    expect(devScript).not.toContain("shell: true");
+    expect(devScript).toContain('process.env.ComSpec ?? "cmd.exe"');
+    expect(devScript).toContain('["/d", "/s", "/c"]');
+  });
+
+  it("stores pnpm settings in workspace configuration", () => {
+    const packageJson = JSON.parse(read("package.json")) as { pnpm?: unknown };
+    const workspaceYaml = read("pnpm-workspace.yaml");
+
+    expect(packageJson.pnpm).toBeUndefined();
+    expect(workspaceYaml).toContain("onlyBuiltDependencies:");
+    expect(workspaceYaml).toContain("overrides:");
+  });
+
+  it("pins the project to Node 24 LTS", () => {
+    expect(read(".nvmrc").trim()).toBe("24.12.0");
+  });
+
   it("ignores Playwright result directories while retaining CI artifact paths", () => {
     const gitignore = read(".gitignore");
     const workflows = [
@@ -258,7 +280,6 @@ describe("monorepo bootstrap contract", () => {
       "OBJECT_STORAGE_SECRET_KEY",
       "EMAIL_PROVIDER_API_KEY",
       "EMAIL_FROM",
-      "SENTRY_DSN",
       "REPORT_SIGNING_SECRET",
       "AUDIT_DAILY_COST_LIMIT",
       "AUDIT_PER_IP_RATE_LIMIT",

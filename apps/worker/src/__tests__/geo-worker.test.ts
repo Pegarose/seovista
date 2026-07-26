@@ -1,31 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Queue, type Worker } from "bullmq";
 import { startGeoWorker } from "../queue/geo-worker.js";
-// vi.mock's importOriginal must be typed with `typeof <module>`; an `import type * as`
-// namespace cannot be used inside `typeof`, and `typeof import("...")` is forbidden by
-// consistent-type-imports, so a value import is the only viable typing here.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import * as sentryModule from "../utils/sentry.js";
 import { setupTestEnvironment, type TestEnvironment } from "./helpers/test-env.js";
-
-// Hoisted spy shared with the top-level vi.mock below. vi.hoisted runs before any
-// import resolves, so the mock factory can close over the spy and the mock is in
-// place before geo-worker.ts loads the sentry module (an in-test vi.mock would be
-// too late and leave the spy uncalled).
-const { crewBreadcrumbSpy } = vi.hoisted(() => ({
-  crewBreadcrumbSpy: vi.fn(),
-}));
-
-vi.mock("../utils/sentry.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof sentryModule>();
-  return {
-    ...actual,
-    emitCrewFailureBreadcrumb: (arg: Parameters<typeof actual.emitCrewFailureBreadcrumb>[0]) => {
-      crewBreadcrumbSpy(arg);
-      return actual.emitCrewFailureBreadcrumb(arg);
-    },
-  };
-});
 
 /**
  * Polls job_records until the worker drives the job to a terminal status
@@ -68,9 +44,6 @@ describe("geo-worker", () => {
     delete process.env.BROWSERACT_API_KEY;
     delete process.env.NEURONWRITER_API_KEY;
     delete process.env.CREW_AGENCY_API_KEY;
-    // Reset the shared breadcrumb spy between tests so prior Crew failures don't
-    // leak into later assertions.
-    crewBreadcrumbSpy.mockClear();
     queueName = `geo_readiness_jobs_${env.projectId}`;
 
     queue = new Queue(queueName, {
@@ -278,7 +251,7 @@ describe("geo-worker", () => {
     expect(jobResults.rows[0]?.id).toBe(payload['resultId']);
   });
 
-  it("leaves job completed but audits Crew Agency errors via Breadcrumb (503/401/403 and fetch rejection)", async () => {
+  it("leaves job completed but logs Crew Agency errors (503/401/403 and fetch rejection)", async () => {
     process.env.CREW_AGENCY_API_KEY = "test_crew_api_key";
 
     const weakHtml =
@@ -310,11 +283,6 @@ describe("geo-worker", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    // Crew webhook failures are observed two ways: (1) console.error carries the
-    // failure log, and (2) emitCrewFailureBreadcrumb records a breadcrumb. The
-    // breadcrumb is spied via the top-level hoisted vi.mock (an in-test vi.mock
-    // would be too late; spying on console.log doesn't intercept sentry.ts's
-    // `import console from "node:console"` binding).
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     worker = startGeoWorker({ queueName });
@@ -368,13 +336,9 @@ describe("geo-worker", () => {
     jobResults = await env.db.query("SELECT * FROM job_results WHERE correlation_id = $1", ["geo-test-corr-id-fail-2"]);
     expect(jobResults.rows).toHaveLength(1);
     
-    expect(crewBreadcrumbSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: "https://example.com/2",
-        jobId: String(jobId2),
-        correlationId: "geo-test-corr-id-fail-2",
-        errorMessage: "Network Error",
-      }),
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Crew Agency notification failed:",
+      expect.objectContaining({ message: "Network Error" }),
     );
   });
 

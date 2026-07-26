@@ -26,7 +26,6 @@ export function parseServerEnv(
   OBJECT_STORAGE_SECRET_KEY?: string | undefined;
   EMAIL_PROVIDER_API_KEY?: string | undefined;
   EMAIL_FROM?: string | undefined;
-  SENTRY_DSN?: string | undefined;
   REPORT_SIGNING_SECRET?: string | undefined;
   AUDIT_DAILY_COST_LIMIT?: number | undefined;
   AUDIT_PER_IP_RATE_LIMIT?: number | undefined;

@@ -10,7 +10,6 @@ import {
   getSingleFlightLockOwner,
   SINGLE_FLIGHT_LOCK_TTL_SECONDS,
 } from "../utils/single-flight.js";
-import { emitAuditSubmitted } from "../utils/sentry.js";
 
 /**
  * Single-flight audit submission orchestration (VAL-A-MIT-001 / VAL-A-MIT-002).
@@ -160,7 +159,6 @@ export async function submitGeoAudit(
       forceAudit: forceAudit === true,
       queueName,
     });
-    emitAuditSubmittedOnce(url, result.jobId, cacheKey, result.deduped, forceAudit === true);
     return result;
   }
 
@@ -170,7 +168,6 @@ export async function submitGeoAudit(
   if (dedupedJobId) {
     logSubmission("deduped", cacheKey, lockKey, dedupedJobId);
     const result = { jobId: dedupedJobId, deduped: true };
-    emitAuditSubmittedOnce(url, dedupedJobId, cacheKey, true, forceAudit === true);
     return result;
   }
 
@@ -195,32 +192,10 @@ export async function submitGeoAudit(
       forceAudit: forceAudit === true,
       queueName,
     });
-    emitAuditSubmittedOnce(url, result.jobId, cacheKey, result.deduped, forceAudit === true);
     return result;
   }
 
   throw new SingleFlightLockBusyError(cacheKey, lockKey);
-}
-
-/**
- * Emits the `audit_submitted` Sentry event once per form submission. Wraps
- * {@link emitAuditSubmitted} so a telemetry failure can never break the
- * submission path (VAL-A-OBS-002). The event fires whether the submission
- * enqueued a fresh job or deduped onto an in-flight one — both are form
- * submissions from the user's perspective.
- */
-function emitAuditSubmittedOnce(
-  url: string,
-  jobId: string,
-  cacheKey: string,
-  deduped: boolean,
-  forceAudit: boolean,
-): void {
-  try {
-    emitAuditSubmitted({ url, jobId, cacheKey, deduped, forceAudit });
-  } catch {
-    // Telemetry must never block the audit submission path.
-  }
 }
 
 /**

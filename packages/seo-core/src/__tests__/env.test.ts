@@ -32,15 +32,14 @@ const completeEnv = {
   OBJECT_STORAGE_SECRET_KEY: "placeholder-storage-secret",
   EMAIL_PROVIDER_API_KEY: "placeholder-email-key",
   EMAIL_FROM: "hello@seovista.com",
-  SENTRY_DSN: "https://sentry.example.com/1",
   REPORT_SIGNING_SECRET: "placeholder-signing-secret",
   AUDIT_DAILY_COST_LIMIT: "100",
   AUDIT_PER_IP_RATE_LIMIT: "10",
 };
 
 describe("environment manifest", () => {
-  it("declares all 20 consumed variables", () => {
-    expect(ENV_VARIABLES).toHaveLength(20);
+  it("declares all 19 consumed variables", () => {
+    expect(ENV_VARIABLES).toHaveLength(19);
   });
 
   it("exposes only NEXT_PUBLIC_SITE_URL and NEXT_PUBLIC_ANALYTICS_ID as public", () => {
@@ -117,9 +116,9 @@ describe("public vs server schema separation", () => {
     ]);
   });
 
-  it("server schema contains the other 18 variables", () => {
+  it("server schema contains the other 17 variables", () => {
     const serverShape = serverEnvSchema.shape;
-    expect(Object.keys(serverShape)).toHaveLength(18);
+    expect(Object.keys(serverShape)).toHaveLength(17);
     expect(serverShape).not.toHaveProperty("NEXT_PUBLIC_SITE_URL");
     expect(serverShape).not.toHaveProperty("NEXT_PUBLIC_ANALYTICS_ID");
   });

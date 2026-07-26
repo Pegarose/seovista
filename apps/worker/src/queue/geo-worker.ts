@@ -6,11 +6,9 @@ import {
   matchServices,
   type MatchedService,
   type ScoreContext,
-  type ScoreOutput,
 } from "@seovista/geo-engine";
 import { fetchAndParseUrlWithMeta } from "../utils/fetcher.js";
 import { computeLockKey, releaseSingleFlightLock } from "../utils/single-flight.js";
-import { emitAuditCompleted, emitCrewFailureBreadcrumb, type PerPlatformConfidence } from "../utils/sentry.js";
 
 export interface CrewAgencyPayload {
   url: string;
@@ -76,8 +74,7 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         // Actually fetch and parse the page. `forceAudit: true` bypasses the
         // render cache (VAL-A-SPA-002) so a fresh Browseract render is forced
         // regardless of whether `geo:cache:{sha256(url)}` already holds a hit.
-        // `cacheHit` flows into the `audit_completed` Sentry event (VAL-A-OBS-002).
-        const { parsedPage, cacheHit } = await fetchAndParseUrlWithMeta(url, { forceAudit: forceAudit === true });
+        const { parsedPage } = await fetchAndParseUrlWithMeta(url, { forceAudit: forceAudit === true });
 
         const scoreContext: ScoreContext = {
           tenantId: "worker-tenant",
@@ -193,20 +190,6 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         // Compare-and-delete ensures we only release our own lock.
         await releaseSingleFlightLock(computeLockKey(url), String(jobId));
 
-        // Phase A — VAL-A-OBS-002: emit the `audit_completed` Sentry event
-        // (or stub-sink JSON in dev) with the four required observability
-        // fields: `score_value`, `per_platform_confidence`, `cache_hit`,
-        // `tier`. Fire-and-forget — telemetry must never fail the job.
-        emitAuditCompletedOnce({
-          jobId: String(jobId),
-          correlationId: correlation_id,
-          url,
-          score_value: overallScore,
-          per_platform_confidence: buildPerPlatformConfidence(data),
-          cache_hit: cacheHit,
-          tier: tier,
-        });
-
         // Fire Crew Agency webhook immediately after DB update completes
         await notifyCrewAgency({
           url,
@@ -233,12 +216,6 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         }).catch((notifyErr) => {
           // Webhook failures must not fail the geo job; log and continue
           console.error("Crew Agency notification failed:", notifyErr);
-          emitCrewFailureBreadcrumb({
-            url,
-            jobId: String(jobId),
-            correlationId: correlation_id,
-            errorMessage: notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
-          });
         });
 
       } catch (err) {
@@ -373,73 +350,5 @@ async function notifyCrewAgency(payload: CrewAgencyPayload): Promise<void> {
     // Response wasn't JSON or didn't contain job_id; non-fatal.
     console.log(`Crew Agency notification sent for ${payload.url} [correlationId: ${payload.correlationId}]`);
   }
-}
-
-/**
- * Wraps {@link emitAuditCompleted} so a telemetry failure can never fail the
- * geo job. The Sentry bridge already swallows emit errors internally, but an
- * extra guard here keeps the audit pipeline resilient even if the bridge
- * itself throws before its internal try/catch (e.g. bad payload shape).
- */
-function emitAuditCompletedOnce(payload: {
-  jobId: string;
-  correlationId?: string;
-  url: string;
-  score_value: number;
-  per_platform_confidence: PerPlatformConfidence;
-  cache_hit: boolean;
-  tier: string;
-}): void {
-  try {
-    emitAuditCompleted(payload);
-  } catch {
-    // Telemetry must never block / fail the completed audit.
-  }
-}
-
-/**
- * Builds the `per_platform_confidence` map for the `audit_completed` event.
- *
- * Prefers the AI Visibility breakdown's per-platform `confidence` (0–1)
- * values (the engine's trust in each platform estimate). When the breakdown
- * is empty (e.g. AI Visibility module produced no data), falls back to the
- * top-level `platformReadiness` numeric readiness scores (0–100) so the field
- * is always populated with a valid number per platform — the contract only
- * requires the four fields be present with correct types.
- *
- * Platform display names from the breakdown ("ChatGPT", "Perplexity",
- * "Google AI Overviews", "Bing Copilot") are normalized to the engine's
- * `platformReadiness` keys (`chatgpt`, `perplexity`, `googleAiOverviews`,
- * `bingCopilot`).
- */
-function buildPerPlatformConfidence(data: ScoreOutput): PerPlatformConfidence {
-  const fallback: PerPlatformConfidence = {
-    chatgpt: data.platformReadiness.chatgpt,
-    perplexity: data.platformReadiness.perplexity,
-    googleAiOverviews: data.platformReadiness.googleAiOverviews,
-    bingCopilot: data.platformReadiness.bingCopilot,
-  };
-
-  const breakdown = data.breakdown?.platformReadiness;
-  if (!breakdown || breakdown.length === 0) {
-    return fallback;
-  }
-
-  const keyByPlatformName: Record<string, keyof PerPlatformConfidence> = {
-    chatgpt: "chatgpt",
-    perplexity: "perplexity",
-    "google ai overviews": "googleAiOverviews",
-    "bing copilot": "bingCopilot",
-  };
-
-  const result: PerPlatformConfidence = { ...fallback };
-  for (const entry of breakdown) {
-    const key = keyByPlatformName[entry.platform.toLowerCase()];
-    if (!key) continue;
-    if (typeof entry.confidence === "number" && Number.isFinite(entry.confidence)) {
-      result[key] = entry.confidence;
-    }
-  }
-  return result;
 }
 

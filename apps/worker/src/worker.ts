@@ -7,7 +7,6 @@ import { createPingQueue, createPingWorker } from "./queue/ping.js";
 import { startGeoWorker } from "./queue/geo-worker.js";
 import { closeCacheRedis } from "./utils/render-cache.js";
 import { logDailyCreditBudgetOnBoot } from "./utils/credit-guard.js";
-import { initSentryOnBoot, closeSentry } from "./utils/sentry.js";
 import { getWorkerEnv, getProjectId } from "./env.js";
 import { checkWorkerHealth } from "./health.js";
 import type { Queue, Worker } from "bullmq";
@@ -67,12 +66,6 @@ async function run(): Promise<void> {
   const geoWorker = startGeoWorker();
 
   running = { db, queue, worker, geoWorker };
-
-  // Phase A — VAL-A-OBS-001: initialize the Sentry SDK on boot when
-  // `SENTRY_DSN` is present, otherwise switch to the JSON-stdout stub sink
-  // so dev / CI remains observable without a real Sentry account. Never
-  // throws — a missing / malformed DSN falls back to stub mode.
-  await initSentryOnBoot();
 
   // Phase A — VAL-A-MIT-004: on boot, log the remaining daily Browseract
   // credit budget so operators can see the daily cap state at startup. Reads
@@ -145,9 +138,6 @@ async function shutdown(signal: string): Promise<void> {
 
   // Close the Phase A render-cache Redis client (DB 1), if one was opened.
   await closeCacheRedis();
-
-  // Flush + close the Sentry SDK (no-op in stub mode / before init).
-  await closeSentry();
 
   exit(0);
 }

@@ -32,13 +32,14 @@
     ".next-runs/canonical-53748-31d9c1a8-5f08-4cd6-9c37-fa26901d1581/types/**/*.ts",
     ".next-runs/development-16756-a88234cd-3d5c-4af4-8327-33242a0264bb/types/**/*.ts",
     ".next-runs/development-22608-fb3d0edb-aaa5-430c-8e01-f8043e476dbf/types/**/*.ts",
+    ".next-runs/development-25128-93d7ebbd-4fd3-4258-bc7a-115b7c205118/types/**/*.ts",
     ".next-runs/development-25684-646d4b3e-56bc-4a24-adbd-92bb6683002e/types/**/*.ts",
     ".next-runs/development-42472-87875dc9-d7ed-4bbd-9377-f0b8945a09ed/types/**/*.ts",
     ".next-runs/development-46616-c9807aa2-12c2-4473-aa7a-d97e48caba9f/types/**/*.ts",
     ".next-runs/development-48096-6f57b267-8e4d-488c-bcc5-c56b16c0bae9/types/**/*.ts",
     ".next-runs/development-54188-4d8271a8-b81c-4351-b002-6cee9e6430a8/types/**/*.ts",
     "next-env.d.ts",
-    ".next-runs/development-25128-93d7ebbd-4fd3-4258-bc7a-115b7c205118/types/**/*.ts"
+    ".next-runs/development-24808-e479b7cd-a506-418d-9d79-4cc14bbd9c6e/types/**/*.ts"
   ],
   "extends": "../../tsconfig.base.json"
 }

@@ -2,11 +2,12 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 
 const children = [];
+const pnpmCommand = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "pnpm";
+const pnpmArgs = process.platform === "win32" ? ["/d", "/s", "/c"] : [];
 
 function start(command, args, options) {
   const child = spawn(command, args, {
     stdio: "inherit",
-    shell: true,
     ...options,
   });
   children.push(child);
@@ -28,10 +29,10 @@ async function readiness(url, timeoutMs = 30000) {
 }
 
 async function main() {
-  const web = start("pnpm", ["--filter", "@seovista/web", "dev"], {
+  const web = start(pnpmCommand, [...pnpmArgs, "pnpm", "--filter", "@seovista/web", "dev"], {
     env: { ...process.env, PORT: "3200" },
   });
-  const nextg = start("pnpm", ["--filter", "@seovista/nextg", "dev"], {
+  const nextg = start(pnpmCommand, [...pnpmArgs, "pnpm", "--filter", "@seovista/nextg", "dev"], {
     env: { ...process.env, PORT: "3101" },
   });
 

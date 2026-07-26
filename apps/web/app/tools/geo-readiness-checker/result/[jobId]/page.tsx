@@ -156,7 +156,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
 
   // The fallback band ensures deterministic CTA copy logic even if breakdown parsing fails.
   // According to expectations: "using a safe fallback band". We can default to "critical" to show the strong CTA.
-  const scoreBand = breakdown?.band ?? "critical";
+  const scoreBand = breakdown?.band ?? (payload?.scoreBand as ScoreBreakdown["band"]) ?? "critical";
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">

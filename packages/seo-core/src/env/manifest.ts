@@ -132,13 +132,6 @@ export const ENV_VARIABLES = [
     rule: "Sender email address; required only when email is enabled",
   },
   {
-    name: "SENTRY_DSN",
-    owner: "web",
-    classification: "server",
-    requirement: "optional",
-    rule: "Sentry DSN URL",
-  },
-  {
     name: "REPORT_SIGNING_SECRET",
     owner: "worker",
     classification: "secret",
