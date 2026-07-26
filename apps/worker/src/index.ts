@@ -23,3 +23,9 @@ export {
   type CheckIpRateLimitInput,
   type RateLimitResult,
 } from "./utils/rate-limiter.js";
+export {
+  checkDailyCostLimit,
+  createCostRepository,
+  type CostRepository,
+  type CheckDailyCostLimitResult,
+} from "./db/cost.js";

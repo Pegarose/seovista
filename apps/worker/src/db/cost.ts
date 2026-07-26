@@ -20,6 +20,34 @@ export interface CreateCostRecord {
   amount: string;
 }
 
+export type CostRepository = ReturnType<typeof createCostRepository>;
+
+export interface CheckDailyCostLimitResult {
+  allowed: boolean;
+  currentCost: number;
+  limit?: number | undefined;
+}
+
+export async function checkDailyCostLimit(
+  costRepo: CostRepository,
+  limit?: number,
+  now = new Date()
+): Promise<CheckDailyCostLimitResult> {
+  if (!limit || limit <= 0) {
+    return { allowed: true, currentCost: 0, limit };
+  }
+
+  const totals = await costRepo.totalForDay("browseract", "audit_render", now);
+  const currentCost = totals ? parseFloat(totals.amount) || 0 : 0;
+  const allowed = currentCost < limit;
+
+  return {
+    allowed,
+    currentCost,
+    limit,
+  };
+}
+
 export function createCostRepository(client: DbClient) {
   return {
     async create(input: CreateCostRecord): Promise<CostRecord> {

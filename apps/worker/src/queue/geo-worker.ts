@@ -50,6 +50,21 @@ export interface GeoWorkerOptions {
    * listening on the default queue cannot steal their jobs.
    */
   queueName?: string;
+  /**
+   * Override BullMQ concurrency limit. Defaults to GEO_WORKER_CONCURRENCY env or 3.
+   */
+  concurrency?: number;
+}
+
+export function getGeoWorkerConcurrency(options?: GeoWorkerOptions, env = process.env): number {
+  if (options?.concurrency && options.concurrency > 0) {
+    return options.concurrency;
+  }
+  const envConcurrency = Number(env.GEO_WORKER_CONCURRENCY);
+  if (envConcurrency > 0) {
+    return envConcurrency;
+  }
+  return 3;
 }
 
 export function startGeoWorker(options?: GeoWorkerOptions) {
@@ -228,7 +243,7 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         throw err;
       }
     },
-    { connection, autorun: true }
+    { connection, autorun: true, concurrency: getGeoWorkerConcurrency(options) }
   );
   
   // Close db client when worker closes to avoid hanging connection
