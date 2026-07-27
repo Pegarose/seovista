@@ -1,5 +1,16 @@
 export { createDbClient, checkDbConnection, type DbClient } from "./client.js";
 export { createMigrationRunner, defaultMigrationsDir, type Migration } from "./migrations.js";
+export {
+  DEFAULT_ADMIN_DISPLAY_NAME,
+  DEFAULT_ADMIN_EMAIL,
+  ensureAdminBootstrap,
+  runLocalAdminBootstrap,
+  verifyAdminPasswordHash,
+  type AdminBootstrapResult,
+  type LocalAdminBootstrapDependencies,
+  type LocalAdminBootstrapEnvironment,
+  type LocalAdminBootstrapResult,
+} from "./admin-seed.js";
 export { createGeoAuditRepository, type GeoAuditLeadRow, type AdminLeadListRow } from "./geo-audit-repository.js";
 export {
   createJobRepository,

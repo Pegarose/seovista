@@ -88,26 +88,26 @@ export function DisciplineLayout(props: DisciplineLayoutProps): React.ReactEleme
       <section className="px-6 md:px-16">
         <div className="relative mx-auto min-h-[540px] w-full max-w-7xl overflow-hidden bg-ink text-paper md:aspect-[21/9]">
           <div aria-hidden="true" className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)", backgroundSize: "56px 56px" }} />
-          <div aria-hidden="true" className="absolute left-6 top-6 h-4 w-4 border-l border-t border-paper/40" />
-          <div aria-hidden="true" className="absolute right-6 top-6 h-4 w-4 border-r border-t border-paper/40" />
-          <div aria-hidden="true" className="absolute bottom-6 left-6 h-4 w-4 border-b border-l border-paper/40" />
-          <div aria-hidden="true" className="absolute bottom-6 right-6 h-4 w-4 border-b border-r border-paper/40" />
-          <div className="absolute left-14 right-14 top-6 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.3em] text-paper/50">
+          <div aria-hidden="true" className="absolute left-6 top-6 h-4 w-4 border-l border-t border-paper/80" />
+          <div aria-hidden="true" className="absolute right-6 top-6 h-4 w-4 border-r border-t border-paper/80" />
+          <div aria-hidden="true" className="absolute bottom-6 left-6 h-4 w-4 border-b border-l border-paper/80" />
+          <div aria-hidden="true" className="absolute bottom-6 right-6 h-4 w-4 border-b border-r border-paper/80" />
+          <div className="absolute left-14 right-14 top-6 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.3em] text-paper/80">
             <span>Discipline / {props.number}</span><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-signal" />Foundation stage · Sprint 0</span><span>{props.displayName} · Blueprint</span>
           </div>
           <div className="absolute inset-0 flex items-center">
             <div className="grid w-full grid-cols-12 items-center gap-6 px-14">
               <div className="col-span-5">
-                <div className="font-serif font-black leading-[0.78] tracking-tighter text-transparent" style={{ WebkitTextStroke: "1px rgb(245 243 238 / 0.55)", fontSize: "clamp(9rem, 22vw, 20rem)" }}>{props.number}</div>
-                <div className="mt-4 flex items-center gap-3"><span className="h-px w-10 bg-signal" /><span className="font-sans text-[10px] uppercase tracking-[0.3em] text-paper/60">{props.visualCaption}</span></div>
+                <div className="font-serif font-black leading-[0.78] tracking-tighter text-transparent" style={{ WebkitTextStroke: "1px rgb(245 243 238 / 0.8)", fontSize: "clamp(9rem, 22vw, 20rem)" }}>{props.number}</div>
+                <div className="mt-4 flex items-center gap-3"><span className="h-px w-10 bg-signal" /><span className="font-sans text-[10px] uppercase tracking-[0.3em] text-paper/80">{props.visualCaption}</span></div>
               </div>
-              <div className="col-span-2 flex items-center justify-center"><div className="flex flex-col items-center gap-4"><span className="h-16 w-px bg-paper/30" /><span className="font-sans text-[10px] font-semibold uppercase tracking-[0.4em] text-paper/70 [writing-mode:vertical-lr]" style={{ transform: "rotate(180deg)" }}>{props.accessibleName ?? props.displayName}</span><span className="h-16 w-px bg-paper/30" /></div></div>
+              <div className="col-span-2 flex items-center justify-center"><div className="flex flex-col items-center gap-4"><span className="h-16 w-px bg-paper/40" /><span className="font-sans text-[10px] font-semibold uppercase tracking-[0.4em] text-paper/90 [writing-mode:vertical-lr]" style={{ transform: "rotate(180deg)" }}>{props.accessibleName ?? props.displayName}</span><span className="h-16 w-px bg-paper/40" /></div></div>
               <div className="col-span-5">
-                <ul className="flex flex-col gap-3">{props.capabilities.map((capability, i) => <li key={capability.title} className="grid grid-cols-[2.5rem_1fr_auto] gap-x-4 border-b border-dashed border-paper/15 pb-3 last:border-0"><span className="self-baseline font-sans text-[10px] tabular-nums tracking-[0.2em] text-signal">{String(i + 1).padStart(2, "0")}·{props.number}</span><div className="flex flex-col gap-1"><span className="font-serif text-lg leading-tight text-paper md:text-xl">{capability.title}</span><p className="max-w-md font-sans text-sm leading-relaxed text-paper/55">{capability.description}</p></div><span className="self-baseline font-sans text-[10px] uppercase tracking-[0.2em] text-paper/40">Active</span></li>)}</ul>
+                <ul className="flex flex-col gap-3">{props.capabilities.map((capability, i) => <li key={capability.title} className="grid grid-cols-[2.5rem_1fr_auto] gap-x-4 border-b border-dashed border-paper/20 pb-3 last:border-0"><span className="self-baseline font-sans text-[10px] tabular-nums tracking-[0.2em] text-signal">{String(i + 1).padStart(2, "0")}·{props.number}</span><div className="flex flex-col gap-1"><span className="font-serif text-lg leading-tight text-paper md:text-xl">{capability.title}</span><p className="max-w-md font-sans text-sm leading-relaxed text-paper/80">{capability.description}</p></div><span className="self-baseline font-sans text-[10px] uppercase tracking-[0.2em] text-paper/70">Active</span></li>)}</ul>
               </div>
             </div>
           </div>
-          <div className="absolute bottom-6 left-14 right-14 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.3em] text-paper/40"><span>SeoVista · Research Lab</span><span>No fabricated data · No performance guarantees</span><span>Sheet {props.number} / 03</span></div>
+          <div className="absolute bottom-6 left-14 right-14 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.3em] text-paper/80"><span>SeoVista · Research Lab</span><span>No fabricated data · No performance guarantees</span><span>Sheet {props.number} / 03</span></div>
         </div>
       </section>
       <section className="mx-auto w-full max-w-7xl px-6 py-24 md:px-16 md:py-40">

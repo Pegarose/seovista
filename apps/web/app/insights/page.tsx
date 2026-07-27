@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { createCmsRepository } from "@seovista/worker";
-import { getAdminDb } from "../../src/lib/admin/db";
 import { DisciplineHero } from "../../src/components/discipline-layout";
-import { CtaLink, UnavailableState } from "../../src/components/editorial";
+import { CtaLink, EmptyState, UnavailableState } from "../../src/components/editorial";
+import { getAdminDb } from "../../src/lib/admin/db";
+import { readPublishedInsights } from "../../src/lib/public-insights";
 import { JsonLd } from "../../src/components/json-ld";
 import { insightsPage } from "../../src/content/site";
 import { buildPageGraph } from "../../src/lib/jsonld";
@@ -23,16 +24,24 @@ const streams = [
 ] as const;
 
 export default async function InsightsPage(): Promise<React.ReactElement> {
-  const db = getAdminDb();
-  const repo = createCmsRepository(db);
-  const insights = await repo.getPublishedInsights();
+  const result = await readPublishedInsights({
+    getPublishedInsights: async () => {
+      try {
+        return await createCmsRepository(getAdminDb()).getPublishedInsights();
+      } catch {
+        return [];
+      }
+    },
+  });
 
   return <><JsonLd graph={buildPageGraph(insightsPage)} /><main id="main"><article className="bg-paper text-ink"><DisciplineHero number="05" displayName="Insights" lede="Editorial research on generative retrieval, traditional search, and digital authority. Written slowly, published rarely, corrected in public." capabilities={["Field notes from our own work", "Standards over volume", "Corrections on the record"]} supportingNote="We would rather hold a page empty than fill it with borrowed opinions. Foundation stage — the ledger is deliberately short." inquireTo="/contact/" inquireLabel="Suggest a topic" /><section className="mx-auto w-full max-w-7xl px-6 pb-16 md:px-16 md:pb-24"><div className="grid grid-cols-1 gap-16 md:grid-cols-12 md:gap-8"><div className="md:col-span-3"><span className="sticky top-24 block font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink">Editorial Ledger</span></div><div className="md:col-span-9">
-{insights.length === 0 ? (
-<UnavailableState title="The editorial ledger is not populated in this release." description="Insights will appear when genuine research is ready to publish. We would rather wait than fill the page with placeholders." />
+{result.unavailable ? (
+<UnavailableState title="The editorial ledger is temporarily unavailable." description="Please try again later. Published research will return when the ledger is available." />
+) : result.insights.length === 0 ? (
+<EmptyState title="The editorial ledger is not populated in this release." description="Insights will appear when genuine research is ready to publish. We would rather wait than fill the page with placeholders." />
 ) : (
 <ul className="flex flex-col divide-y divide-hairline border-y border-hairline">
-  {insights.map((insight) => (
+  {result.insights.map((insight) => (
     <li key={insight.slug} className="py-8">
       <Link href={`/insights/${insight.slug}`} className="group block">
         <article className="grid grid-cols-1 items-baseline gap-x-6 gap-y-2 md:grid-cols-[1fr_auto]">
