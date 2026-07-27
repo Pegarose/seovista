@@ -134,7 +134,7 @@ describe("dry-run scoring CLI — `pnpm score:dry` end-to-end", () => {
   const fixture = "fixtures/example.com.json";
 
   function runCli(): { status: number | null; stdout: string; stderr: string; error: string | undefined } {
-    const result = spawnSync(`pnpm score:dry ${fixture}`, {
+    const result = spawnSync(`corepack pnpm score:dry ${fixture}`, {
       cwd: repoRoot,
       encoding: "utf-8",
       timeout: 90_000,
