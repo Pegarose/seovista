@@ -9,7 +9,7 @@ function read(path: string): string {
 }
 
 describe("monorepo bootstrap contract", () => {
-  it("pnpm-workspace.yaml lists all 3 apps and all 11 packages", () => {
+  it("pnpm-workspace.yaml lists all 3 apps and all 13 packages", () => {
     const workspaceYaml = read("pnpm-workspace.yaml");
     const packagesSection = workspaceYaml.slice(workspaceYaml.indexOf("packages:"));
     const lines = packagesSection
@@ -30,6 +30,8 @@ describe("monorepo bootstrap contract", () => {
       "packages/geo-engine",
       "packages/reports",
       "packages/analytics",
+      "packages/search-visibility",
+      "packages/content-intelligence",
     ];
 
     const expected = [...expectedApps, ...expectedPackages];
@@ -85,7 +87,7 @@ describe("monorepo bootstrap contract", () => {
     expect(tsconfig.compilerOptions?.strictNullChecks).toBe(true);
   });
 
-  it("ESLint flat config covers all 13 workspaces", () => {
+  it("ESLint flat config covers all 15 workspaces", () => {
     const configSource = read("eslint.config.js");
 
     const expected = [
@@ -102,6 +104,8 @@ describe("monorepo bootstrap contract", () => {
       "packages/geo-engine",
       "packages/reports",
       "packages/analytics",
+      "packages/search-visibility",
+      "packages/content-intelligence",
     ];
 
     for (const dir of expected) {

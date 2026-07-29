@@ -31,16 +31,22 @@ export function DisciplineHero(props: DisciplineHeroProps): React.ReactElement {
         <span className="hidden font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink [writing-mode:vertical-lr] md:block" style={{ transform: "rotate(180deg)" }}>
           Discipline / {props.number}
         </span>
-        <h1 className="flex flex-col gap-4 font-serif font-black leading-[0.8] tracking-tighter">
-          {hasAccessibleOverride && (
-            <span className="font-sans text-xs font-semibold uppercase tracking-[0.3em] text-muted-ink md:text-sm">
-              {props.accessibleName}
-            </span>
+        <div className="flex flex-col gap-4 font-serif font-black leading-[0.8] tracking-tighter">
+          {hasAccessibleOverride ? (
+            <>
+              <h1 className="font-sans text-xs font-semibold uppercase tracking-[0.3em] text-muted-ink md:text-sm">
+                {props.accessibleName}
+              </h1>
+              <span aria-hidden="true" className="block break-words" style={{ fontSize: "clamp(3.5rem, 14vw, 12rem)" }}>
+                {props.displayName}<span className="text-signal">.</span>
+              </span>
+            </>
+          ) : (
+            <h1 className="block break-words" style={{ fontSize: "clamp(3.5rem, 14vw, 12rem)" }}>
+              {props.displayName}<span className="text-signal">.</span>
+            </h1>
           )}
-          <span className="block break-words" style={{ fontSize: "clamp(3.5rem, 14vw, 12rem)" }}>
-            {props.displayName}<span className="text-signal">.</span>
-          </span>
-        </h1>
+        </div>
       </div>
 
       <div className="mt-16 grid grid-cols-1 gap-8 md:mt-24 md:grid-cols-12">

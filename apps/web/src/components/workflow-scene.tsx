@@ -75,7 +75,7 @@ export function WorkflowScene(): React.ReactElement {
 
 function WorkflowPreview({ highlight, stepLabel }: { highlight?: readonly string[]; stepLabel?: string }): React.ReactElement {
   const highlightSet = highlight ? new Set(highlight) : null;
-  return <div><div className="rounded-lg border border-hairline bg-card" role="region" aria-label="Illustrative preview of workflow output"><div className="flex items-center justify-between border-b border-hairline px-5 py-3"><div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true" /><span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-ink">Illustrative preview</span></div><span className="font-mono text-[10px] uppercase tracking-widest text-muted-ink">example.com/page</span></div>{stepLabel && <p aria-live="polite" aria-atomic="true" className="sr-only">Showing preview for {stepLabel}</p>}<ul className="space-y-4 px-5 py-5">{PREVIEW_ROWS.map((row) => { const isActive = !highlightSet || highlightSet.has(row.key); return <li key={row.label} aria-current={highlightSet && isActive ? "true" : undefined} className={`grid grid-cols-[auto_1fr_auto] items-center gap-3 border-t border-hairline pt-4 transition-opacity duration-300 first:border-t-0 first:pt-0 ${isActive ? "opacity-100" : "opacity-60"}`}>                <div className="font-mono text-[10px] uppercase tracking-widest text-ink/70">
+  return <div><div className="rounded-lg border border-hairline bg-card" role="region" aria-label="Illustrative preview of workflow output"><div className="flex items-center justify-between border-b border-hairline px-5 py-3"><div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true" /><span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-ink">Illustrative preview</span></div><span className="font-mono text-[10px] uppercase tracking-widest text-muted-ink">example.com/page</span></div>{stepLabel && <p aria-live="polite" aria-atomic="true" className="sr-only">Showing preview for {stepLabel}</p>}<ul className="space-y-4 px-5 py-5">{PREVIEW_ROWS.map((row) => { const isActive = !highlightSet || highlightSet.has(row.key); return <li key={row.label} aria-current={highlightSet && isActive ? "true" : undefined} className={`grid grid-cols-[auto_1fr_auto] items-center gap-3 border-t border-hairline pt-4 transition-opacity duration-300 first:border-t-0 first:pt-0 ${isActive ? "opacity-100" : "opacity-90"}`}>                <div className="font-mono text-[10px] uppercase tracking-widest text-ink">
                   {row.label}
                 </div>
                 <div className="text-sm text-ink">{row.detail}</div>
@@ -83,10 +83,10 @@ function WorkflowPreview({ highlight, stepLabel }: { highlight?: readonly string
                   className={
                     "rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest " +
                     (row.tag === "observed"
-                      ? "border-signal/80 bg-signal/15 text-signal-foreground/90"
+                      ? "border-signal/30 bg-signal/15 text-ink"
                       : row.tag === "review"
-                        ? "border-hairline bg-paper text-ink/70"
-                        : "border-hairline bg-mineral text-ink/70")
+                        ? "border-hairline bg-paper text-ink"
+                        : "border-hairline bg-mineral text-ink")
                   }
                 ><span className="sr-only">Status: </span>{row.tag}</span></li>; })}</ul></div><p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-muted-ink">Static illustration of the intended workflow. No audit runs.</p></div>;
 }

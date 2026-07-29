@@ -64,9 +64,9 @@
 
   /* Editorial palette */
   --paper: oklch(0.985 0.004 90);
-  --mineral: oklch(0.955 0.006 90);
-  --ink: oklch(0.185 0.015 260);
-  --muted-ink: oklch(0.42 0.015 260); /* Deepened for contrast */
+  --mineral: oklch(0.96 0.006 90);
+  --ink: oklch(0.15 0.015 260);
+  --muted-ink: oklch(0.25 0.015 260); /* Deepened for contrast */
   --signal: #008800; /* Deepened for contrast */
   --signal-foreground: #ffffff; /* Deepened for contrast */
   --spectral: #1f3ce0;

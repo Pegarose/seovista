@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('executes end-to-end GEO lead capture workflow', async ({ page }) => {
   // Step 1: Go to /tools/geo-readiness-checker
-  await page.goto('/tools/geo-readiness-checker');
+  await page.goto('/tools/geo-readiness-checker/');
   
   // Wait for the form to be ready
   await expect(page.getByRole('heading', { name: 'GEO Readiness Checker' })).toBeVisible();
@@ -23,8 +23,8 @@ test('executes end-to-end GEO lead capture workflow', async ({ page }) => {
   // Since db mock runs it fast, we can just wait for the gating form
   
   // Step 4: Wait for the gating form text requesting an email
-  // The gate renders "Geo Readiness Analiz Sonucu"
-  await expect(page.getByRole('heading', { name: 'Geo Readiness Analiz Sonucu' })).toBeVisible({ timeout: 15000 });
+  // The gate renders "Unlock Full Detailed Report"
+  await expect(page.getByRole('heading', { name: 'Unlock Full Detailed Report' })).toBeVisible({ timeout: 15000 });
   
   // Fill the email and check the consent checkbox
   // We need to look at GatedReportForm to confirm exact locators, but usually it's "Work Email"

@@ -6,7 +6,7 @@ const nextConfig = (phase: string): NextConfig => ({
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
-  serverExternalPackages: ["@seovista/worker"],
+  serverExternalPackages: ["@seovista/worker", "bullmq", "ioredis"],
   async headers() {
     return nextSecurityHeaders({
       allowUnsafeEval: phase === PHASE_DEVELOPMENT_SERVER,

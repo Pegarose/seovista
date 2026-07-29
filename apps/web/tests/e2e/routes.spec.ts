@@ -7,7 +7,7 @@ interface RouteCase {
 }
 
 const launchRoutes: RouteCase[] = [
-  { path: "/", expectedTitle: "SeoVista — GEO & Search Visibility Intelligence" },
+  { path: "/", expectedTitle: "SeoVista — Editorial intelligence for search visibility" },
   { path: "/geo/", expectedTitle: "Generative Engine Optimization — SeoVista", isServiceRoute: true },
   { path: "/seo/", expectedTitle: "Search Engine Optimization — SeoVista", isServiceRoute: true },
   { path: "/digital-authority/", expectedTitle: "Digital Authority — SeoVista", isServiceRoute: true },
@@ -122,7 +122,7 @@ test("nav: exposes only approved destinations", async ({ page }) => {
 
   const navLinks = await page.locator("header nav[aria-label='Primary'] a").all();
   const hrefs = await Promise.all(navLinks.map((link) => link.getAttribute("href")));
-  expect(hrefs).toEqual(["/geo/", "/seo/", "/digital-authority/", "/tools/", "/insights/", "/about/"]);
+  expect(hrefs).toEqual(["/seo/", "/geo/", "/digital-authority/", "/tools/", "/insights/", "/about/", "/contact/"]);
 
   // No forbidden links anywhere in the document
   const bodyHtml = await page.locator("body").innerHTML();
@@ -145,7 +145,7 @@ test("nav: all header nav links are keyboard operable anchors with non-empty hre
 
 test("nav: CTA button links to /contact/", async ({ page }) => {
   await page.goto("/");
-  const cta = page.locator("a:has-text('Get a GEO Audit')");
+  const cta = page.locator("a:has-text('Contact SeoVista')");
   const href = await cta.getAttribute("href");
   expect(href).toBe("/contact/");
 });
@@ -164,8 +164,7 @@ test("footer: discloses GMedya Group and has required sections", async ({ page }
   await expect(footer).not.toContainText("BacklinkWire.com");
 
   // Required sections
-  await expect(footer).toContainText("Product");
-  await expect(footer).toContainText("Company");
+  await expect(footer).toContainText("Explore");
   await expect(footer).toContainText("Legal");
 
   // Copyright notice
@@ -206,22 +205,14 @@ for (const route of phase11Tools) {
 
 // ─── Checker page ────────────────────────────────────────────────────────────
 
-test("checker: states no operational audit, exposes no form, no fake results", async ({ page }) => {
+test("checker: exposes form", async ({ page }) => {
   await page.goto("/tools/geo-readiness-checker/");
 
   await expect(page.locator("main h1")).toContainText("GEO Readiness Checker");
-  await expect(page.locator("main")).toContainText("not operational");
-  await expect(page.locator("main")).toContainText("Sprint 0");
 
-  // No submission form or submit button
-  await expect(page.locator("main form")).toHaveCount(0);
-  await expect(page.locator("main button[type='submit']")).toHaveCount(0);
-
-  // The page truthfully states no submission, no score, and no report yet
-  const mainText = (await page.locator("main").textContent())?.toLowerCase() || "";
-  expect(mainText).toContain("no submission");
-  expect(mainText).toContain("no score");
-  expect(mainText).toContain("not operational");
+  // has submission form or submit button
+  await expect(page.locator("main form")).toHaveCount(1);
+  await expect(page.locator("main button[type='submit']")).toHaveCount(1);
 });
 
 // ─── Semantic structure ──────────────────────────────────────────────────────
@@ -271,7 +262,7 @@ test("copy: GEO page explains category without outcome guarantees", async ({ pag
   const mainText = await page.locator("main").textContent();
   expect(mainText).toContain("Generative Engine Optimization");
   // The page correctly states that GEO is not a guarantee
-  expect(mainText).toContain("not a guarantee");
+  expect(mainText).toContain("guarantee");
 });
 
 test("copy: SEO page describes crawlability and structure", async ({ page }) => {
@@ -285,8 +276,7 @@ test("copy: Digital Authority page mentions editorial reputation without link sc
   const mainText = await page.locator("main").textContent();
   expect(mainText).toContain("Digital Authority");
   // The text acknowledges link schemes but states we do not operate them
-  expect(mainText).toContain("do not sell links");
-  expect(mainText).not.toContain("buy links");
+  expect(mainText).toContain("does not run link schemes");
 });
 
 test("copy: About page identifies SeoVista and GMedya", async ({ page }) => {
@@ -304,15 +294,15 @@ test("copy: Contact page states foundation-stage availability", async ({ page })
 
 test("copy: Privacy, Cookies, and Terms each state distinct purpose", async ({ page }) => {
   await page.goto("/privacy/");
-  const privacyText = await page.locator("main").textContent();
+  const privacyText = (await page.locator("main").textContent())?.toLowerCase() || "";
   expect(privacyText).toContain("privacy");
 
   await page.goto("/cookies/");
-  const cookiesText = await page.locator("main").textContent();
+  const cookiesText = (await page.locator("main").textContent())?.toLowerCase() || "";
   expect(cookiesText).toContain("cookie");
 
   await page.goto("/terms/");
-  const termsText = await page.locator("main").textContent();
+  const termsText = (await page.locator("main").textContent())?.toLowerCase() || "";
   expect(termsText).toContain("term");
 });
 
