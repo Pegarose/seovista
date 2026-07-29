@@ -58,20 +58,32 @@ export function middleware(request: NextRequest): NextResponse {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-seovista-pathname", pathname);
 
+  let response: NextResponse | undefined;
+  
   if (pathname.startsWith("/admin")) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    response = NextResponse.next({ request: { headers: requestHeaders } });
+  } else if (pathname === "/" || isNonPagePath(pathname)) {
+    response = NextResponse.next();
+  } else {
+    const canonical = canonicalPath(pathname);
+    if (!canonical || isApprovedFinalPath(pathname, canonical)) {
+      response = NextResponse.next();
+    } else {
+      // Must not fall into the next section as a response, so redirect immediately
+      response = NextResponse.redirect(new URL(canonical, trustedOrigin()), 301);
+    }
   }
 
-  if (pathname === "/" || isNonPagePath(pathname)) {
-    return NextResponse.next();
+  // Enforce private headers for the audit result route
+  if (pathname.startsWith("/tools/geo-readiness-checker/result/")) {
+    // If it's a redirect, we shouldn't necessarily modify headers, but this path isn't in canonical anyway.
+    // Ensure we handle it if Next.js passes through.
+    response = response ?? NextResponse.next();
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
 
-  const canonical = canonicalPath(pathname);
-  if (!canonical || isApprovedFinalPath(pathname, canonical)) {
-    return NextResponse.next();
-  }
-
-  return NextResponse.redirect(new URL(canonical, trustedOrigin()), 301);
+  return response ?? NextResponse.next();
 }
 
 export const config = {

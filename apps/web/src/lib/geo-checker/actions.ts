@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import { getAdminDb } from "../admin/db";
 import { createGeoAuditRepository, submitGeoAudit, checkIpRateLimit } from "@seovista/worker";
 import { extractClientIp } from "./ip";
+import { normalizeAuditStatusRecord } from "./audit-status";
 
 // Ensure schema handles edge cases matching user specifications.
 const GeoAuditFormSchema = z.object({
@@ -128,15 +129,33 @@ export async function startGeoAuditAction(
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function checkJobStatusAction(jobId: string) {
-  
+  if (!UUID_RE.test(jobId)) {
+    return { success: false, error: "Invalid job ID format" };
+  }
   
   const db = getAdminDb();
   const repo = createGeoAuditRepository(db);
 
   try {
     const job = await repo.getJobRecord(jobId);
-    return { success: true, data: job };
+    
+    if (!job) {
+       return { success: true, data: null };
+    }
+    
+    const { status, persistedStatus } = normalizeAuditStatusRecord(job);
+    
+    return {
+      success: true,
+      data: {
+        status,
+        persistedStatus,
+        // Only return minimal DTO required by AuditPoller. Do NOT leak lead_id or work_email.
+      },
+    };
   } catch (error) {
     console.error("Failed to check job status", error);
     return { success: false, error: "Failed to check job status" };
@@ -144,21 +163,32 @@ export async function checkJobStatusAction(jobId: string) {
 }
 
 export async function unlockDetailedReport(_prev: any, formData: FormData): Promise<{ success?: boolean; error?: string }> {
-  
-  
-  // Actually update lead marketing data since this is the gated form handler
+  const jobId = formData.get("jobId")?.toString();
   const leadId = formData.get("leadId")?.toString();
   const email = formData.get("email")?.toString();
   const consent = formData.get("consent") === "true";
   
-  if (!leadId || !email) {
+  if (!jobId || !leadId || !email) {
     return { error: "Missing required fields" };
+  }
+
+  if (!UUID_RE.test(jobId)) {
+    return { error: "Invalid job ID format" };
   }
   
   const db = getAdminDb();
   const repo = createGeoAuditRepository(db);
   
   try {
+    const job = await repo.getJobRecord(jobId);
+    if (!job) {
+      return { error: "Job not found" };
+    }
+
+    if (job.lead_id !== leadId) {
+      return { error: "Invalid lead ID provided" };
+    }
+
     await repo.updateLeadEmail(leadId, email, consent);
     return { success: true };
   } catch (err) {

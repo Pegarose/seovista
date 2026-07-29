@@ -5,12 +5,18 @@ import { ScoreBreakdownView } from "../../../../../src/components/geo-checker/sc
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
 import { MatchedServicesView } from "../../../../../src/components/geo-checker/matched-services-view";
 import { SerpPreview } from "../../../../../src/components/geo-checker/serp-preview";
-import { notFound } from "next/navigation";
-import { createGeoAuditRepository } from "@seovista/worker";
-import type { ScoreBreakdown, ScoreBreakdownModule, ScoreBreakdownPlatformReadiness, MatchedService } from "@seovista/geo-engine";
+import { createGeoAuditRepository, type DbClient } from "@seovista/worker";
 import { headers } from "next/headers";
+import { parseCompletedPayload } from "../../../../../src/lib/geo-checker/payload-parser";
+import {
+  isAuditInFlightStatus,
+  normalizeAuditStatusRecord,
+} from "../../../../../src/lib/geo-checker/audit-status";
 
 export const dynamic = "force-dynamic";
+
+/** UUID v4/v7 format guard. Rejects malformed IDs before any repository query. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function generateMetadata() {
   return {
@@ -19,206 +25,241 @@ export async function generateMetadata() {
   };
 }
 
-/**
- * Narrow the persisted `job_results.payload.breakdown` field to the
- * `ScoreBreakdown` contract without recomputing any score. The worker
- * serializes the engine's `ScoreBreakdown` directly into the JSONB payload,
- * so a minimal structural guard is sufficient. Returns `null` for legacy
- * payloads persisted before the breakdown contract was introduced so the
- * result page degrades gracefully instead of crashing.
- */
-function readBreakdown(payload: Record<string, unknown> | null): ScoreBreakdown | null {
-  if (!payload) return null;
-  const raw = payload.breakdown;
-  if (!raw || typeof raw !== "object") return null;
-  const b = raw as Record<string, unknown>;
-  if (typeof b.scoreVersion !== "string" || typeof b.overallScore !== "number") {
-    return null;
-  }
-  const modules = b.modules;
-  if (!Array.isArray(modules)) return null;
-  const safeModules: ScoreBreakdownModule[] = [];
-  for (const m of modules) {
-    if (!m || typeof m !== "object") return null;
-    const mod = m as Record<string, unknown>;
-    if (
-      typeof mod.key !== "string" ||
-      typeof mod.name !== "string" ||
-      typeof mod.score !== "number" ||
-      typeof mod.maxScore !== "number" ||
-      typeof mod.status !== "string" ||
-      !Array.isArray(mod.issues)
-    ) {
-      return null;
-    }
-    safeModules.push({
-      key: mod.key,
-      name: mod.name,
-      score: mod.score,
-      maxScore: mod.maxScore,
-      status: mod.status as ScoreBreakdownModule["status"],
-      issues: (mod.issues as unknown[]).map((i) => {
-        const iss = (i ?? {}) as Record<string, unknown>;
-        return {
-          code: typeof iss.code === "string" ? iss.code : "",
-          message: typeof iss.message === "string" ? iss.message : "",
-          pointLoss: typeof iss.pointLoss === "number" ? iss.pointLoss : 0,
-          severity: typeof iss.severity === "string" ? (iss.severity as ScoreBreakdownModule["issues"][number]["severity"]) : "info",
-          module: typeof iss.module === "string" ? iss.module : "",
-        };
-      }),
-    });
-  }
-  return {
-    scoreVersion: b.scoreVersion,
-    overallScore: b.overallScore,
-    band: (typeof b.band === "string" && ["excellent", "good", "needs_improvement", "poor", "critical"].includes(b.band) ? b.band : "critical") as ScoreBreakdown["band"],
-    modules: safeModules,
-    // Per-platform readiness projection (VAL-A-UI-CONF-001 /
-    // VAL-A-UI-CONF-002). Defensive parse: legacy payloads persisted before
-    // the platformReadiness field was added to the ScoreBreakdown contract
-    // degrade to an empty array so the result page simply omits the platform
-    // section instead of crashing.
-    platformReadiness: readPlatformReadiness(b.platformReadiness),
-  };
-}
-
-/**
- * Narrow the persisted `breakdown.platformReadiness` array to the
- * `ScoreBreakdownPlatformReadiness[]` contract. Each entry must carry a
- * numeric `score` and `confidence` and a boolean `experimental`; entries
- * that fail the guard are dropped so a single malformed row cannot break the
- * whole section. Returns `[]` for missing / non-array fields so the result
- * page degrades gracefully on legacy payloads.
- */
-function readPlatformReadiness(raw: unknown): ScoreBreakdownPlatformReadiness[] {
-  if (!Array.isArray(raw)) return [];
-  const out: ScoreBreakdownPlatformReadiness[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== "object") continue;
-    const p = entry as Record<string, unknown>;
-    if (
-      typeof p.platform !== "string" ||
-      typeof p.score !== "number" ||
-      typeof p.confidence !== "number"
-    ) {
-      continue;
-    }
-    out.push({
-      platform: p.platform,
-      score: p.score,
-      confidence: p.confidence,
-      rationale: typeof p.rationale === "string" ? p.rationale : "",
-      experimental: Boolean(p.experimental),
-    });
-  }
-  return out;
-}
-
 export default async function JobResultPage({ params }: { params: Promise<{ jobId: string }> }) {
-  await headers();
+  const reqHeaders = await headers(); // Retained to ensure dynamic rendering if Next.js optimizes too aggressively
+
   const { jobId } = await params;
-  const db = getAdminDb();
-  const repo = createGeoAuditRepository(db);
 
-  // 1. Initial State Read
-  const row = await repo.getJobRecord(jobId);
-  if (!row) return notFound();
+  // Reject malformed non-UUID job IDs before any repository query so invalid
+  // input never reaches PostgreSQL and renders the documented not-found state.
+  if (!UUID_RE.test(jobId)) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
+            Job not found
+          </h1>
+          <p className="text-slate-700">
+            The requested audit result could not be found. Please check the job identifier and try again.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
-  const status = row.status;
+  let db: DbClient;
+  let repo: ReturnType<typeof createGeoAuditRepository>;
+  try {
+    db = getAdminDb();
+    repo = createGeoAuditRepository(db);
+  } catch {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
+            Service temporarily unavailable
+          </h1>
+          <p className="text-slate-700">
+            The audit result service is currently unavailable. Please try again shortly.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  let row: Awaited<ReturnType<typeof repo.getJobRecord>>;
+  try {
+    row = await repo.getJobRecord(jobId);
+  } catch {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
+            Service temporarily unavailable
+          </h1>
+          <p className="text-slate-700">
+            The audit result service is currently unavailable. Please try again shortly.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // Syntactically valid UUID with no matching job record renders the
+  // documented not-found state.
+  if (!row) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
+            Job not found
+          </h1>
+          <p className="text-slate-700">
+            The requested audit result could not be found. Please check the job identifier and try again.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const normalizedRow = normalizeAuditStatusRecord(row);
+  const status = normalizedRow.status;
   const hasEmail = Boolean(row.work_email);
 
-  // 2. Score breakdown payload (rendered without recomputation). Fetched only
-  // when the job is completed so we never block the polling path on a result
-  // row that does not exist yet.
-  const payload = status === "completed" ? await repo.getJobResultPayload(jobId) : null;
-  const breakdown = readBreakdown(payload);
+  // ---------- Result payload (completed only) ----------
+  let payload: Record<string, unknown> | null = null;
+  if (status === "completed") {
+    try {
+      payload = await repo.getJobResultPayload(jobId);
+    } catch {
+      // Degrade gracefully: the completed job row exists but the result
+      // payload could not be fetched. Render the degraded completed-result
+      // state rather than failing with a raw error.
+      payload = null;
+    }
+  }
+  const parsedPayload = status === "completed" ? parseCompletedPayload(payload) : null;
+  const breakdown = parsedPayload?.breakdown ?? null;
+  const matchedServices = parsedPayload?.matchedServices;
+  const scoreBand = breakdown?.band ?? null;
+  const targetUrl = parsedPayload?.targetUrl ?? null;
+  const serpPreview = parsedPayload?.serpPreview ?? null;
+  const aiPreview = parsedPayload?.aiPreview ?? null;
+  const hasAnyPreview = serpPreview !== null || aiPreview !== null;
+
+  // ---------- Render ----------
+
+  reqHeaders;
   
-  // Matched services must be safely narrowed out of the payload without any client-side sorting/filtering.
-  // We extract them exactly as persisted if available.
-  const matchedServices = payload && Array.isArray(payload.matchedServices)
-    ? payload.matchedServices.reduce<MatchedService[]>((acc, s) => {
-        if (s && typeof s === "object") {
-          const svc = s as Record<string, unknown>;
-          if (typeof svc.service_id === "string" && typeof svc.name === "string" && typeof svc.description === "string") {
-            acc.push({
-              service_id: svc.service_id,
-              name: svc.name,
-              description: svc.description,
-              matchedTags: Array.isArray(svc.matchedTags) ? svc.matchedTags.filter(tag => typeof tag === "string") as any[] : [],
-              relevanceScore: typeof svc.relevanceScore === "number" ? svc.relevanceScore : 0,
-              addressedIssueCodes: Array.isArray(svc.addressedIssueCodes) ? svc.addressedIssueCodes.filter(code => typeof code === "string") : []
-            });
-          }
-        }
-        return acc;
-      }, [])
-    : undefined;
+  // -- In-flight states (queued / running / pending) --
+  if (isAuditInFlightStatus(status)) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
+        <h1 className="text-3xl font-display font-semibold text-slate-900 text-center">
+          {status === "queued" ? "Audit in queue" : status === "running" ? "Audit running…" : "Audit pending"}
+        </h1>
+        <AuditPoller jobId={jobId} initialStatus={status} />
+      </main>
+    );
+  }
 
-  // The fallback band ensures deterministic CTA copy logic even if breakdown parsing fails.
-  // According to expectations: "using a safe fallback band". We can default to "critical" to show the strong CTA.
-  const scoreBand = breakdown?.band ?? (payload?.scoreBand as ScoreBreakdown["band"]) ?? "critical";
+  // -- Terminal failed states --
+  if (status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure") {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Durum: Başarısız</h1>
+          <p className="text-slate-700">Analiz işlemi başarısız oldu veya zaman aşımına uğradı. Lütfen daha sonra tekrar deneyin.</p>
+        </div>
+      </main>
+    );
+  }
 
-  const targetUrl = typeof payload?.target === "string" ? payload.target : "https://seovista.com";
+  // -- Unknown persisted status: explicit unavailable state --
+  // Any status value not in the supported lifecycle vocabulary renders
+  // exactly one <main> with one descriptive <h1>, no result components,
+  // and no raw Next.js error boundary. The page never implicitly returns
+  // undefined for an unrecognised status.
+  if (status === "unknown") {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
+            Audit status unavailable
+          </h1>
+          <p className="text-slate-700">
+            The audit result status could not be determined. Please refresh the page or try again later.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
+  // -- Completed: degraded (no valid result payload) --
+  if (status === "completed" && !breakdown) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
+            Result temporarily unavailable
+          </h1>
+          <p className="text-slate-700">
+            The audit completed but the detailed result data is not currently available. Please try refreshing the page shortly.
+          </p>
+        </div>
+        {!hasEmail && row.lead_id ? (
+          <GatedReportForm leadId={row.lead_id} jobId={jobId} />
+        ) : null}
+      </main>
+    );
+  }
+
+  // -- Completed: degraded breakdown --
+  // A persisted degraded marker means one or more scoring modules failed. The
+  // numeric projection is still useful to the worker, but it is not a complete
+  // readiness result for a public claim. Fail closed instead of presenting a
+  // partial score, CTA, target, services, platform readiness, or preview as
+  // if every required signal were available.
+  if (status === "completed" && breakdown?.degraded === true) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
+          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
+            Result temporarily unavailable
+          </h1>
+          <p className="text-slate-700">
+            The audit completed with incomplete scoring data. A complete readiness result is not available yet.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // -- Completed: valid breakdown payload --
+  // (status === "completed" && breakdown !== null)
+  // Narrow breakdown after the degraded early-return above.
+  const safeBreakdown = breakdown!;
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
-      {status === "completed" ? (
-        <>
-          <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full">
-            <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Geo Readiness Analiz Sonucu</h1>
-            <div className="grid grid-cols-2 gap-4 my-8">
-              <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-100">
-                  <div className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Erişim</div>
-                  <div className="text-2xl font-bold text-emerald-600">Başarılı</div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-100">
-                  <div className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Anlama</div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {breakdown ? `${breakdown.overallScore}/100` : "Tamamlandı"}
-                  </div>
-              </div>
-            </div>
-            
-            {!hasEmail && (
-              <GatedReportForm leadId={row.lead_id} />
-            )}
+      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full">
+        <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Geo Readiness Analiz Sonucu</h1>
+        <div className="my-8 bg-slate-50 p-4 rounded-lg text-center border border-slate-100">
+          <div className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Anlama</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {`${safeBreakdown.overallScore}/100`}
           </div>
-          
-          <CrewCtaView scoreBand={scoreBand} />
-          
-          <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
-            <h2 className="text-xl font-semibold text-slate-900">SERP & AI Answer Previews</h2>
-            <SerpPreview 
-              url={targetUrl}
-              title={`${targetUrl} - GEO & Search Visibility`}
-              snippet={`SeoVista GEO Readiness score: ${breakdown ? breakdown.overallScore : 0}/100.`}
-              mode="serp"
-            />
-            <SerpPreview 
-              url={targetUrl}
-              title={`${targetUrl} GEO Analysis`}
-              snippet={`According to SeoVista GEO Audit, ${targetUrl} demonstrates ${scoreBand} generative engine optimization readiness.`}
-              mode="ai_answer"
-            />
-          </div>
-
-          {breakdown && <ScoreBreakdownView breakdown={breakdown} />}
-          <MatchedServicesView services={matchedServices ?? []} />
-        </>
-      ) : status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure" ? (
-         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-            <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Durum: Başarısız</h1>
-            <p className="text-slate-700">Analiz işlemi başarısız oldu veya zaman aşımına uğradı. Lütfen daha sonra tekrar deneyin.</p>
-         </div>
-      ) : status === "queued" || status === "running" || status === "pending" ? (
-         <AuditPoller jobId={jobId} />
-      ) : (
-         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-            <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Durum: Başarısız</h1>
-            <p className="text-slate-700">Analiz işlemi başarısız oldu veya zaman aşımına uğradı. Lütfen daha sonra tekrar deneyin.</p>
-         </div>
+        </div>
+        
+        {!hasEmail && (
+          <GatedReportForm leadId={row.lead_id} jobId={jobId} />
+        )}
+      </div>
+      
+      {scoreBand && <CrewCtaView scoreBand={scoreBand} />}
+      
+      {targetUrl && (
+        <div className="max-w-2xl mx-auto w-full">
+          <p className="text-sm text-slate-500">
+            Audited URL:{" "}
+            <span className="font-mono text-slate-700 break-all">{targetUrl}</span>
+          </p>
+        </div>
       )}
+      
+      {hasAnyPreview && (
+        <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
+          <h2 className="text-xl font-semibold text-slate-900">SERP &amp; AI Answer Previews</h2>
+          {serpPreview && (
+            <SerpPreview {...serpPreview} />
+          )}
+          {aiPreview && (
+            <SerpPreview {...aiPreview} />
+          )}
+        </div>
+      )}
+
+      <ScoreBreakdownView breakdown={safeBreakdown} />
+      {matchedServices !== undefined && <MatchedServicesView services={matchedServices} />}
     </main>
   );
 }

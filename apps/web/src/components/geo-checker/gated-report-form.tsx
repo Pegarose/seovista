@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { unlockDetailedReport } from "@/lib/geo-checker/actions";
 import { useRouter } from "next/navigation";
 
-export function GatedReportForm({ leadId }: { leadId: string }) {
+export function GatedReportForm({ leadId, jobId }: { leadId: string; jobId: string }) {
   const router = useRouter();
   
   const [state, formAction, pending] = useActionState(
@@ -29,6 +29,7 @@ export function GatedReportForm({ leadId }: { leadId: string }) {
       
       <form action={formAction} className="space-y-4 max-w-md mx-auto">
         <input type="hidden" name="leadId" value={leadId} />
+        <input type="hidden" name="jobId" value={jobId} />
         
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-indigo-900 mb-1">
