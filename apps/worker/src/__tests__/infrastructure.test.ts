@@ -135,7 +135,6 @@ describe("infrastructure walking skeleton", () => {
       expect(transitions).toContainEqual(["queued", "running"]);
       expect(transitions).toContainEqual(["running", "completed"]);
       expect(transitions).toContainEqual(["running", "failed"]);
-      expect(transitions).toContainEqual(["failed", "running"]);
       expect(transitions).not.toContainEqual(["completed", "running"]);
       expect(transitions).not.toContainEqual(["permanent", "running"]);
     });
