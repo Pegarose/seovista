@@ -289,7 +289,26 @@ describe("single-flight request dedupe (VAL-A-MIT-001 / VAL-A-MIT-002)", () => {
     expect(totalEnqueued).toBe(2);
   });
 
-  it("findInFlightJobByCacheKey only matches non-terminal rows", async () => {
+  it("findInFlightJobByCacheKey only matches non-terminal rows and ignores aliases", async () => {
+    if (!(await redisAvailable())) {
+      console.warn("Redis not available on 56379 — skipping terminal-row test");
+      return;
+    }
+    const repo = createGeoAuditRepository(env.db);
+    const url = "https://terminal.example.com/";
+    const cacheKey = computeCanonicalCacheKey(url);
+    const lead = await createLead(env, url);
+
+    await env.db.query(
+      `INSERT INTO job_records (job_identity, queue_name, correlation_id, target, status, lead_id, cache_key)
+       VALUES ($1, $2, $3, $4, 'permanent', $5, $6)`,
+      [randomUUID(), "geo_audit", randomUUID(), url, lead.id, cacheKey],
+    );
+
+    expect(await repo.findInFlightJobByCacheKey(cacheKey)).toBeNull();
+  });
+
+  it("findInFlightJobByCacheKey matches non-terminal rows", async () => {
     if (!(await redisAvailable())) {
       console.warn("Redis not available on 56379 — skipping terminal-row test");
       return;

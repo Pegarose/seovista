@@ -86,8 +86,6 @@ export function isAuditAuthoritativeStatus(
 export interface AuditStatusRecord {
   /** Safe client-facing lifecycle value, or explicit unknown. */
   status: AuditStatus;
-  /** The raw value read from the authoritative persistence boundary. */
-  persistedStatus: unknown;
   [key: string]: unknown;
 }
 
@@ -97,19 +95,16 @@ export function normalizeAuditStatus(value: unknown): AuditStatus {
 
 export function normalizeAuditStatusRecord<T extends Record<string, any>>(
   record: T,
-): Omit<T, "status" | "persistedStatus"> & {
+): Omit<T, "status"> & {
   status: AuditStatus;
-  persistedStatus: T["status"];
 } {
   const persistedStatus = record.status;
   const result: any = { ...record };
   delete result.status;
-  delete result.persistedStatus;
 
   return {
     ...result,
     status: normalizeAuditStatus(persistedStatus),
-    persistedStatus,
   };
 }
 

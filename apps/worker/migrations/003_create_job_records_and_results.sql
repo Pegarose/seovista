@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS job_records (
   target TEXT CHECK (target IS NULL OR length(target) > 0),
   queue_name TEXT NOT NULL,
   correlation_id TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'permanent', 'timeout', 'pending', 'permanent_failure')),
+  status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'permanent', 'timeout')),
   attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
   terminal_class TEXT CHECK (terminal_class IN ('retryable', 'permanent', 'timeout', 'success')),
   result_id UUID REFERENCES job_results(id) ON DELETE SET NULL,

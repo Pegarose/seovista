@@ -38,23 +38,14 @@ export function createGeoAuditRepository(client: DbClient) {
       );
       return res.rows[0]!;
     },
-    async updateLeadEmail(leadId: string, email: string, consent: boolean) {
-      const res = await client.query<GeoAuditLeadRow>(
-        `UPDATE geo_audit_leads SET work_email = $1, marketing_consent = $2 
-         WHERE id = $3 RETURNING *`,
-        [email, consent, leadId]
-      );
-      if (res.rowCount === 0) throw new Error("Lead not found");
-      return res.rows[0]!;
-    },
-    async updateLeadEmailForJob(jobId: string, email: string, consent: boolean) {
+    async updateLeadEmailForJob(jobId: string, leadId: string, email: string, consent: boolean) {
       const res = await client.query<{id: string}>(
         `UPDATE geo_audit_leads l
          SET work_email = $1, marketing_consent = $2
          FROM job_records j
-         WHERE l.id = j.lead_id AND j.id = $3
+         WHERE l.id = j.lead_id AND j.id = $3 AND l.id = $4
          RETURNING l.id`,
-        [email, consent, jobId]
+        [email, consent, jobId, leadId]
       );
       if (res.rowCount === 0) throw new Error("Job or lead not found for update");
       return res.rows[0];
@@ -140,7 +131,7 @@ export function createGeoAuditRepository(client: DbClient) {
     async findInFlightJobByCacheKey(cacheKey: string): Promise<string | null> {
       const res = await client.query<{ id: string }>(
         `SELECT id FROM job_records
-         WHERE cache_key = $1 AND status IN ('queued', 'running', 'pending')
+         WHERE cache_key = $1 AND status IN ('queued', 'running')
          ORDER BY created_at DESC
          LIMIT 1`,
         [cacheKey],

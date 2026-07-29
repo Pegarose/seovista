@@ -27,9 +27,14 @@ describe("Geo Audit Repository", () => {
     expect(lead.id).toBeDefined();
     expect(lead.work_email).toBeNull();
     
-    const updated = await repo.updateLeadEmail(lead.id, "test@example.com", true);
-    expect(updated.work_email).toBe("test@example.com");
-    expect(updated.marketing_consent).toBe(true);
+    const job = await repo.createJobRecord({
+      target: "https://example.com/some/path",
+      service: "geo_audit",
+      status: "queued",
+      leadId: lead.id,
+    });
+    const updatedLeadId = await repo.updateLeadEmailForJob(job, lead.id, "test@example.com", true);
+    expect(updatedLeadId).toBeDefined();
   });
 
   it("can create a job record wrapping job_records", async () => {

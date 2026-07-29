@@ -302,10 +302,23 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         const errorMsg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
         
         let terminalStatus = 'failed';
-        if (errorMsg.includes('timeout') || errorMsg.includes('socket hang up') || errorMsg.includes('rate limit')) {
-           terminalStatus = 'timeout';
-        } else if (errorMsg.includes('validation') || errorMsg.includes('ownership') || errorMsg.includes('malformed') || errorMsg.includes('auth') || errorMsg.includes('ssrf')) {
-           terminalStatus = 'permanent';
+        
+        if (typeof err === 'object' && err !== null && 'code' in err && typeof (err as any).code === 'string') {
+          const code = (err as any).code as string;
+          if (code.startsWith('provider.timeout') || code.startsWith('provider.unavailable') || code.startsWith('provider.rate_limited')) {
+            terminalStatus = 'timeout';
+          } else if (code.startsWith('validation.') || code.startsWith('ownership.') || code.startsWith('auth.') || code.startsWith('conflict.')) {
+            terminalStatus = 'permanent';
+          } else {
+             terminalStatus = (err as any).retryable ? 'timeout' : 'failed';
+          }
+        } else {
+          // Fallback heuristic matching for errors that bypassed the domain boundaries
+          if (errorMsg.includes('timeout') || errorMsg.includes('socket hang up') || errorMsg.includes('rate limit') || errorMsg.includes('unavailable')) {
+             terminalStatus = 'timeout';
+          } else if (errorMsg.includes('validation') || errorMsg.includes('ownership') || errorMsg.includes('malformed') || errorMsg.includes('auth') || errorMsg.includes('ssrf')) {
+             terminalStatus = 'permanent';
+          }
         }
         
         await db.query(`UPDATE job_records SET status = $2, updated_at = now() WHERE id = $1`, [jobId, terminalStatus]);

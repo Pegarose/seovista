@@ -26,7 +26,7 @@ vi.mock("next/headers", () => ({
 import { checkJobStatusAction } from "../actions";
 
 describe("checkJobStatusAction status contract", () => {
-  it.each(["queued", "running", "pending", "completed", "failed", "timeout", "permanent", "permanent_failure"] as const)(
+  it.each(["queued", "running", "completed", "failed", "timeout", "permanent"] as const)(
     "preserves supported persisted status %s",
     async (status) => {
       const getJobRecord = vi.fn().mockResolvedValue({
@@ -69,8 +69,10 @@ describe("checkJobStatusAction status contract", () => {
   
   it("rejects malformed UUID before hitting db", async () => {
     mockGetAdminDb.mockClear();
+    mockCreateRepository.mockClear();
     const result = await checkJobStatusAction("not-a-uuid");
     expect(mockGetAdminDb).not.toHaveBeenCalled();
+    expect(mockCreateRepository).not.toHaveBeenCalled();
     expect(result.success).toBe(false);
   });
   

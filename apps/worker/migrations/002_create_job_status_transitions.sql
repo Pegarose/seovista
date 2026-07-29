@@ -15,8 +15,5 @@ INSERT INTO job_status_transitions (from_status, to_status) VALUES
   ('running', 'completed'),
   ('running', 'failed'),
   ('running', 'permanent'),
-  ('running', 'timeout'),
-  ('failed', 'running'),
-  ('failed', 'permanent'),
-  ('failed', 'timeout')
+  ('running', 'timeout')
 ON CONFLICT (from_status, to_status) DO NOTHING;

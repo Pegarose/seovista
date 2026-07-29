@@ -31,6 +31,6 @@ describe("GEO status compatibility boundary", () => {
     });
 
     expect(normalized.status).toBe("permanent_failure");
-    expect(normalized.persistedStatus).toBe("permanent_failure");
+    expect((normalized as any).persistedStatus).toBeUndefined();
   });
 });

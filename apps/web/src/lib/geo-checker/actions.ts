@@ -171,24 +171,15 @@ export async function unlockDetailedReport(_prev: any, formData: FormData): Prom
     return { error: "Missing required fields" };
   }
 
-  if (!UUID_RE.test(jobId)) {
-    return { error: "Invalid job ID format" };
+  if (!UUID_RE.test(jobId) || !UUID_RE.test(leadId)) {
+    return { error: "Invalid job or lead format" };
   }
   
   const db = getAdminDb();
   const repo = createGeoAuditRepository(db);
   
   try {
-    const job = await repo.getJobRecord(jobId);
-    if (!job) {
-      return { error: "Job not found" };
-    }
-
-    if (job.lead_id !== leadId) {
-      return { error: "Invalid lead ID provided" };
-    }
-
-    await repo.updateLeadEmailForJob(jobId, email, consent);
+    await repo.updateLeadEmailForJob(jobId, leadId, email, consent);
     return { success: true };
   } catch (err) {
     console.error("Failed to unlock report", err);

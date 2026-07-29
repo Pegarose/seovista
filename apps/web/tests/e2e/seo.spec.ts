@@ -724,3 +724,15 @@ test("jsonld: Service provider references Organization", async ({ page }) => {
     expect(provider!["@id"]).toBe(expectedOrganisationId);
   }
 });
+test('GEO result pages set private cache blocks and noindex', async ({ request }) => {
+  const result = await request.get('/tools/geo-readiness-checker/result/00000000-0000-0000-0000-000000000001');
+  
+  expect(result.status()).toBe(200);
+  const headers = result.headers();
+  // Ensure the Private/No index Cache Control is actually present
+  expect(headers['cache-control']).toContain('private');
+  expect(headers['cache-control']).toContain('no-store');
+  expect(headers['cache-control']).toContain('max-age=0');
+  expect(headers['x-robots-tag']).toContain('noindex');
+  expect(headers['x-robots-tag']).toContain('nofollow');
+});

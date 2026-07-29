@@ -89,7 +89,7 @@ async function main() {
         brandName: "Completed Brand",
         primaryMarket: "US"
       });
-      await geoRepo.updateLeadEmail(finishedLead.id, "lead@completed-lead.local", true);
+      await dbClient.query('UPDATE geo_audit_leads SET work_email = $1, marketing_consent = $2 WHERE id = $3', ["lead@completed-lead.local", true, finishedLead.id]);
       console.log(`Inserted finished lead: ${finishedLead.domain}`);
     } else {
       console.log(`Finished lead completed-lead.local already exists. Skipping.`);

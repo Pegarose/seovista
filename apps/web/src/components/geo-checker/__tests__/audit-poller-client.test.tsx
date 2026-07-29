@@ -260,7 +260,7 @@ describe("AuditPoller real Client Component lifecycle", () => {
   it("enters timeout state after polling reaches the five-minute deadline", async () => {
     checkStatus.mockResolvedValue({
       success: true,
-      data: { status: "running" as any, persistedStatus: "running" as any },
+      data: { status: "running" as any },
     });
 
     await renderPoller(root, { jobId: "00000000-0000-0000-0000-000000000001", initialStatus: "running" });
