@@ -112,7 +112,7 @@ function buildCacheRedisOptions(): RedisOptions | null {
     const parsed = new URL(redisUrl);
     const options: RedisOptions = {
       host: parsed.hostname || "127.0.0.1",
-      port: parsed.port ? parseInt(parsed.port, 10) : 56379,
+      port: parsed.port ? parseInt(parsed.port, 10) : 8637,
       db: RENDER_CACHE_REDIS_DB,
       maxRetriesPerRequest: 1,
       enableReadyCheck: true,

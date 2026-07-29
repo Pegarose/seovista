@@ -46,7 +46,7 @@ describe("local admin bootstrap", () => {
     await expect(
       runLocalAdminBootstrap({
         NODE_ENV: "development",
-        DATABASE_URL: "http://remotehost:5432/seovista",
+        DATABASE_URL: "postgresql://remotehost:5432/seovista",
         SEOVISTA_ADMIN_PASSWORD: "local-only-secret",
       }),
     ).rejects.toThrow(/local/i);
@@ -60,7 +60,7 @@ describe("local admin bootstrap", () => {
     const result = await runLocalAdminBootstrap(
       {
         NODE_ENV: "development",
-        DATABASE_URL: "http://localhost:5432/seovista",
+        DATABASE_URL: "postgresql://localhost:5432/seovista",
         SEOVISTA_ADMIN_PASSWORD: "migration-order-secret",
       },
       {
@@ -123,7 +123,7 @@ describe("local admin bootstrap", () => {
     await runLocalAdminBootstrap(
       {
         NODE_ENV: "development",
-        DATABASE_URL: "http://localhost:5432/seovista",
+        DATABASE_URL: "postgresql://localhost:5432/seovista",
         SEOVISTA_ADMIN_PASSWORD: secret,
       },
       {

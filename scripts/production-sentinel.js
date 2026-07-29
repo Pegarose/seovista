@@ -32,7 +32,7 @@ export function buildSecretSentinelValues() {
     .slice(0, 20);
   return Object.freeze({
     DATABASE_URL: `postgresql://sentinel-user:${seed}@sentinel.invalid:55432/sentinel`,
-    REDIS_URL: `redis://:${seed}@sentinel.invalid:56379/0`,
+    REDIS_URL: `redis://:${seed}@sentinel.invalid:8637/0`,
     NEXTG_API_TOKEN: `nextg-sentinel-${seed}`,
     DATAFORSEO_API_KEY: `dataforseo-sentinel-${seed}`,
     GOOGLE_CLIENT_ID: `google-client-sentinel-${seed}`,

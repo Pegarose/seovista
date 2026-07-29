@@ -4,6 +4,7 @@ import {
   ScoringEngine,
   loadCrewCatalog,
   matchServices,
+  type ParsedPage,
   type ScoreContext,
 } from "@seovista/geo-engine";
 import { fetchAndParseUrlWithMeta } from "../utils/fetcher.js";
@@ -17,17 +18,17 @@ import {
 // Helper to parse redis url for bullmq
 function parseRedisUrl(redisUrl: string | undefined): { host: string; port: number } {
   if (!redisUrl) {
-    return { host: "127.0.0.1", port: 56379 };
+    return { host: "127.0.0.1", port: 8637 };
   }
   
   try {
     const url = new URL(redisUrl);
     return { 
       host: url.hostname || "127.0.0.1", 
-      port: parseInt(url.port, 10) || 56379 
+      port: parseInt(url.port, 10) || 8637 
     };
   } catch {
-    return { host: "127.0.0.1", port: 56379 };
+    return { host: "127.0.0.1", port: 8637 };
   }
 }
 
@@ -53,6 +54,67 @@ export function getGeoWorkerConcurrency(options?: GeoWorkerOptions, env = proces
     return envConcurrency;
   }
   return 3;
+}
+
+interface PersistedSerpPreview {
+  title: string;
+  snippet: string;
+  url: string;
+  sourceMode: "simulated";
+  displayType: "serp";
+  provider: "deterministic-fixture";
+  fixtureId: "geo-page-parse-v1";
+  requestId: string;
+  operationKey: string;
+  runId: string;
+  capturedAt: string;
+  ttlSeconds: number;
+  freshness: "fresh";
+  outcome: "success";
+}
+
+function buildPersistedSerpPreview(
+  parsedPage: Pick<ParsedPage, "title" | "metaDescription" | "canonical">,
+  requestId: string,
+  jobId: unknown,
+  capturedAt: string,
+): PersistedSerpPreview | undefined {
+  const title = parsedPage.title?.trim();
+  const snippet = parsedPage.metaDescription?.trim();
+  const candidateUrl = parsedPage.canonical?.trim();
+  if (!title || !snippet || !candidateUrl) return undefined;
+
+  let url: URL;
+  try {
+    url = new URL(candidateUrl);
+  } catch {
+    return undefined;
+  }
+  if (
+    (url.protocol !== "http:" && url.protocol !== "https:") ||
+    url.username.length > 0 ||
+    url.password.length > 0
+  ) {
+    return undefined;
+  }
+
+  const runId = String(jobId);
+  return {
+    title,
+    snippet,
+    url: url.toString(),
+    sourceMode: "simulated",
+    displayType: "serp",
+    provider: "deterministic-fixture",
+    fixtureId: "geo-page-parse-v1",
+    requestId,
+    operationKey: `geo:${runId}`,
+    runId,
+    capturedAt,
+    ttlSeconds: 3600,
+    freshness: "fresh",
+    outcome: "success",
+  };
 }
 
 export function startGeoWorker(options?: GeoWorkerOptions) {
@@ -98,8 +160,12 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
 
         const data = await engine.scorePage(scoreContext, Date.now());
 
-        // Safe access to the data structure
-        const overallScore = data.finalScore ?? 0;
+        // A completed public result requires the engine's finite contract score.
+        // Do not replace missing or malformed evidence with a fabricated zero.
+        if (!Number.isFinite(data.finalScore) || data.finalScore < 0 || data.finalScore > 100) {
+          throw new Error("Scoring engine returned an invalid final score");
+        }
+        const overallScore = data.finalScore;
 
         // Map each engine module to one of the three saved score dimensions.
         // Module keys come from packages/geo-engine/src/modules/* (e.g.
@@ -149,23 +215,6 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
         // store alongside the existing trimmed result shape.
         const breakdown = data.breakdown;
 
-        const mockJsonBResult = JSON.stringify({
-          methodologyVersion: data.scoreVersion || "v1.1",
-          auditedAt: new Date().toISOString(),
-          target: url,
-          scores: {
-            overall: overallScore,
-            access: accessScore,
-            understanding: understandingScore,
-            evidence: evidenceScore,
-          },
-          scoreVersion: data.scoreVersion,
-          breakdown,
-          issues: issues,
-          matchedServices,
-          tier,
-        });
-
         const jobRecordRes = await db.query(`SELECT job_identity, correlation_id FROM job_records WHERE id = $1`, [jobId]);
         if (jobRecordRes.rows.length === 0) {
             throw new Error(`Job record ${jobId} not found during result saving.`);
@@ -175,6 +224,26 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
             throw new Error(`Job record ${jobId} not found during result saving.`);
         }
         const { job_identity, correlation_id } = rawJobRecord;
+        const capturedAt = new Date().toISOString();
+        const serpPreview = buildPersistedSerpPreview(parsedPage, correlation_id, jobId, capturedAt);
+
+        const mockJsonBResult = JSON.stringify({
+          methodologyVersion: data.scoreVersion || "v1.1",
+          auditedAt: capturedAt,
+          target: url,
+          scores: {
+            overall: overallScore,
+            access: accessScore,
+            understanding: understandingScore,
+            evidence: evidenceScore,
+          },
+          scoreVersion: data.scoreVersion,
+          breakdown,
+          issues,
+          matchedServices,
+          tier,
+          ...(serpPreview ? { serpPreview } : {}),
+        });
 
         const jobResultRes = await db.query(
             `INSERT INTO job_results (correlation_id, job_identity, result_type, payload) 
@@ -226,7 +295,20 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
 
       } catch (err) {
         console.error("Worker failed job:", err);
-        await db.query(`UPDATE job_records SET status = 'failed', updated_at = now() WHERE id = $1`, [jobId]);
+        // Map retriable vs permanent failure explicitly according to the spec:
+        // Use timeout/unavailable for retryable, permanent for others.
+        // Assuming BullMQ retries will dictate the attempt handling outside this logic
+        // We will default to failed, but realistically we map timeout explicitly
+        const errorMsg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+        
+        let terminalStatus = 'failed';
+        if (errorMsg.includes('timeout') || errorMsg.includes('socket hang up') || errorMsg.includes('rate limit')) {
+           terminalStatus = 'timeout';
+        } else if (errorMsg.includes('validation') || errorMsg.includes('ownership') || errorMsg.includes('malformed') || errorMsg.includes('auth') || errorMsg.includes('ssrf')) {
+           terminalStatus = 'permanent';
+        }
+        
+        await db.query(`UPDATE job_records SET status = $2, updated_at = now() WHERE id = $1`, [jobId, terminalStatus]);
         // Release the single-flight lock on failure too, so the URL is not
         // pinned until TTL expiry when the job errors out. Compare-and-delete
         // guards against deleting a re-acquired lock.

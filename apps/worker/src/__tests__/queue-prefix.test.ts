@@ -27,7 +27,7 @@ describe("BullMQ lifecycle prefixing", () => {
   it("keeps the queue name stable and applies the lifecycle prefix to Queue Redis keys", () => {
     const queue = createPingQueue({
       projectId: "worker-a",
-      redisUrl: "redis://127.0.0.1:56379/0",
+      redisUrl: "redis://127.0.0.1:8637/0",
       queuePrefix: "seovista-run:queue:",
       db,
     });
@@ -41,7 +41,7 @@ describe("BullMQ lifecycle prefixing", () => {
   it("applies the identical lifecycle prefix to Worker Redis keys", () => {
     const worker = createPingWorker({
       projectId: "worker-a",
-      redisUrl: "redis://127.0.0.1:56379/0",
+      redisUrl: "redis://127.0.0.1:8637/0",
       queuePrefix: "seovista-run:queue:",
       db,
     });

@@ -1,4 +1,5 @@
 import type { DbClient } from "./client.js";
+import type { JobStatus } from "./job.js";
 
 export interface GeoAuditLeadRow {
   id: string;
@@ -18,7 +19,13 @@ export interface AdminLeadListRow {
   workEmail: string | null;
   marketingConsent: boolean;
   createdAt: Date;
-  jobStatus: string | null;
+  jobStatus: JobStatus | null;
+}
+
+export interface GeoAuditJobRecord {
+  status: JobStatus;
+  lead_id: string;
+  work_email: string | null;
 }
 
 export function createGeoAuditRepository(client: DbClient) {
@@ -40,10 +47,22 @@ export function createGeoAuditRepository(client: DbClient) {
       if (res.rowCount === 0) throw new Error("Lead not found");
       return res.rows[0]!;
     },
+    async updateLeadEmailForJob(jobId: string, email: string, consent: boolean) {
+      const res = await client.query<{id: string}>(
+        `UPDATE geo_audit_leads l
+         SET work_email = $1, marketing_consent = $2
+         FROM job_records j
+         WHERE l.id = j.lead_id AND j.id = $3
+         RETURNING l.id`,
+        [email, consent, jobId]
+      );
+      if (res.rowCount === 0) throw new Error("Job or lead not found for update");
+      return res.rows[0];
+    },
     async createJobRecord(data: {
       target: string;
       service: string;
-      status: string;
+      status: JobStatus;
       leadId: string;
       /**
        * Optional explicit primary key for the job_records row. The single-flight
@@ -121,15 +140,15 @@ export function createGeoAuditRepository(client: DbClient) {
     async findInFlightJobByCacheKey(cacheKey: string): Promise<string | null> {
       const res = await client.query<{ id: string }>(
         `SELECT id FROM job_records
-         WHERE cache_key = $1 AND status IN ('queued', 'running')
+         WHERE cache_key = $1 AND status IN ('queued', 'running', 'pending')
          ORDER BY created_at DESC
          LIMIT 1`,
         [cacheKey],
       );
       return res.rows[0]?.id ?? null;
     },
-    async getJobRecord(id: string) {
-      const res = await client.query<{ status: string; lead_id: string; work_email: string | null }>(
+    async getJobRecord(id: string): Promise<GeoAuditJobRecord | undefined> {
+      const res = await client.query<GeoAuditJobRecord>(
         `SELECT j.status, j.lead_id, l.work_email 
          FROM job_records j
          LEFT JOIN geo_audit_leads l ON j.lead_id = l.id

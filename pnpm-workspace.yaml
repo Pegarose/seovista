@@ -21,3 +21,5 @@ packages:
   - packages/geo-engine
   - packages/reports
   - packages/analytics
+  - packages/search-visibility
+  - packages/content-intelligence

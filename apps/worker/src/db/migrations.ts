@@ -1,7 +1,11 @@
-import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DbClient } from "./client.js";
+import {
+  createMigrationRunner as createEnhancedRunner,
+  type Migration as EnhancedMigration,
+  type MigrationApplyResult,
+} from "./migration-runner.js";
 
 export interface Migration {
   id: number;
@@ -21,68 +25,69 @@ export interface MigrationRunner {
   applyAll(): Promise<Migration[]>;
 }
 
-const MIGRATION_FILE_RE = /^\d+_[a-zA-Z0-9_]+\.sql$/;
-
+/**
+ * Compatibility wrapper that delegates to the canonical enhanced runner.
+ * All worker paths (bootstrap, tests, infrastructure) now use the same
+ * hardened lifecycle with checksums, advisory lock, duplicate-id rejection,
+ * checksum-drift detection, rollback, and retry-after-rollback support.
+ */
 export function createMigrationRunner(
   client: DbClient,
-  migrationsDir: string
+  migrationsDir: string,
 ): MigrationRunner {
+  const enhanced = createEnhancedRunner(client, migrationsDir);
+
   return {
     async loadMigrations(): Promise<Migration[]> {
-      const entries = await readdir(migrationsDir);
-      const files = entries
-        .filter((entry) => MIGRATION_FILE_RE.test(entry))
-        .sort((a, b) => {
-          const idA = Number(a.split("_")[0]);
-          const idB = Number(b.split("_")[0]);
-          return idA - idB;
-        });
-
-      const migrations: Migration[] = [];
-      for (const file of files) {
-        const id = Number(file.split("_")[0]);
-        const name = file.replace(/^\d+_/, "").replace(/\.sql$/, "");
-        const path = resolve(migrationsDir, file);
-        const sql = await readFile(path, "utf-8");
-        migrations.push({ id, name, path, sql });
-      }
-
-      return migrations;
+      const enhancedMigrations = await enhanced.loadMigrations();
+      return enhancedMigrations.map((m: EnhancedMigration) => ({
+        id: m.id,
+        name: m.name,
+        path: m.path,
+        sql: m.sql,
+      }));
     },
 
     async getState(): Promise<MigrationState> {
-      let appliedIds: number[] = [];
-      try {
-        const result = await client.query<{ id: number }>(
-          "SELECT id FROM seovista_migrations ORDER BY id"
-        );
-        appliedIds = result.rows.map((row) => row.id);
-      } catch {
-        // Migration tracking table does not exist yet; it will be created by
-        // the first migration inside the same transactional batch.
-      }
-
-      const migrations = await this.loadMigrations();
-      const pending = migrations.filter((m) => !appliedIds.includes(m.id));
-      return { appliedIds, pending };
+      const state = await enhanced.getState();
+      return {
+        appliedIds: state.applied.map((r) => r.id),
+        pending: state.pending.map((m) => ({
+          id: m.id,
+          name: m.name,
+          path: m.path,
+          sql: m.sql,
+        })),
+      };
     },
 
     async applyAll(): Promise<Migration[]> {
-      const { pending } = await this.getState();
-      const applied: Migration[] = [];
+      const results: MigrationApplyResult[] = await enhanced.applyAll();
 
-      for (const migration of pending) {
-        await client.transaction(async (tx) => {
-          await tx.query(migration.sql);
-          await tx.query(
-            "INSERT INTO seovista_migrations (id, name) VALUES ($1, $2)",
-            [migration.id, migration.name]
-          );
-        });
-        applied.push(migration);
-      }
+      // Only return migrations that were newly applied (or retried) in this call.
+      // Already-applied migrations (no_op) are excluded, matching the legacy contract.
+      const successStatuses = new Set([
+        "applied",
+        "retry_after_rollback",
+      ]);
 
-      return applied;
+      const newlyAppliedIds = new Set(
+        results
+          .filter((r) => successStatuses.has(r.status))
+          .map((r) => r.migrationId),
+      );
+
+      // Load all migrations from disk to return the full Migration objects.
+      const all = await enhanced.loadMigrations();
+
+      return all
+        .filter((m) => newlyAppliedIds.has(m.id))
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          path: m.path,
+          sql: m.sql,
+        }));
     },
   };
 }

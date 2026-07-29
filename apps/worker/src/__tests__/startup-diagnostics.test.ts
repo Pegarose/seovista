@@ -124,7 +124,7 @@ describe("worker startup diagnostics", () => {
         env: {
           ...process.env,
           DATABASE_URL: "__test_invalid_db_url__",
-          REDIS_URL: "redis://localhost:56379",
+          REDIS_URL: "redis://localhost:8637",
           NODE_ENV: "test",
         },
         stdio: "pipe",
@@ -198,7 +198,7 @@ describe("worker startup diagnostics", () => {
         env: {
           ...process.env,
           // Missing DATABASE_URL triggers env validation failure
-          REDIS_URL: "redis://localhost:56379",
+          REDIS_URL: "redis://localhost:8637",
           NODE_ENV: "test",
         },
         stdio: "pipe",
@@ -299,7 +299,7 @@ describe("worker startup diagnostics", () => {
         env: {
           ...process.env,
           DATABASE_URL: "__test_invalid_db_url__",
-          REDIS_URL: "redis://localhost:56379",
+          REDIS_URL: "redis://localhost:8637",
           NODE_ENV: "test",
         },
         stdio: "pipe",

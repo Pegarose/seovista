@@ -1,6 +1,29 @@
 export { createDbClient, checkDbConnection, type DbClient } from "./client.js";
 export { createMigrationRunner, defaultMigrationsDir, type Migration } from "./migrations.js";
 export {
+  createMigrationRunner as createEnhancedMigrationRunner,
+  type MigrationRunner,
+  type MigrationState,
+  type MigrationApplyResult,
+  type MigrationStatus,
+  type MigrationLedgerRow,
+} from "./migration-runner.js";
+export { createTenantRepository, type TenantRepository, type Organization, type Workspace, type WorkspaceMembership as TenantWorkspaceMembership, type Project } from "./tenant.js";
+export {
+  evaluateAuthorization,
+  createAuthorizationRepository,
+  isAllowed,
+  canRead,
+  minimumRoleForCapability,
+  roleHasCapability,
+  type AuthorizationDecision,
+  type AuthorizationContext,
+  type AuthorizationRepository,
+  type ProjectOwnershipResult,
+  type WorkspaceRole,
+  type Capability,
+} from "./tenant-auth.js";
+export {
   DEFAULT_ADMIN_DISPLAY_NAME,
   DEFAULT_ADMIN_EMAIL,
   ensureAdminBootstrap,
@@ -11,7 +34,12 @@ export {
   type LocalAdminBootstrapEnvironment,
   type LocalAdminBootstrapResult,
 } from "./admin-seed.js";
-export { createGeoAuditRepository, type GeoAuditLeadRow, type AdminLeadListRow } from "./geo-audit-repository.js";
+export {
+  createGeoAuditRepository,
+  type GeoAuditLeadRow,
+  type AdminLeadListRow,
+  type GeoAuditJobRecord,
+} from "./geo-audit-repository.js";
 export {
   createJobRepository,
   createJobResultRepository,

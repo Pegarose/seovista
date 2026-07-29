@@ -13,7 +13,7 @@ const ownedStack: ParentStack = {
     redisDatabase: 0,
     queuePrefix: "worker-owned:queue:",
     correlationIdPrefix: "worker-owned-correlation-",
-    hostPorts: { postgres: 55432, redis: 56379 },
+    hostPorts: { postgres: 8543, redis: 8637 },
     createdAt: "2026-07-15T00:00:00.000Z",
     cleanupAuthority: "context:worker-owned",
     evidenceDirectory: "C:/repo/.lifecycle-evidence/worker-owned",

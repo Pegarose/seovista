@@ -124,13 +124,15 @@ export class ScoringEngine {
       } catch (err) {
         console.error(`Error executing module ${mod.key}:`, err);
         isDegraded = true;
-        // Fallback for failed module
+        // A failed module contributes no score. Marking it critical keeps the
+        // persisted breakdown honest instead of turning an unavailable signal
+        // into a fabricated success.
         moduleResults.push({
           key: mod.key,
           label: mod.label,
-          score: mod.maxScore, // Graceful fallback
+          score: 0,
           maxScore: mod.maxScore,
-          status: 'excellent',
+          status: 'critical',
           issues: [],
           recommendations: []
         });
@@ -568,9 +570,10 @@ export class ScoringEngine {
  * contract. Returns an empty array when the payload is missing / malformed
  * so the breakdown degrades gracefully instead of crashing the score path.
  *
- * Each entry must carry a string `platform`, a numeric `score`, and a numeric
- * `confidence`; entries that fail the guard are dropped. `rationale` defaults
- * to `""` and `experimental` defaults to `false` when absent.
+ * Each entry must carry a string `platform`, a finite bounded `score`, a
+ * finite bounded `confidence`, a non-empty `rationale`, and a real boolean
+ * `experimental`; entries that fail the guard are dropped rather than
+ * receiving fabricated defaults.
  */
 function extractPlatformReadiness(
   aiVisibility: Record<string, unknown> | null,
@@ -584,8 +587,18 @@ function extractPlatformReadiness(
     const p = entry as Record<string, unknown>;
     if (
       typeof p.platform !== "string" ||
+      p.platform.trim().length === 0 ||
       typeof p.score !== "number" ||
-      typeof p.confidence !== "number"
+      !Number.isFinite(p.score) ||
+      p.score < 0 ||
+      p.score > 100 ||
+      typeof p.confidence !== "number" ||
+      !Number.isFinite(p.confidence) ||
+      p.confidence < 0 ||
+      p.confidence > 1 ||
+      typeof p.rationale !== "string" ||
+      p.rationale.trim().length === 0 ||
+      typeof p.experimental !== "boolean"
     ) {
       continue;
     }
@@ -593,8 +606,8 @@ function extractPlatformReadiness(
       platform: p.platform,
       score: p.score,
       confidence: p.confidence,
-      rationale: typeof p.rationale === "string" ? p.rationale : "",
-      experimental: Boolean(p.experimental),
+      rationale: p.rationale,
+      experimental: p.experimental,
     });
   }
   return out;

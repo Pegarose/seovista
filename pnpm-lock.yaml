@@ -53,7 +53,7 @@ importers:
         version: 8.63.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   apps/nextg:
     dependencies:
@@ -72,7 +72,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   apps/web:
     dependencies:
@@ -134,6 +134,9 @@ importers:
       fast-xml-parser:
         specifier: ^5.0.0
         version: 5.10.0
+      happy-dom:
+        specifier: ^17.6.3
+        version: 17.6.3
       lighthouse:
         specifier: ^12.4.0
         version: 12.8.2
@@ -148,7 +151,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   apps/worker:
     dependencies:
@@ -161,6 +164,9 @@ importers:
       '@seovista/geo-engine':
         specifier: workspace:*
         version: link:../../packages/geo-engine
+      '@seovista/search-visibility':
+        specifier: workspace:*
+        version: link:../../packages/search-visibility
       bullmq:
         specifier: ^5.43.1
         version: 5.80.1
@@ -191,7 +197,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/analytics:
     dependencies:
@@ -207,7 +213,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/audit-core:
     dependencies:
@@ -226,7 +232,19 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+
+  packages/content-intelligence:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.20.1
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.8
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/content-models:
     dependencies:
@@ -245,7 +263,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/dataforseo:
     dependencies:
@@ -261,7 +279,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/geo-engine:
     dependencies:
@@ -280,7 +298,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/open-seo-adapter:
     dependencies:
@@ -296,7 +314,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/reports:
     dependencies:
@@ -312,7 +330,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/schema:
     dependencies:
@@ -334,7 +352,19 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+
+  packages/search-visibility:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.20.1
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.8
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/seo-core:
     dependencies:
@@ -353,7 +383,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
   packages/ui:
     dependencies:
@@ -378,7 +408,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.8
-        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
 packages:
 
@@ -2562,6 +2592,10 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
+  happy-dom@17.6.3:
+    resolution: {integrity: sha512-UVIHeVhxmxedbWPCfgS55Jg2rDfwf2BCKeylcPSqazLz5w3Kri7Q4xdBJubsr/+VUzFLh0VjIvh13RaDA2/Xug==}
+    engines: {node: '>=20.0.0'}
+
   has-bigints@1.1.0:
     resolution: {integrity: sha512-R3pbpkcIqv2Pm3dUwgjclDRVmWpTJW2DcMzcIhEXEx1oh/CEMObMm3KLmRJOdvhM7o4uQBnwr8pzRK2sJWIqfg==}
     engines: {node: '>= 0.4'}
@@ -4035,6 +4069,10 @@ packages:
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
 
+  webidl-conversions@7.0.0:
+    resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
+    engines: {node: '>=12'}
+
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
@@ -4042,6 +4080,10 @@ packages:
 
   whatwg-fetch@3.6.20:
     resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
+
+  whatwg-mimetype@3.0.0:
+    resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
+    engines: {node: '>=12'}
 
   whatwg-mimetype@4.0.0:
     resolution: {integrity: sha512-QaKxh0eNIi2mE9p2vEdzfagOKHCcj1pJ56EEHGQOVxp8r9/iszLUUV7v89x9O1p/T+NlTM5W7jW6+cz4Fq1YVg==}
@@ -6484,6 +6526,11 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
+  happy-dom@17.6.3:
+    dependencies:
+      webidl-conversions: 7.0.0
+      whatwg-mimetype: 3.0.0
+
   has-bigints@1.1.0: {}
 
   has-flag@3.0.0: {}
@@ -8107,7 +8154,7 @@ snapshots:
       lightningcss: 1.32.0
       tsx: 4.23.1
 
-  vitest@3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1):
+  vitest@3.2.7(@types/node@22.20.1)(happy-dom@17.6.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.7
@@ -8134,6 +8181,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.20.1
+      happy-dom: 17.6.3
     transitivePeerDependencies:
       - jiti
       - less
@@ -8152,11 +8200,15 @@ snapshots:
 
   webidl-conversions@3.0.1: {}
 
+  webidl-conversions@7.0.0: {}
+
   whatwg-encoding@3.1.1:
     dependencies:
       iconv-lite: 0.6.3
 
   whatwg-fetch@3.6.20: {}
+
+  whatwg-mimetype@3.0.0: {}
 
   whatwg-mimetype@4.0.0: {}
 

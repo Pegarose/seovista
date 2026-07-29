@@ -45,7 +45,7 @@ describe("isolated infrastructure lifecycle contract", () => {
     expect(first.redisDatabase).toBe(0);
     expect(first.queuePrefix).toBe(`${first.runId}:queue`);
     expect(first.correlationIdPrefix).toBe(`${first.runId}-correlation-`);
-    expect(first.hostPorts).toEqual({ postgres: 55432, redis: 56379 });
+    expect(first.hostPorts).toEqual({ postgres: 8543, redis: 8637 });
     expect(first.createdAt).toBe(createdAt);
     expect(first.cleanupAuthority).toBe(`context:${first.runId}`);
     expect(first.evidenceDirectory.replaceAll("\\", "/")).toContain("/.lifecycle-evidence/");
@@ -92,8 +92,8 @@ describe("isolated infrastructure lifecycle contract", () => {
         COMPOSE_PROJECT_NAME: context.composeProject,
         SEOVISTA_DATABASE_NAME: context.databaseName,
         SEOVISTA_REDIS_NAMESPACE: context.redisNamespace,
-        SEOVISTA_POSTGRES_PORT: "55432",
-        SEOVISTA_REDIS_PORT: "56379",
+        SEOVISTA_POSTGRES_PORT: "8543",
+        SEOVISTA_REDIS_PORT: "8637",
         SEOVISTA_OWNERSHIP_TOKEN: context.ownershipToken,
       }),
     );
@@ -177,8 +177,8 @@ describe("isolated infrastructure lifecycle contract", () => {
   it("keeps Compose loopback-bound and free of fixed global resource names", () => {
     const compose = readFileSync(resolve(root, "docker-compose.yml"), "utf8");
 
-    expect(compose).toContain('127.0.0.1:${SEOVISTA_POSTGRES_PORT:-55432}:5432');
-    expect(compose).toContain('127.0.0.1:${SEOVISTA_REDIS_PORT:-56379}:6379');
+    expect(compose).toContain('127.0.0.1:${SEOVISTA_POSTGRES_PORT:-8543}:5432');
+    expect(compose).toContain('127.0.0.1:${SEOVISTA_REDIS_PORT:-8637}:6379');
     expect(compose).toContain("com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}");
     expect(compose).not.toMatch(/^\s*(container_name|name):/m);
   });

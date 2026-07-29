@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Queue, type Worker } from "bullmq";
+import { ScoringEngine } from "@seovista/geo-engine";
 import { startGeoWorker } from "../queue/geo-worker.js";
 import { setupTestEnvironment, type TestEnvironment } from "./helpers/test-env.js";
 
@@ -69,6 +70,11 @@ describe("geo-worker", () => {
     // the in-process ScoringEngine (no external nextg proxy). Mock global fetch to return
     // minimal HTML so the cheerio fetcher path yields a ParsedPage; the engine then
     // computes scores from that page and the worker persists a geo:result row.
+    // Use a per-run unique URL so the Redis DB 1 render cache (`geo:cache:{sha256(url)}`)
+    // always misses — a cache hit would skip the global fetch mock and cause a false
+    // negative on the toHaveBeenCalled assertion.
+    const testUrl = `https://example.com/test-${env.projectId}`;
+
     const sampleHtml =
       "<!doctype html><html><head><title>Example Domain</title>" +
       '<meta name="description" content="Example domain for use in illustrative examples.">' +
@@ -90,13 +96,13 @@ describe("geo-worker", () => {
     const res = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      ["geo-test-job-identity", queueName, "queued", "https://example.com", "geo-test-corr-id"]
+      ["geo-test-job-identity", queueName, "queued", testUrl, "geo-test-corr-id"]
     );
     const jobIdInDb = res.rows[0]?.id;
 
     await queue.add("geo_score", {
       jobId: jobIdInDb,
-      url: "https://example.com",
+      url: testUrl,
     });
 
     const actualStatus = await waitForJobStatus(env.db, jobIdInDb);
@@ -110,9 +116,140 @@ describe("geo-worker", () => {
         : jobResults.rows[0]?.payload;
 
       expect(resultData).toBeTruthy();
-      expect(resultData?.target).toBe("https://example.com");
+      expect(resultData?.target).toBe(testUrl);
       expect(typeof resultData?.scores?.overall).toBe("number");
     }
+  });
+
+  it("persists a fixture-backed SERP preview with complete provenance", async () => {
+    const testUrl = `https://example.com/provenance-${env.projectId}`;
+    const sampleHtml =
+      "<!doctype html><html><head><title>Example Domain</title>" +
+      '<meta name="description" content="Deterministic fixture description.">' +
+      '<link rel="canonical" href="https://example.com/canonical">' +
+      "</head><body><main><h1>Example Domain</h1><p>Deterministic fixture.</p></main></body></html>";
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => sampleHtml,
+      json: async () => ({}),
+      headers: { forEach: () => undefined },
+    }));
+
+    worker = startGeoWorker({ queueName });
+    const res = await env.db.query(
+      `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      ["geo-test-job-provenance", queueName, "queued", testUrl, "geo-test-corr-provenance"],
+    );
+    const jobId = res.rows[0]?.id;
+
+    await queue.add("geo_score", { jobId, url: testUrl });
+    expect(await waitForJobStatus(env.db, jobId)).toBe("completed");
+
+    const persisted = await env.db.query<{ payload: Record<string, unknown> }>(
+      "SELECT payload FROM job_results WHERE correlation_id = $1",
+      ["geo-test-corr-provenance"],
+    );
+    const payload = persisted.rows[0]?.payload;
+    expect(payload?.serpPreview).toMatchObject({
+      title: "Example Domain",
+      snippet: "Deterministic fixture description.",
+      url: "https://example.com/canonical",
+      sourceMode: "simulated",
+      displayType: "serp",
+      provider: "deterministic-fixture",
+      fixtureId: "geo-page-parse-v1",
+      requestId: "geo-test-corr-provenance",
+      operationKey: `geo:${jobId}`,
+      runId: String(jobId),
+      freshness: "fresh",
+      outcome: "success",
+    });
+  });
+
+  it("omits preview when the fetched page has no complete independent provenance", async () => {
+    const testUrl = `https://example.com/provenance-omission-${env.projectId}`;
+    const sampleHtml =
+      "<!doctype html><html><head><title>Example Domain</title></head>" +
+      "<body><main><h1>Example Domain</h1><p>Deterministic fixture.</p></main></body></html>";
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => sampleHtml,
+      json: async () => ({}),
+      headers: { forEach: () => undefined },
+    }));
+
+    worker = startGeoWorker({ queueName });
+
+    const res = await env.db.query(
+      `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      ["geo-test-job-provenance-omission", queueName, "queued", testUrl, "geo-test-corr-provenance-omission"],
+    );
+    const jobId = res.rows[0]?.id;
+
+    await queue.add("geo_score", { jobId, url: testUrl });
+
+    expect(await waitForJobStatus(env.db, jobId)).toBe("completed");
+    const persisted = await env.db.query<{ payload: unknown }>(
+      "SELECT payload FROM job_results WHERE correlation_id = $1",
+      ["geo-test-corr-provenance-omission"],
+    );
+    expect(persisted.rows).toHaveLength(1);
+
+    const payload = persisted.rows[0]?.payload;
+    expect(payload).toBeTruthy();
+    expect(payload).toMatchObject({ target: testUrl });
+    expect(payload).not.toHaveProperty("serpPreview");
+    expect(payload).not.toHaveProperty("aiPreview");
+    expect(payload).not.toHaveProperty("accessStatus");
+    expect(payload).not.toHaveProperty("previewProvenance");
+  });
+
+  it("fails closed when the engine omits the required final score", async () => {
+    const testUrl = `https://example.com/missing-score-${env.projectId}`;
+    const sampleHtml =
+      "<!doctype html><html><head><title>Example Domain</title></head>" +
+      "<body><main><h1>Example Domain</h1></main></body></html>";
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => sampleHtml,
+      json: async () => ({}),
+      headers: { forEach: () => undefined },
+    }));
+
+    const originalScorePage = ScoringEngine.prototype.scorePage;
+    vi.spyOn(ScoringEngine.prototype, "scorePage").mockImplementation(async function (this: ScoringEngine, context, startTime) {
+      const output = await originalScorePage.call(this, context, startTime);
+      return { ...output, finalScore: undefined as never };
+    });
+
+    worker = startGeoWorker({ queueName });
+
+    const res = await env.db.query(
+      `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      ["geo-test-job-missing-score", queueName, "queued", testUrl, "geo-test-corr-missing-score"],
+    );
+    const jobId = res.rows[0]?.id;
+
+    await queue.add("geo_score", { jobId, url: testUrl });
+
+    expect(await waitForJobStatus(env.db, jobId)).toBe("failed");
+    const persisted = await env.db.query(
+      "SELECT id FROM job_results WHERE correlation_id = $1",
+      ["geo-test-corr-missing-score"],
+    );
+    expect(persisted.rows).toHaveLength(0);
   });
 
   it("handles 429 rate limit correctly", async () => {

@@ -24,7 +24,7 @@ import {
 import { createGeoAuditRepository } from "../db/geo-audit-repository.js";
 
 const REDIS_HOST = "127.0.0.1";
-const REDIS_PORT = 56379;
+const REDIS_PORT = 8637;
 
 async function redisAvailable(): Promise<boolean> {
   const client = new IORedis({

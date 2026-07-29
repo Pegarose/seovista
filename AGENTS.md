@@ -23,7 +23,7 @@
 
 ## Mission Boundaries
 
-- **Ports:** web `3200`, NextG mock `3101`, PostgreSQL `55432`, Redis `56379`.
+- **Ports:** web `3200`, NextG mock `3101`, PostgreSQL `8543`, Redis `8637`.
 - **Off-limits:** ports `5433`, `5434`, `6379` (other projects), and ports `3000-3199` (user dev servers) except the assigned `3101`.
 - Sprint 0 uses deterministic mocks for NextG, DataForSEO, Google OAuth, object storage, email, and analytics. No live provider traffic or credentials.
 - Do not contact private, metadata, or loopback addresses through audit fixtures.

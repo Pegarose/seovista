@@ -146,13 +146,12 @@ export async function checkJobStatusAction(jobId: string) {
        return { success: true, data: null };
     }
     
-    const { status, persistedStatus } = normalizeAuditStatusRecord(job);
+    const { status } = normalizeAuditStatusRecord(job);
     
     return {
       success: true,
       data: {
         status,
-        persistedStatus,
         // Only return minimal DTO required by AuditPoller. Do NOT leak lead_id or work_email.
       },
     };
@@ -189,7 +188,7 @@ export async function unlockDetailedReport(_prev: any, formData: FormData): Prom
       return { error: "Invalid lead ID provided" };
     }
 
-    await repo.updateLeadEmail(leadId, email, consent);
+    await repo.updateLeadEmailForJob(jobId, email, consent);
     return { success: true };
   } catch (err) {
     console.error("Failed to unlock report", err);

@@ -3,7 +3,7 @@ import { Fraunces, Inter_Tight } from "next/font/google";
 import { Header } from "../src/components/header";
 import { Footer } from "../src/components/footer";
 import type { Metadata } from "next";
-import { siteUrl } from "../src/content/site";
+import { homePage, siteUrl } from "../src/content/site";
 import { headers } from "next/headers";
 
 const fraunces = Fraunces({
@@ -27,10 +27,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     template: "%s",
-    default: "SeoVista — GEO & Search Visibility Intelligence",
+    default: homePage.title,
   },
-  description:
-    "SeoVista studies how brands earn visibility across search engines and generative answer systems through clarity, technical health, credible sources, and topical authority.",
+  description: homePage.description,
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.svg",

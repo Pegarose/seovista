@@ -17,7 +17,7 @@ services:
       POSTGRES_DB: ${SEOVISTA_DATABASE_NAME:-seovista}
       SEOVISTA_DATABASE_NAME: ${SEOVISTA_DATABASE_NAME:-seovista}
     ports:
-      - "127.0.0.1:${SEOVISTA_POSTGRES_PORT:-55432}:5432"
+      - "127.0.0.1:${SEOVISTA_POSTGRES_PORT:-8543}:5432"
     labels:
       com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}
     volumes:
@@ -32,7 +32,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "127.0.0.1:${SEOVISTA_REDIS_PORT:-56379}:6379"
+      - "127.0.0.1:${SEOVISTA_REDIS_PORT:-8637}:6379"
     labels:
       com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}
     volumes:

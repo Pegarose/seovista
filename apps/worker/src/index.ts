@@ -1,5 +1,10 @@
 export * from "./db/index.js";
 export {
+  createSearchVisibilityProvider,
+  type ProviderMode,
+  type ProviderSelectionContext,
+} from "./providers/index.js";
+export {
   submitGeoAudit,
   closeGeoSubmissionQueue,
   GEO_QUEUE_NAME,

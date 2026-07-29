@@ -17,7 +17,7 @@ import {
 } from "../utils/credit-guard.js";
 
 const REDIS_HOST = "127.0.0.1";
-const REDIS_PORT = 56379;
+const REDIS_PORT = 8637;
 const REDIS_URL = `redis://${REDIS_HOST}:${REDIS_PORT}/0`;
 
 async function redisAvailable(): Promise<boolean> {

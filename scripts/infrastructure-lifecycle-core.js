@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { cwd, pid } from "node:process";
 
 export const LIFECYCLE_CONTEXT_SCHEMA_VERSION = 1;
-export const DEFAULT_HOST_PORTS = Object.freeze({ postgres: 55432, redis: 56379 });
+export const DEFAULT_HOST_PORTS = Object.freeze({ postgres: 8543, redis: 8637 });
 export const OWNERSHIP_TOKEN_LABEL = "com.seovista.lifecycle.token";
 export const COMPOSE_PROJECT_LABEL = "com.docker.compose.project";
 

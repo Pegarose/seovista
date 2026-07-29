@@ -41,8 +41,12 @@ function PointLossBadge({ pointLoss }: { pointLoss: number }): ReactElement | nu
   );
 }
 
+type ParsedScoreBreakdown = Omit<ScoreBreakdown, "platformReadiness"> & {
+  platformReadiness?: ScoreBreakdown["platformReadiness"];
+};
+
 interface ScoreBreakdownProps {
-  breakdown: ScoreBreakdown;
+  breakdown: ParsedScoreBreakdown;
 }
 
 /**
@@ -183,7 +187,7 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
       </footer>
     </section>
 
-    {breakdown.platformReadiness.length > 0 ? (
+    {breakdown.platformReadiness && breakdown.platformReadiness.length > 0 ? (
       <PlatformConfidenceView platforms={breakdown.platformReadiness} />
     ) : null}
     </>

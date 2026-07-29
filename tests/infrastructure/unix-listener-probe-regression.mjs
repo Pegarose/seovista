@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { buildUnixListenerProbeScript } from "../../scripts/infrastructure-lifecycle-inspection.js";
 
-const script = buildUnixListenerProbeScript([55432, 56379]);
+const script = buildUnixListenerProbeScript([8543, 8637]);
 const result = spawnSync("/bin/sh", ["-c", `PATH=/path/that-does-not-contain-ss; export PATH; ${script}`], {
   encoding: "utf8",
 });

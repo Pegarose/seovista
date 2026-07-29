@@ -5,7 +5,7 @@ import { createGeoAuditRepository } from "./geo-audit-repository.js";
 
 async function main() {
   const connectionString = 
-    process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:55432/seovista";
+    process.env.DATABASE_URL || "postgresql://seovista:seovista@127.0.0.1:8543/seovista";
 
   console.log(`Connecting to database at ${connectionString}...`);
   const dbClient = createDbClient({ connectionString });

@@ -4,7 +4,7 @@ import { checkIpRateLimit } from "../utils/rate-limiter.js";
 
 describe("IP Rate Limiter", () => {
   let redis: IORedis;
-  const testRedisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:56379";
+  const testRedisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:8637";
   const testIp = "203.0.113.42";
 
   beforeEach(async () => {

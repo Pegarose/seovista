@@ -21,6 +21,8 @@ const workspaceDirs = [
   "packages/geo-engine",
   "packages/reports",
   "packages/analytics",
+  "packages/search-visibility",
+  "packages/content-intelligence",
 ];
 
 const tsParserOptions = {

@@ -42,8 +42,7 @@ describe("checkJobStatusAction status contract", () => {
       expect(result).toEqual({
         success: true,
         data: {
-          status,
-          persistedStatus: status,
+          status: status === "pending" ? "queued" : status === "permanent_failure" ? "permanent" : status,
         },
       });
     },
@@ -64,8 +63,26 @@ describe("checkJobStatusAction status contract", () => {
       success: true,
       data: {
         status: "unknown",
-        persistedStatus: "mysterious_status",
       },
+    });
+  });
+  
+  it("rejects malformed UUID before hitting db", async () => {
+    const result = await checkJobStatusAction("not-a-uuid");
+    expect(mockGetAdminDb).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+  });
+  
+  it("returns null data for missing job", async () => {
+    const getJobRecord = vi.fn().mockResolvedValue(undefined);
+    mockGetAdminDb.mockReturnValue({});
+    mockCreateRepository.mockReturnValue({ getJobRecord });
+
+    const result = await checkJobStatusAction("00000000-0000-0000-0000-000000000001");
+
+    expect(result).toEqual({
+      success: true,
+      data: null,
     });
   });
 });

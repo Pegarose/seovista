@@ -37,5 +37,8 @@ describe("Scoring Engine Graceful Degradation", () => {
 
     expect(output.degraded).toBe(true);
     expect(output.breakdown.degraded).toBe(true);
+    expect(output.modules.at(-1)?.score).toBe(0);
+    expect(output.modules.at(-1)?.status).toBe("critical");
+    expect(output.overall.score).toBeLessThan(100);
   });
 });

@@ -10,7 +10,7 @@ interface RouteExpectation {
 }
 
 const launchRoutes: RouteExpectation[] = [
-  { path: "/", title: "SeoVista — GEO & Search Visibility Intelligence", description: "Identify your positioning across generative engine optimization and traditional search visibility." },
+  { path: "/", title: "SeoVista — Editorial intelligence for search visibility", description: "SeoVista studies how brands earn visibility across search engines and generative answer systems through clarity, technical health, credible sources, and topical authority." },
   { path: "/geo/", title: "Generative Engine Optimization — SeoVista", description: "What GEO means, how it differs from traditional SEO, and why quality signals matter more than any guaranteed outcome." },
   { path: "/seo/", title: "Search Engine Optimization — SeoVista", description: "Technical crawlability, content structure, and index health for sustainable organic visibility." },
   { path: "/digital-authority/", title: "Digital Authority — SeoVista", description: "Earned visibility through editorial reputation, credible mentions, and genuine subject authority." },

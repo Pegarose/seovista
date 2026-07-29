@@ -1,0 +1,2 @@
+ [31m[1m⨯[22m[39m Failed to load next.config.ts, see more info here https://nextjs.org/docs/messages/next-config-error
+[TypeError: Cannot read properties of undefined (reading 'baseUrl')]

@@ -6,7 +6,6 @@ import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-
 import { MatchedServicesView } from "../../../../../src/components/geo-checker/matched-services-view";
 import { SerpPreview } from "../../../../../src/components/geo-checker/serp-preview";
 import { createGeoAuditRepository, type DbClient } from "@seovista/worker";
-import { headers } from "next/headers";
 import { parseCompletedPayload } from "../../../../../src/lib/geo-checker/payload-parser";
 import {
   isAuditInFlightStatus,
@@ -26,8 +25,6 @@ export async function generateMetadata() {
 }
 
 export default async function JobResultPage({ params }: { params: Promise<{ jobId: string }> }) {
-  const reqHeaders = await headers(); // Retained to ensure dynamic rendering if Next.js optimizes too aggressively
-
   const { jobId } = await params;
 
   // Reject malformed non-UUID job IDs before any repository query so invalid
@@ -129,8 +126,6 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
 
   // ---------- Render ----------
 
-  reqHeaders;
-  
   // -- In-flight states (queued / running / pending) --
   if (isAuditInFlightStatus(status)) {
     return (

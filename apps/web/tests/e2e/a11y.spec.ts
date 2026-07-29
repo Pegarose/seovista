@@ -31,7 +31,7 @@ for (const route of representativeRoutes) {
 
     if (seriousOrCritical.length > 0) {
       const violationDetails = seriousOrCritical.map(
-        (v) => `${v.id}: ${v.help} (impact: ${v.impact}, nodes: ${v.nodes.length})`,
+        (v) => `${v.id}: ${v.help} (impact: ${v.impact}, nodes: ${v.nodes.length})\nNode excerpts:\n${v.nodes.map(n => n.html).join("\n")}`,
       );
       expect(false, `axe violations on ${route} at desktop:\n${violationDetails.join("\n")}`).toBe(true);
     }
@@ -57,7 +57,7 @@ for (const route of ["/", "/geo/", "/tools/", "/tools/geo-readiness-checker/", "
 
     if (seriousOrCritical.length > 0) {
       const violationDetails = seriousOrCritical.map(
-        (v) => `${v.id}: ${v.help} (impact: ${v.impact}, nodes: ${v.nodes.length})`,
+        (v) => `${v.id}: ${v.help} (impact: ${v.impact}, nodes: ${v.nodes.length})\nNode excerpts:\n${v.nodes.map(n => n.html).join("\n")}`,
       );
       expect(false, `axe violations on ${route} at mobile:\n${violationDetails.join("\n")}`).toBe(true);
     }

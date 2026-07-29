@@ -52,8 +52,8 @@ See `docs/adr/` for architecture decision records.
 |--------------------|-----------|------------------------------------------------|
 | Web app            | 3200      | Next.js App Router, trailing-slash URLs        |
 | NextG mock         | 3101      | Deterministic mock CMS service                 |
-| PostgreSQL         | 55432     | Docker host mapping, not 5433/5434             |
-| Redis              | 56379     | Docker host mapping, not 6379                  |
+| PostgreSQL         | 8543      | Docker host mapping, not 5433/5434             |
+| Redis              | 8637      | Docker host mapping, not 6379                  |
 | Worker             | none      | Background process, no public listener           |
 
 Off-limits ports: `5433`, `5434`, `6379` (other projects), and `3000-3199` (user dev servers) except the assigned `3101`.

@@ -13,6 +13,10 @@ import {
 } from "../db/index.js";
 import { createPingQueueName, createPingJobId } from "../queue/ping.js";
 import { createMigrationRunner, defaultMigrationsDir } from "../db/migrations.js";
+import {
+  createMigrationRunner as createEnhancedMigrationRunner,
+  type MigrationApplyResult,
+} from "../db/migration-runner.js";
 import { createDbClient } from "../db/client.js";
 import { setupTestEnvironment, buildWorkerEnv, PROJECT_ROOT } from "./helpers/test-env.js";
 import { waitForWorkerReady, redactSecrets } from "./helpers/startup-utils.js";
@@ -62,7 +66,7 @@ describe("infrastructure walking skeleton", () => {
       const runner = createMigrationRunner(env.db, defaultMigrationsDir());
       const { appliedIds, pending } = await runner.getState();
       expect(pending.length).toBe(0);
-      expect(appliedIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+      expect(appliedIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     });
 
     it("is a no-op on the second run and preserves data", async () => {
@@ -78,8 +82,9 @@ describe("infrastructure walking skeleton", () => {
         "CREATE TABLE broken_table (id INTEGER);\nINSERT INTO broken_table VALUES ('not-an-integer');"
       );
 
+      const postgresUrl = env.databaseUrl.replace(/\/[^/]+$/, "/postgres");
       const freshDb = createDbClient({
-        connectionString: "postgresql://seovista:seovista@127.0.0.1:55432/postgres",
+        connectionString: postgresUrl,
         max: 1,
       });
       const testDbName = `seovista_migration_atomic_${Date.now()}`;
@@ -87,17 +92,21 @@ describe("infrastructure walking skeleton", () => {
       await freshDb.close();
 
       const brokenDb = createDbClient({
-        connectionString: `postgresql://seovista:seovista@127.0.0.1:55432/${testDbName}`,
+        connectionString: env.databaseUrl.replace(/\/[^/]+$/, `/${testDbName}`),
         max: 1,
       });
-      const brokenRunner = createMigrationRunner(brokenDb, brokenDir);
+      // Use the enhanced runner directly to get fine-grained status results.
+      const brokenRunner = createEnhancedMigrationRunner(brokenDb, brokenDir);
 
-      await expect(brokenRunner.applyAll()).rejects.toThrow();
+      const results: MigrationApplyResult[] = await brokenRunner.applyAll();
+      expect(results.length).toBe(1);
+      // The broken migration should fail and be rolled back.
+      expect(results[0]!.status).toBe("rolled_back");
 
-      const result = await brokenDb.query<{ count: number }>(
+      const tableResult = await brokenDb.query<{ count: number }>(
         "SELECT COUNT(*)::int AS count FROM information_schema.tables WHERE table_name = 'broken_table'"
       );
-      expect(result.rows[0]?.count).toBe(0);
+      expect(tableResult.rows[0]?.count).toBe(0);
 
       const migrationResult = await brokenDb.query<{ count: number }>(
         "SELECT COUNT(*)::int AS count FROM information_schema.tables WHERE table_name = 'seovista_migrations'"
@@ -107,7 +116,7 @@ describe("infrastructure walking skeleton", () => {
       await brokenDb.close();
 
       const adminDb = createDbClient({
-        connectionString: "postgresql://seovista:seovista@127.0.0.1:55432/postgres",
+        connectionString: postgresUrl,
         max: 1,
       });
       await adminDb.query(`DROP DATABASE IF EXISTS "${testDbName}" WITH (FORCE)`);
