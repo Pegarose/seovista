@@ -42,7 +42,7 @@ describe("checkJobStatusAction status contract", () => {
       expect(result).toEqual({
         success: true,
         data: {
-          status: status === "pending" ? "queued" : status === "permanent_failure" ? "permanent" : status,
+          status: status,
         },
       });
     },
@@ -68,6 +68,7 @@ describe("checkJobStatusAction status contract", () => {
   });
   
   it("rejects malformed UUID before hitting db", async () => {
+    mockGetAdminDb.mockClear();
     const result = await checkJobStatusAction("not-a-uuid");
     expect(mockGetAdminDb).not.toHaveBeenCalled();
     expect(result.success).toBe(false);

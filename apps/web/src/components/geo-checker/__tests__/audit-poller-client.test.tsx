@@ -102,7 +102,7 @@ describe("AuditPoller real Client Component lifecycle", () => {
     async (status) => {
       checkStatus.mockResolvedValueOnce({
         success: true,
-        data: { status: status as any, persistedStatus: status as any },
+        data: { status: status as any },
       });
 
       await renderPoller(root, { jobId: "00000000-0000-0000-0000-000000000001", initialStatus: "running" });
@@ -150,7 +150,6 @@ describe("AuditPoller real Client Component lifecycle", () => {
       success: true,
       data: {
         status: "unknown" as any,
-        persistedStatus: "unknown" as any,
       },
     });
 
@@ -168,11 +167,11 @@ describe("AuditPoller real Client Component lifecycle", () => {
     checkStatus
       .mockResolvedValueOnce({
         success: true,
-        data: { status: "running" as any, persistedStatus: "running" as any },
+        data: { status: "running" as any },
       })
       .mockResolvedValueOnce({
         success: true,
-        data: { status: "pending" as any, persistedStatus: "pending" as any },
+        data: { status: "pending" as any },
       })
       .mockImplementationOnce(pendingStatusAction);
 
@@ -205,7 +204,7 @@ describe("AuditPoller real Client Component lifecycle", () => {
     await act(async () => {
       resolveStatus?.({
         success: true,
-        data: { status: "completed" as any, persistedStatus: "completed" as any },
+        data: { status: "completed" as any },
       });
       await Promise.resolve();
     });
@@ -229,7 +228,7 @@ describe("AuditPoller real Client Component lifecycle", () => {
     await act(async () => {
       resolveStatus?.({
         success: true,
-        data: { status: "completed" as any, persistedStatus: "completed" as any },
+        data: { status: "completed" as any },
       });
       await Promise.resolve();
     });
