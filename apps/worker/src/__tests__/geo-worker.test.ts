@@ -257,6 +257,9 @@ describe("geo-worker", () => {
       ok: false,
       status: 429,
       statusText: "Too Many Requests",
+      text: async () => "Rate limited",
+      json: async () => ({ error: "rate limit" }),
+      headers: { forEach: () => undefined },
     });
     vi.stubGlobal("fetch", fetchMock);
 

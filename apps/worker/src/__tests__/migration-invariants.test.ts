@@ -36,6 +36,31 @@ describe("Migration Invariants", () => {
   // VAL-FOUND-003: Schema and migration invariants
   // ------------------------------------------------------------------
   describe("VAL-FOUND-003 — Schema and migration invariants", () => {
+    it("upgrades a legacy ledger before reading checksum-bearing rows", async () => {
+      const before = await env.db.query<{ id: number; checksum: string }>(
+        "SELECT id, checksum FROM seovista_migrations ORDER BY id",
+      );
+
+      try {
+        await env.db.query("ALTER TABLE seovista_migrations DROP COLUMN checksum");
+
+        const state = await runner.getState();
+        expect(state.applied).toHaveLength(before.rows.length);
+        expect(state.applied.every((row) => row.checksum === "legacy")).toBe(true);
+      } finally {
+        await env.db.query(
+          `ALTER TABLE seovista_migrations
+           ADD COLUMN IF NOT EXISTS checksum TEXT NOT NULL DEFAULT 'legacy'`,
+        );
+        for (const row of before.rows) {
+          await env.db.query(
+            "UPDATE seovista_migrations SET checksum = $2 WHERE id = $1",
+            [row.id, row.checksum],
+          );
+        }
+      }
+    });
+
     it("creates required schema objects via migration apply", async () => {
       const results = await runner.applyAll();
       const failed = results.filter((r) => r.status !== "applied" && r.status !== "no_op");

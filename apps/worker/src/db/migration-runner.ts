@@ -186,14 +186,22 @@ export function createMigrationRunner(
   // getState
   // ------------------------------------------------------------------
   async function getState(): Promise<MigrationState> {
+    const ledgerExists = await client.query<{ exists: boolean }>(
+      "SELECT to_regclass('seovista_migrations') IS NOT NULL AS exists",
+    );
+
     let applied: MigrationLedgerRow[] = [];
-    try {
+    if (ledgerExists.rows[0]?.exists === true) {
+      // Older databases may have a ledger created before checksum tracking.
+      // Upgrade that table before reading or writing checksum-bearing rows.
+      await client.query(
+        `ALTER TABLE seovista_migrations
+         ADD COLUMN IF NOT EXISTS checksum TEXT NOT NULL DEFAULT 'legacy'`,
+      );
       const result = await client.query<MigrationLedgerRow>(
         "SELECT id, name, checksum, applied_at FROM seovista_migrations ORDER BY id",
       );
       applied = result.rows;
-    } catch {
-      // ledger table does not exist yet
     }
 
     const all = await loadMigrations();
