@@ -317,4 +317,15 @@ describe("web build isolation policy", () => {
     expect(source).toContain("environment.NEXT_DIST_DIR = BUILD_PROFILES[profile]");
     expect(source).toContain("publishActiveOutput(ownership)");
   });
+
+  it("forces a fresh owned server for Playwright integration and removes ambient dependencies", () => {
+    const root = resolve(import.meta.dirname, "..", "..");
+    const playwrightConfig = readFileSync(resolve(root, "apps/web/playwright.config.ts"), "utf8");
+
+    expect(playwrightConfig).toContain("reuseExistingServer: false");
+    expect(playwrightConfig).toContain("run-isolated-web-command.js playwright build");
+    expect(playwrightConfig).toContain("run-isolated-web-command.js playwright serve");
+    expect(playwrightConfig).not.toContain("process.env.DATABASE_URL");
+    expect(playwrightConfig).not.toContain("process.env.REDIS_URL");
+  });
 });

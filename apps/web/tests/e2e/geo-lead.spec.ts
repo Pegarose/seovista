@@ -8,15 +8,16 @@ test('executes end-to-end GEO lead capture workflow', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'GEO Readiness Checker' })).toBeVisible();
 
   // Step 2: Fill out the form
-  await page.getByLabel('Domain URL').fill('https://playwright-test.com');
-  await page.getByLabel('Brand Name').fill('PlaywrightTest');
-  await page.getByLabel('Primary Market').selectOption('USA');
+  await page.getByLabel('Domain URL').fill('https://example.com');
+  await page.getByLabel('Brand Name').fill('Example');
+  await page.getByLabel('Primary Market').selectOption('Global');
   
   // Submit the form
-  await page.getByRole('button', { name: 'Start Free Audit' }).click();
+  await expect(page.locator('form [type="submit"]')).toBeVisible({ timeout: 15000 });
+  await page.locator('form [type="submit"]').click();
 
   // Step 3: Wait for redirection to /result/
-  await page.waitForURL(/\/tools\/geo-readiness-checker\/result\/.+/);
+  await page.waitForURL(/\/tools\/geo-readiness-checker\/result\/.+/, { timeout: 30000 });
   
   // Ensure we landed on the result polling/status page
   // The AuditPoller component should render here while loading

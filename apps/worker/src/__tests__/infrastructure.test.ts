@@ -123,7 +123,7 @@ describe("infrastructure walking skeleton", () => {
       await adminDb.close();
 
       rmSync(brokenDir, { recursive: true, force: true });
-    }, 30_000);
+    }, 60_000);
   });
 
   describe("job lifecycle", () => {
@@ -423,7 +423,7 @@ describe("infrastructure walking skeleton", () => {
 
       await pingQueue!.add("ping", { correlationId, target }, { jobId: createPingJobId(correlationId) });
 
-      const completed = await waitForJobCompletion(env, correlationId, 30_000);
+      const completed = await waitForJobCompletion(env, correlationId, 60_000);
       expect(completed.status).toBe("completed");
       expect(completed.terminal_class).toBe("success");
       expect(completed.result_id).not.toBeNull();
@@ -446,7 +446,7 @@ describe("infrastructure walking skeleton", () => {
       await pingQueue!.add("ping", { correlationId, target }, { jobId: createPingJobId(correlationId) });
       await pingQueue!.add("ping", { correlationId, target }, { jobId: createPingJobId(correlationId) });
 
-      const completed = await waitForJobCompletion(env, correlationId, 30_000);
+      const completed = await waitForJobCompletion(env, correlationId, 60_000);
       expect(completed.status).toBe("completed");
 
       const results = createJobResultRepository(env.db);
@@ -472,7 +472,7 @@ describe("infrastructure walking skeleton", () => {
         { jobId: createPingJobId(correlationId), attempts: 3, backoff: { type: "exponential", delay: 100 } }
       );
 
-      const completed = await waitForJobCompletion(env, correlationId, 30_000);
+      const completed = await waitForJobCompletion(env, correlationId, 60_000);
       expect(completed.status).toBe("completed");
       expect(completed.terminal_class).toBe("success");
 

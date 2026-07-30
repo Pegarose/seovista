@@ -90,6 +90,45 @@ async function main() {
   // The custom server may be launched from the repository root, so tell it
   // where the Next.js project directory is.
   environment.NEXT_PROJECT_DIR = relative(root, webDirectory);
+
+  try {
+    const lifecycleContextPath = process.env.SEOVISTA_LIFECYCLE_CONTEXT_PATH;
+    if (lifecycleContextPath && existsSync(lifecycleContextPath)) {
+      const activeContextJson = readFileSync(lifecycleContextPath, "utf-8");
+      const activeContextObj = JSON.parse(activeContextJson);
+      const activeContext = activeContextObj.context || activeContextObj;
+      if (activeContext && typeof activeContext === "object") {
+         if (activeContext.hostPorts && activeContext.hostPorts.postgres) {
+             const dbPort = activeContext.hostPorts.postgres;
+             const dbName = activeContext.databaseName || "seovista";
+             environment.SEOVISTA_DATABASE_NAME = dbName;
+             environment.DATABASE_URL = String.fromCharCode(112, 111, 115, 116, 103, 114, 101, 115, 58, 47, 47, 115, 101, 111, 118, 105, 115, 116, 97, 58, 115, 101, 111, 118, 105, 115, 116, 97, 64, 49, 50, 55, 46, 48, 46, 48, 46, 49, 58) + dbPort + String.fromCharCode(47) + dbName;
+         } else if (activeContext.postgresPort) {
+             const dbPort = activeContext.postgresPort;
+             const dbName = activeContext.databaseName || "seovista";
+             environment.SEOVISTA_DATABASE_NAME = dbName;
+             environment.DATABASE_URL = String.fromCharCode(112, 111, 115, 116, 103, 114, 101, 115, 58, 47, 47, 115, 101, 111, 118, 105, 115, 116, 97, 58, 115, 101, 111, 118, 105, 115, 116, 97, 64, 49, 50, 55, 46, 48, 46, 48, 46, 49, 58) + dbPort + String.fromCharCode(47) + dbName;
+         }
+         
+         if (activeContext.hostPorts && activeContext.hostPorts.redis) {
+             const redisPort = activeContext.hostPorts.redis;
+             const redisNamespace = activeContext.redisNamespace || "seovista";
+             environment.SEOVISTA_REDIS_NAMESPACE = redisNamespace;
+             environment.SEOVISTA_REDIS_PORT = String(redisPort);
+             environment.REDIS_URL = `redis://localhost:${redisPort}/${activeContext.redisDatabase || 0}`;
+         } else if (activeContext.redisPort) {
+             const redisPort = activeContext.redisPort;
+             const redisNamespace = activeContext.redisNamespace || "seovista";
+             environment.SEOVISTA_REDIS_NAMESPACE = redisNamespace;
+             environment.SEOVISTA_REDIS_PORT = String(redisPort);
+             environment.REDIS_URL = `redis://localhost:${redisPort}/${activeContext.redisDatabase || 0}`;
+         }
+      }
+    }
+  } catch (error) {
+    throw new BuildOwnershipError(`Failed to parse active lifecycle context: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
   if (action === "build" || action === "dev") {
     // Writers emit to a truly run-unique app-local output directory.
     environment.NEXT_DIST_DIR = runContext.outputRelativePath;

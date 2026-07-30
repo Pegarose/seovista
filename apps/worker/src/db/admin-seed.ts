@@ -140,7 +140,9 @@ async function main(): Promise<void> {
   await runLocalAdminBootstrap();
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+import { pathToFileURL } from "node:url";
+
+if (import.meta.url === (process.argv[1] ? pathToFileURL(process.argv[1]).href : "")) {
   main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : "Local admin bootstrap failed");
     process.exitCode = 1;

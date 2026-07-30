@@ -2,8 +2,8 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 
 const children = [];
-const pnpmCommand = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "pnpm";
-const pnpmArgs = process.platform === "win32" ? ["/d", "/s", "/c"] : [];
+const pnpmCommand = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "corepack";
+const pnpmArgs = process.platform === "win32" ? ["/d", "/s", "/c"] : ["pnpm"];
 
 function start(command, args, options) {
   const child = spawn(command, args, {

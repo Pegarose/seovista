@@ -1,14 +1,14 @@
 commands:
   install: corepack pnpm install --frozen-lockfile
-  dev: pnpm dev
-  build: pnpm build
-  typecheck: pnpm typecheck
-  lint: pnpm lint
-  test: pnpm test
-  test:e2e: pnpm test:e2e
-  test:a11y: pnpm test:a11y
-  test:seo: pnpm test:seo
-  lighthouse: pnpm lighthouse
+  dev: corepack pnpm dev
+  build: corepack pnpm build
+  typecheck: corepack pnpm typecheck
+  lint: corepack pnpm lint
+  test: corepack pnpm test
+  test:e2e: corepack pnpm test:e2e
+  test:a11y: corepack pnpm test:a11y
+  test:seo: corepack pnpm test:seo
+  lighthouse: corepack pnpm lighthouse
 
 services:
   postgres:
@@ -26,22 +26,22 @@ services:
     depends_on: [postgres]
 
   nextg-mock:
-    start: pnpm --filter @seovista/nextg dev
+    start: corepack pnpm --filter @seovista/nextg dev
     stop: node scripts/owned-service-lifecycle.js stop nextg-mock
     healthcheck: curl -sf http://localhost:3101/health
     port: 3101
     depends_on: []
 
   web:
-    start: pnpm --filter @seovista/web dev
+    start: corepack pnpm --filter @seovista/web dev
     stop: node scripts/owned-service-lifecycle.js stop web
     healthcheck: curl -sf http://localhost:3200/api/health/
     port: 3200
     depends_on: [nextg-mock]
 
   worker:
-    start: pnpm --filter @seovista/worker dev
+    start: corepack pnpm --filter @seovista/worker dev
     stop: node scripts/owned-service-lifecycle.js stop worker
-    healthcheck: pnpm --filter @seovista/worker healthcheck
+    healthcheck: corepack pnpm --filter @seovista/worker healthcheck
     port: -1
     depends_on: [postgres, redis]

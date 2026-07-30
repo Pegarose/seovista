@@ -41,16 +41,16 @@ const ARTIFACTS_RETENTION_DAYS = 7;
 // Gate steps in dependency order
 const GATES = [
   { name: "install-verify", command: "corepack pnpm install --frozen-lockfile", timeout: 120_000 },
-  { name: "lint", command: "pnpm lint", timeout: 120_000 },
-  { name: "typecheck", command: "pnpm typecheck", timeout: 120_000 },
-  { name: "test", command: "pnpm test", timeout: 300_000, needsDocker: true },
-  { name: "verify:production-sentinels", command: "pnpm verify:production-sentinels", timeout: 600_000 },
-  { name: "verify-package-boundaries", command: "pnpm verify-package-boundaries", timeout: 120_000 },
-  { name: "build", command: "pnpm build", timeout: 300_000 },
-  { name: "test:e2e", command: "pnpm test:e2e", timeout: 300_000 },
-  { name: "test:a11y", command: "pnpm test:a11y", timeout: 300_000 },
-  { name: "test:seo", command: "pnpm test:seo", timeout: 300_000 },
-  { name: "lighthouse", command: "pnpm lighthouse", timeout: 600_000 },
+  { name: "lint", command: "corepack pnpm lint", timeout: 120_000 },
+  { name: "typecheck", command: "corepack pnpm typecheck", timeout: 120_000 },
+  { name: "test", command: "corepack pnpm test", timeout: 300_000, needsDocker: true },
+  { name: "verify:production-sentinels", command: "corepack pnpm verify:production-sentinels", timeout: 600_000 },
+  { name: "verify-package-boundaries", command: "corepack pnpm verify-package-boundaries", timeout: 120_000 },
+  { name: "build", command: "corepack pnpm build", timeout: 300_000 },
+  { name: "test:e2e", command: "corepack pnpm test:e2e", timeout: 300_000 },
+  { name: "test:a11y", command: "corepack pnpm test:a11y", timeout: 300_000 },
+  { name: "test:seo", command: "corepack pnpm test:seo", timeout: 300_000 },
+  { name: "lighthouse", command: "corepack pnpm lighthouse", timeout: 600_000 },
 ];
 
 // Store child process references for cleanup

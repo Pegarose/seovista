@@ -47,17 +47,11 @@ export default defineConfig({
     command:
       "node ../../scripts/run-isolated-web-command.js playwright build && node ../../scripts/run-isolated-web-command.js playwright serve",
     url: "http://localhost:3200",
-    reuseExistingServer: true,
-    timeout: 120000,
+    reuseExistingServer: false,
+    timeout: 300000,
     env: {
       NEXT_PUBLIC_SITE_URL: "https://seovista.com",
       NEXTG_API_URL: "http://localhost:3101",
-      NEXT_DIST_DIR: ".next-playwright",
-      DATABASE_URL: process.env.DATABASE_URL as string,
-      REDIS_URL: process.env.REDIS_URL as string,
-      SEOVISTA_DATABASE_NAME: process.env.SEOVISTA_DATABASE_NAME as string,
-      SEOVISTA_REDIS_NAMESPACE: process.env.SEOVISTA_REDIS_NAMESPACE as string,
-      SEOVISTA_REDIS_PORT: process.env.SEOVISTA_REDIS_PORT as string,
     },
   },
 });

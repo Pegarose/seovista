@@ -28,7 +28,6 @@
     "@seovista/seo-core": "workspace:*",
     "@seovista/ui": "workspace:*",
     "@seovista/worker": "workspace:*",
-    "bullmq": "^5.80.1",
     "next": "15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -45,7 +44,6 @@
     "fast-xml-parser": "^5.0.0",
     "happy-dom": "^17.6.3",
     "lighthouse": "^12.4.0",
-    "pg": "^8.22.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.8.2",
     "vitest": "^3.0.8"
