@@ -354,7 +354,12 @@ describe("monorepo bootstrap contract", () => {
       expect(wf).toContain("pnpm typecheck");
       expect(wf).toContain("pnpm test");
       expect(wf).toContain("pnpm build");
+      expect(wf).toContain("Build worker for E2E");
+      expect(wf).toContain("pnpm --filter @seovista/worker build");
       expect(wf).toContain("pnpm test:e2e");
+      expect(wf.indexOf("pnpm --filter @seovista/worker build")).toBeLessThan(
+        wf.indexOf("pnpm test:e2e"),
+      );
       expect(wf).toContain("pnpm test:a11y");
       expect(wf).toContain("pnpm test:seo");
       expect(wf).toContain("pnpm lighthouse");

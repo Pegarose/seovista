@@ -287,6 +287,9 @@ jobs:
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
 
+      - name: Build worker for E2E
+        run: corepack pnpm --filter @seovista/worker build
+
       - name: Install Playwright browsers
         run: corepack pnpm exec playwright install chromium --with-deps
 
