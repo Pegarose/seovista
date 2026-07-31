@@ -4,6 +4,7 @@ import { SchemaGraphTree } from "../../../../../src/components/schema-checker/sc
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
+import { getSchemaScoreBand } from "../../../../../src/lib/schema-checker/score-band";
 
 export const dynamic = "force-dynamic";
 
@@ -64,11 +65,24 @@ export default async function SchemaJobResultPage({
     );
   }
 
-  let jobRow;
+  interface SchemaJobRow {
+    id: string;
+    target: string | null;
+    status: string;
+    result_payload: unknown;
+  }
+  let jobRow: SchemaJobRow | undefined;
   try {
-    const res = await db.query(
-      `SELECT id, target, service, status, result_payload, created_at, updated_at
-       FROM job_records WHERE id = $1 AND service = 'schema_audit'`,
+    // Results live in job_results (JSONB), joined via correlation_id — the
+    // same contract the geo repository's getJobResultPayload uses. The
+    // queue_name filter scopes the lookup to schema audits.
+    const res = await db.query<SchemaJobRow>(
+      `SELECT j.id, j.target, j.status, r.payload AS result_payload
+       FROM job_records j
+       LEFT JOIN job_results r ON r.correlation_id = j.correlation_id
+       WHERE j.id = $1 AND j.queue_name = 'schema_audit'
+       ORDER BY r.created_at DESC
+       LIMIT 1`,
       [jobId]
     );
     jobRow = res.rows[0];
@@ -138,9 +152,9 @@ export default async function SchemaJobResultPage({
   let payload: SchemaAuditResultPayload | null = null;
   if (status === "completed" && jobRow.result_payload) {
     try {
-      payload = typeof jobRow.result_payload === "string"
+      payload = (typeof jobRow.result_payload === "string"
         ? JSON.parse(jobRow.result_payload)
-        : jobRow.result_payload;
+        : jobRow.result_payload) as SchemaAuditResultPayload;
     } catch {
       payload = null;
     }
@@ -162,16 +176,7 @@ export default async function SchemaJobResultPage({
   }
 
   const safePayload = payload!;
-  const scoreBand: "critical" | "poor" | "needs_improvement" | "good" | "excellent" =
-    safePayload.score >= 90
-      ? "excellent"
-      : safePayload.score >= 80
-        ? "good"
-        : safePayload.score >= 60
-          ? "needs_improvement"
-          : safePayload.score >= 40
-            ? "poor"
-            : "critical";
+  const scoreBand = getSchemaScoreBand(safePayload.score);
 
   return (
     <main className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">

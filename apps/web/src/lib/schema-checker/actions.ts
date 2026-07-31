@@ -1,39 +1,11 @@
 "use server";
 
-import { z } from "zod";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getAdminDb } from "../admin/db";
-import { checkIpRateLimit } from "@seovista/worker";
+import { checkIpRateLimit, submitSchemaAudit } from "@seovista/worker";
 import { extractClientIp } from "../geo-checker/ip";
-import { randomUUID } from "node:crypto";
-
-const SchemaInputSchema = z.object({
-  url: z
-    .string()
-    .url("Geçerli bir URL giriniz.")
-    .min(1, "URL alanının doldurulması zorunludur.")
-    .refine(
-      (val) => {
-        try {
-          const hostname = new URL(val).hostname.toLowerCase();
-          
-          if (["localhost", "127.0.0.1", "0.0.0.0"].includes(hostname)) return false;
-          if (hostname.startsWith("10.") || hostname.startsWith("192.168.") || hostname.startsWith("172.16.")) return false;
-          if (hostname.endsWith(".local") || hostname.endsWith(".internal") || hostname.endsWith(".corp")) return false;
-          
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      { message: "Geçersiz hedef. Dahili alan adları kabul edilmemektedir." }
-    ),
-});
-
-export function validateSchemaInput(url: string) {
-  return SchemaInputSchema.safeParse({ url });
-}
+import { validateSchemaInput } from "./validation";
 
 export type SchemaActionState = {
   status: "idle" | "error" | "validating";
@@ -85,14 +57,11 @@ export async function startSchemaAuditAction(
       };
     }
 
-    const jobId = randomUUID();
-    await db.query(
-      `INSERT INTO job_records (id, target, service, status, created_at, updated_at)
-       VALUES ($1, $2, 'schema_audit', 'queued', NOW(), NOW())`,
-      [jobId, url]
-    );
+    // Inserts the job_records row (queue_name 'schema_audit', status 'queued')
+    // and enqueues the BullMQ job consumed by the schema worker.
+    const result = await submitSchemaAudit({ db, redisUrl, url });
 
-    return redirect(`/tools/schema-checker/result/${jobId}`);
+    return redirect(`/tools/schema-checker/result/${result.jobId}`);
   } catch (error) {
     if (
       error &&

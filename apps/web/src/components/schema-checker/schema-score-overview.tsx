@@ -1,4 +1,5 @@
 import React from "react";
+import { getSchemaScoreBand, type SchemaScoreBand } from "../../lib/schema-checker/score-band";
 
 export interface SchemaScoreOverviewProps {
   score: number;
@@ -7,22 +8,38 @@ export interface SchemaScoreOverviewProps {
   prohibitedClaimCount: number;
 }
 
+const BAND_PRESENTATION: Record<SchemaScoreBand, { statusText: string; statusBg: string }> = {
+  excellent: {
+    statusText: "Mükemmel",
+    statusBg: "bg-green-50 text-green-700 border-green-200",
+  },
+  good: {
+    statusText: "İyi",
+    statusBg: "bg-green-50 text-green-700 border-green-200",
+  },
+  needs_improvement: {
+    statusText: "İyileştirilebilir",
+    statusBg: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  poor: {
+    statusText: "Zayıf",
+    statusBg: "bg-red-50 text-red-700 border-red-200",
+  },
+  critical: {
+    statusText: "Kritik / Hatalı",
+    statusBg: "bg-red-50 text-red-700 border-red-200",
+  },
+};
+
 export function SchemaScoreOverview({
   score,
   rawScriptCount,
   parseErrorCount,
   prohibitedClaimCount,
 }: SchemaScoreOverviewProps) {
-  let statusText = "Mükemmel";
-  let statusBg = "bg-green-50 text-green-700 border-green-200";
-
-  if (score < 50) {
-    statusText = "Zayıf / Hatalı";
-    statusBg = "bg-red-50 text-red-700 border-red-200";
-  } else if (score < 80) {
-    statusText = "İyileştirilebilir";
-    statusBg = "bg-amber-50 text-amber-700 border-amber-200";
-  }
+  // Thresholds come from the shared score-band helper so this component and
+  // the result page's Crew CTA band can never drift apart.
+  const { statusText, statusBg } = BAND_PRESENTATION[getSchemaScoreBand(score)];
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
