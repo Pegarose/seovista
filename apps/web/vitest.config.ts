@@ -18,6 +18,10 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Globals let @testing-library/react register its automatic cleanup hook
+    // between tests (it detects the global afterEach at import time).
+    globals: true,
+    setupFiles: ["./vitest.setup.ts"],
     exclude: ["**/tests/e2e/**", "**/node_modules/**", "**/.next/**"],
   },
 });
