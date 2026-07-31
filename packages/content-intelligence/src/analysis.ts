@@ -79,6 +79,10 @@ export function isAnalysisError(value: unknown): value is TypedError {
 
 // ── Implementation ─────────────────────────────────────────────────────────
 
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((item): item is string => typeof item === "string");
+}
+
 /**
  * Analyze content and return a deterministic score with recommendations.
  *
@@ -93,20 +97,27 @@ export function analyzeContent(input: AnalysisInput): AnalysisOutput | TypedErro
     });
   }
 
-  const title = typeof input.title === "string" ? input.title : "";
-  const body = typeof input.body === "string" ? input.body : "";
-  const headings = Array.isArray(input.headings)
-    ? input.headings.filter((h): h is string => typeof h === "string")
-    : [];
-  const keywords = Array.isArray(input.targetKeywords)
-    ? input.targetKeywords.filter((k): k is string => typeof k === "string")
-    : [];
-  const lsiTerms = Array.isArray(input.lsiTerms)
-    ? input.lsiTerms.filter((t): t is string => typeof t === "string")
-    : [];
-  const entities = Array.isArray(input.entities)
-    ? input.entities.filter((e): e is string => typeof e === "string")
-    : [];
+  if (
+    typeof input.title !== "string" ||
+    typeof input.body !== "string" ||
+    !isStringArray(input.headings) ||
+    (input.targetKeywords !== undefined && !isStringArray(input.targetKeywords)) ||
+    (input.lsiTerms !== undefined && !isStringArray(input.lsiTerms)) ||
+    (input.entities !== undefined && !isStringArray(input.entities))
+  ) {
+    return createTypedError({
+      code: typedErrorCodes.validation.malformed,
+      retryable: false,
+      message: "Analysis input contains malformed fields",
+    });
+  }
+
+  const title = input.title;
+  const body = input.body;
+  const headings = input.headings;
+  const keywords = input.targetKeywords ?? [];
+  const lsiTerms = input.lsiTerms ?? [];
+  const entities = input.entities ?? [];
 
   // Normalize for comparison
   const titleLower = title.toLowerCase();

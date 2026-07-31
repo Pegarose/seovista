@@ -131,9 +131,14 @@ export function normalizeBlock(input: EditorBlockInput): NormalizedBlock | Typed
     }
 
     case "list": {
-      const items = Array.isArray(input.items)
-        ? input.items.filter((i): i is string => typeof i === "string").map((i) => i.trim())
-        : [];
+      if (!Array.isArray(input.items) || !input.items.every((item): item is string => typeof item === "string")) {
+        return createTypedError({
+          code: typedErrorCodes.validation.malformed,
+          retryable: false,
+          message: "List block must have an 'items' field containing only strings",
+        });
+      }
+      const items = input.items.map((item) => item.trim());
       return {
         type: "list",
         ordered: input.ordered === true,

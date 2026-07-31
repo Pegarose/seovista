@@ -116,6 +116,16 @@ describe("VAL-FOUND-012 — block normalization", () => {
     }
   });
 
+  it("rejects non-string list items instead of silently dropping them", async () => {
+    const { normalizeBlock, isBlockError } = await import("@seovista/content-intelligence");
+    const input = { type: "list", items: ["Valid item", 42, null] };
+    const result = normalizeBlock(input as unknown as Record<string, unknown>);
+    expect(isBlockError(result)).toBe(true);
+    if (isBlockError(result)) {
+      expect(result.code).toBe("validation.malformed");
+    }
+  });
+
   it("rejects unsafe URL in link block (javascript:)", async () => {
     const { normalizeBlock, isBlockError } = await import("@seovista/content-intelligence");
     const input = { type: "link", text: "Click", url: "javascript:alert(1)" };
@@ -299,6 +309,42 @@ describe("VAL-FOUND-012 — analysis errors", () => {
     const { analyzeContent, isAnalysisError } = await import("@seovista/content-intelligence");
     const result = analyzeContent(null as unknown as Parameters<typeof analyzeContent>[0]);
     expect(isAnalysisError(result)).toBe(true);
+  });
+
+  it("rejects malformed required analysis fields instead of treating them as empty", async () => {
+    const { analyzeContent, isAnalysisError } = await import("@seovista/content-intelligence");
+    const result = analyzeContent({
+      title: 42,
+      body: "Valid body",
+      headings: [],
+    } as unknown as Parameters<typeof analyzeContent>[0]);
+    expect(isAnalysisError(result)).toBe(true);
+    if (isAnalysisError(result)) {
+      expect(result.code).toBe("validation.malformed");
+    }
+  });
+
+  it("rejects non-string items in analysis arrays instead of filtering them out", async () => {
+    const { analyzeContent, isAnalysisError } = await import("@seovista/content-intelligence");
+    const base = {
+      title: "Title",
+      body: "Body",
+      headings: ["Heading"],
+    };
+    const malformedInputs = [
+      { ...base, headings: ["Heading", 42] },
+      { ...base, targetKeywords: ["keyword", null] },
+      { ...base, lsiTerms: ["term", false] },
+      { ...base, entities: ["entity", {}] },
+    ];
+
+    for (const input of malformedInputs) {
+      const result = analyzeContent(input as unknown as Parameters<typeof analyzeContent>[0]);
+      expect(isAnalysisError(result)).toBe(true);
+      if (isAnalysisError(result)) {
+        expect(result.code).toBe("validation.malformed");
+      }
+    }
   });
 
   it("errors have stable codes, retryability, and safe messages", async () => {
