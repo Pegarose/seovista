@@ -94,3 +94,18 @@ export {
   SERP_LIMITS,
   SERP_CHAR_GUIDANCE,
 } from "./serp-preview.js";
+
+export type {
+  SerpEntry,
+  SerpLocale,
+  KeywordRankResult,
+} from "./serp-rank.js";
+
+export {
+  SERP_LOCALES,
+  normalizeHost,
+  matchesDomain,
+  parseSerpEntries,
+  extractKeywordRank,
+  isValidPublicDomain,
+} from "./serp-rank.js";
