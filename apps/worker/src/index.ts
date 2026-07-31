@@ -72,4 +72,18 @@ export {
   type SubmitAiCrawlerAuditInput,
   type SubmitAiCrawlerAuditResult,
 } from "./queue/ai-crawler-submission.js";
+export {
+  processKeywordRankPayload,
+  type KeywordRankResultPayload,
+  type ProcessKeywordRankPayloadInput,
+} from "./processors/keyword-rank.js";
+export {
+  submitKeywordRankCheck,
+  closeKeywordRankSubmissionQueue,
+  KEYWORD_RANK_QUEUE_NAME,
+  KEYWORD_RANK_JOB_NAME,
+  KEYWORD_RANK_JOB_RECORD_QUEUE_NAME,
+  type SubmitKeywordRankCheckInput,
+  type SubmitKeywordRankCheckResult,
+} from "./queue/keyword-rank-submission.js";
 
