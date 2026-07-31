@@ -632,3 +632,48 @@ export async function fetchAndParseUrlWithMeta(
   return { parsedPage: parsed, cacheHit: false };
 }
 
+/**
+ * Result of {@link fetchTextSafely}: the raw text body plus the HTTP status
+ * so callers can distinguish `404` (resource absent — a valid audit outcome,
+ * e.g. a missing robots.txt) from other non-2xx responses (fetch failures).
+ */
+export interface SafeTextFetchResult {
+  readonly statusCode: number;
+  readonly body: string;
+  readonly contentType: string | null;
+}
+
+/**
+ * SSRF-safe plain-text fetch for non-HTML resources (e.g. robots.txt).
+ *
+ * Reuses the same hostname/IP validation ({@link validateSSRF}) and the same
+ * default redirect policy (`follow`, as in the Cheerio page fetch above) as
+ * the HTML pipeline, but performs no HTML parsing, no render-cache lookup and
+ * no Browseract involvement — a direct validated GET returning raw text.
+ * Unlike the page fetch, a timeout guard (`AbortSignal.timeout`, default 15s)
+ * is applied so a stalled origin cannot pin a queue job forever.
+ */
+export async function fetchTextSafely(
+  targetUrl: string,
+  options: { timeoutMs?: number } = {},
+): Promise<SafeTextFetchResult> {
+  await validateSSRF(targetUrl);
+
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  const response = await fetch(targetUrl, {
+    headers: {
+      "User-Agent": "SeoVista Crawler/1.0",
+      "Accept": "text/plain,text/*,*/*;q=0.8",
+    },
+    redirect: "follow",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+
+  const body = await response.text();
+  return {
+    statusCode: response.status,
+    body,
+    contentType: response.headers.get("content-type"),
+  };
+}
+

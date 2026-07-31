@@ -59,4 +59,17 @@ export {
   type SubmitSchemaAuditInput,
   type SubmitSchemaAuditResult,
 } from "./queue/schema-submission.js";
+export {
+  processAiCrawlerAuditPayload,
+  type AiCrawlerAuditResultPayload,
+} from "./processors/ai-crawler-audit.js";
+export {
+  submitAiCrawlerAudit,
+  closeAiCrawlerSubmissionQueue,
+  AI_CRAWLER_QUEUE_NAME,
+  AI_CRAWLER_JOB_NAME,
+  AI_CRAWLER_JOB_RECORD_QUEUE_NAME,
+  type SubmitAiCrawlerAuditInput,
+  type SubmitAiCrawlerAuditResult,
+} from "./queue/ai-crawler-submission.js";
 

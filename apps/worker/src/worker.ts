@@ -6,6 +6,7 @@ import { createDbClient, type DbClient } from "./db/client.js";
 import { createPingQueue, createPingWorker } from "./queue/ping.js";
 import { startGeoWorker } from "./queue/geo-worker.js";
 import { startSchemaWorker } from "./queue/schema-worker.js";
+import { startAiCrawlerWorker } from "./queue/ai-crawler-worker.js";
 import { closeCacheRedis } from "./utils/render-cache.js";
 import { logDailyCreditBudgetOnBoot } from "./utils/credit-guard.js";
 import { getWorkerEnv, getProjectId } from "./env.js";
@@ -20,6 +21,7 @@ interface RunningWorker {
   worker: Worker;
   geoWorker: Worker;
   schemaWorker: Worker;
+  aiCrawlerWorker: Worker;
 }
 
 let running: RunningWorker | null = null;
@@ -67,8 +69,9 @@ async function run(): Promise<void> {
   const worker = createPingWorker(queueOptions);
   const geoWorker = startGeoWorker();
   const schemaWorker = startSchemaWorker();
+  const aiCrawlerWorker = startAiCrawlerWorker();
 
-  running = { db, queue, worker, geoWorker, schemaWorker };
+  running = { db, queue, worker, geoWorker, schemaWorker, aiCrawlerWorker };
 
   // Phase A — VAL-A-MIT-004: on boot, log the remaining daily Browseract
   // credit budget so operators can see the daily cap state at startup. Reads
@@ -133,6 +136,7 @@ async function shutdown(signal: string): Promise<void> {
 
   if (current) {
     // Drain or recover: stop accepting new jobs and wait for active jobs to finish.
+    await current.aiCrawlerWorker.close(false);
     await current.schemaWorker.close(false);
     await current.geoWorker.close(false);
     await current.worker.close(false);

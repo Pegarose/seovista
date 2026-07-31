@@ -164,6 +164,9 @@ importers:
       '@seovista/search-visibility':
         specifier: workspace:*
         version: link:../../packages/search-visibility
+      '@seovista/seo-core':
+        specifier: workspace:*
+        version: link:../../packages/seo-core
       bullmq:
         specifier: ^5.43.1
         version: 5.80.1
