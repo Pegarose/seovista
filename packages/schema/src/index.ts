@@ -25,6 +25,9 @@ export {
   validatePath,
   buildAbsoluteUrl,
   ensureString,
+  extractAndValidateSchemas,
+  type ExtractedProhibitedClaim,
+  type SchemaAuditExtractionResult,
 } from "./validate";
 
 export { organizationId, websiteId, aboutBrandId } from "./ids";

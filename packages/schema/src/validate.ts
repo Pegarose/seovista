@@ -79,3 +79,61 @@ function translateCanonicalError(error: unknown): SchemaValidationError {
   }
   return new SchemaValidationError("canonical", "Canonical validation failed.");
 }
+
+export interface ExtractedProhibitedClaim {
+  field: string;
+  reason: string;
+}
+
+export interface SchemaAuditExtractionResult {
+  rawScriptCount: number;
+  validNodes: Record<string, unknown>[];
+  parseErrors: string[];
+  prohibitedClaims: ExtractedProhibitedClaim[];
+  score: number;
+}
+
+export function extractAndValidateSchemas(
+  html: string,
+  _siteUrl: string
+): SchemaAuditExtractionResult {
+  const jsonLdRegex = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match: RegExpExecArray | null;
+  const validNodes: Record<string, unknown>[] = [];
+  const parseErrors: string[] = [];
+  const prohibitedClaims: ExtractedProhibitedClaim[] = [];
+  let rawScriptCount = 0;
+
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    rawScriptCount++;
+    const scriptContent = match[1].trim();
+    if (!scriptContent) continue;
+
+    try {
+      const parsed = JSON.parse(scriptContent) as Record<string, unknown>;
+      validNodes.push(parsed);
+
+      for (const claim of PROHIBITED_CLAIMS) {
+        if (claim.field in parsed) {
+          prohibitedClaims.push({ field: claim.field, reason: claim.reason });
+        }
+      }
+    } catch (e) {
+      parseErrors.push(e instanceof Error ? e.message : "Invalid JSON-LD format");
+    }
+  }
+
+  let score = 100;
+  if (rawScriptCount === 0) score -= 40;
+  score -= parseErrors.length * 20;
+  score -= prohibitedClaims.length * 30;
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    rawScriptCount,
+    validNodes,
+    parseErrors,
+    prohibitedClaims,
+    score,
+  };
+}
