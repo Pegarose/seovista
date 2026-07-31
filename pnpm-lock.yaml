@@ -158,6 +158,9 @@ importers:
       '@seovista/geo-engine':
         specifier: workspace:*
         version: link:../../packages/geo-engine
+      '@seovista/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
       '@seovista/search-visibility':
         specifier: workspace:*
         version: link:../../packages/search-visibility

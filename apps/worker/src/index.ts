@@ -49,3 +49,5 @@ export {
   SCHEDULED_QUEUE_NAME,
   type ScheduledAuditPayload,
 } from "./queue/scheduled-monitor.js";
+export { processSchemaAuditJobPayload } from "./processors/schema-audit.js";
+

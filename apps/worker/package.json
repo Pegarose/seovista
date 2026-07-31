@@ -28,6 +28,7 @@
     "@seovista/audit-core": "workspace:*",
     "@seovista/content-models": "workspace:*",
     "@seovista/geo-engine": "workspace:*",
+    "@seovista/schema": "workspace:*",
     "@seovista/search-visibility": "workspace:*",
     "bullmq": "^5.43.1",
     "cheerio": "^1.2.0",

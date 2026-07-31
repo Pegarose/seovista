@@ -106,7 +106,9 @@ export function extractAndValidateSchemas(
 
   while ((match = jsonLdRegex.exec(html)) !== null) {
     rawScriptCount++;
-    const scriptContent = match[1].trim();
+    const contentGroup = match[1];
+    if (!contentGroup) continue;
+    const scriptContent = contentGroup.trim();
     if (!scriptContent) continue;
 
     try {
