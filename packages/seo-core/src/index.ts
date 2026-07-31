@@ -79,3 +79,18 @@ export {
   AI_CRAWLER_REGISTRY,
   evaluateAllCrawlers,
 } from "./ai-crawlers.js";
+
+export type {
+  SerpTruncation,
+  SerpGuidance,
+  SerpVariantMetrics,
+  SerpAnalysis,
+} from "./serp-preview.js";
+
+export {
+  measurePixelWidth,
+  truncateAtPixelWidth,
+  analyzeSerpSnippet,
+  SERP_LIMITS,
+  SERP_CHAR_GUIDANCE,
+} from "./serp-preview.js";
