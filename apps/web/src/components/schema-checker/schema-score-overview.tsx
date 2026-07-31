@@ -1,5 +1,5 @@
 import React from "react";
-import { getSchemaScoreBand, type SchemaScoreBand } from "../../lib/schema-checker/score-band";
+import { getSchemaScoreBand, type SchemaScoreBand } from "../../lib/score-band";
 
 export interface SchemaScoreOverviewProps {
   score: number;

@@ -4,7 +4,7 @@ import { SchemaGraphTree } from "../../../../../src/components/schema-checker/sc
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
-import { getSchemaScoreBand } from "../../../../../src/lib/schema-checker/score-band";
+import { getSchemaScoreBand } from "../../../../../src/lib/score-band";
 
 export const dynamic = "force-dynamic";
 

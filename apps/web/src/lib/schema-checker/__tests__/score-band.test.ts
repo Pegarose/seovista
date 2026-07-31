@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSchemaScoreBand } from "../score-band";
+import { getSchemaScoreBand } from "../../score-band";
 
 describe("getSchemaScoreBand", () => {
   it("maps scores to the result-page band thresholds", () => {
