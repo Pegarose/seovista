@@ -100,13 +100,16 @@ export class SearxngProvider implements SerpProvider {
         `SEARXNG_BASE_URL must use http or https, got ${parsed.protocol}`,
       );
     }
-    this.baseUrl = options.baseUrl;
+    this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   async search(keyword: string, locale: SerpLocale): Promise<SerpEntry[]> {
-    const url = new URL("/search", this.baseUrl);
+    // Path-prefix safe: append /search to the configured base path so
+    // endpoints served under a prefix (e.g. https://crew.tr4.net/searxng)
+    // keep their prefix instead of collapsing to the origin root.
+    const url = new URL(`${this.baseUrl}/search`);
     url.searchParams.set("q", keyword);
     url.searchParams.set("format", "json");
     url.searchParams.set("language", SERP_LOCALES[locale].searxngLanguage);

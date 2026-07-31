@@ -36,6 +36,16 @@ describe("SearxngProvider", () => {
   it("rejects non-http base URLs as misconfigured", () => {
     expect(() => new SearxngProvider({ baseUrl: "ftp://x" })).toThrowError(SerpProviderError);
   });
+  it("preserves a path prefix on the base URL (e.g. crew.tr4.net/searxng)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200, body: null,
+      text: async () => JSON.stringify({ results: [] }),
+    });
+    const provider = new SearxngProvider({ baseUrl: "https://crew.tr4.net/searxng/", fetchImpl: fetchMock as never });
+    await provider.search("x", "tr-TR");
+    const calledUrl = new URL(fetchMock.mock.calls[0]?.[0] as string);
+    expect(calledUrl.pathname).toBe("/searxng/search");
+  });
 });
 
 describe("resolveSerpProvider", () => {
