@@ -155,8 +155,8 @@ export const toolsPage = page(
   "tools",
   "/tools/",
   "Free Tools — SeoVista",
-  "A growing library of free tools for GEO and SEO readiness. Only the GEO Readiness Checker is linked during Sprint 0.",
-  "SeoVista is building a set of free tools to help teams audit their readiness for generative and search visibility. In Sprint 0 only the GEO Readiness Checker foundation page is available. Additional tools are planned for later phases."
+  "A growing library of free tools for GEO and SEO readiness. The GEO Readiness Checker, Schema Checker, and AI Crawler Checker are linked as previews.",
+  "SeoVista is building a set of free tools to help teams audit their readiness for generative and search visibility. The GEO Readiness Checker, Schema Checker, and AI Crawler Checker are available as previews. Additional tools are planned for later phases."
 );
 
 export const geoReadinessChecker: Tool = {

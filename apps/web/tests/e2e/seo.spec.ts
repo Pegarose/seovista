@@ -14,7 +14,7 @@ const launchRoutes: RouteExpectation[] = [
   { path: "/geo/", title: "Generative Engine Optimization — SeoVista", description: "What GEO means, how it differs from traditional SEO, and why quality signals matter more than any guaranteed outcome." },
   { path: "/seo/", title: "Search Engine Optimization — SeoVista", description: "Technical crawlability, content structure, and index health for sustainable organic visibility." },
   { path: "/digital-authority/", title: "Digital Authority — SeoVista", description: "Earned visibility through editorial reputation, credible mentions, and genuine subject authority." },
-  { path: "/tools/", title: "Free Tools — SeoVista", description: "A growing library of free tools for GEO and SEO readiness. Only the GEO Readiness Checker is linked during Sprint 0." },
+  { path: "/tools/", title: "Free Tools — SeoVista", description: "A growing library of free tools for GEO and SEO readiness. The GEO Readiness Checker, Schema Checker, and AI Crawler Checker are linked as previews." },
   { path: "/tools/geo-readiness-checker/", title: "GEO Readiness Checker — SeoVista", description: "A non-operational foundation page for the GEO Readiness Checker. No Sprint 0 audit is available yet." },
   { path: "/about/", title: "About SeoVista", description: "SeoVista is an editorial intelligence lab focused on GEO and search visibility. A GMedya Group company." },
   { path: "/contact/", title: "Contact SeoVista", description: "Reach out to SeoVista. We are currently in foundation stage and respond as availability allows." },
