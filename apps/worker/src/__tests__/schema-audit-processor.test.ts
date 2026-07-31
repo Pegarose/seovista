@@ -12,9 +12,23 @@ describe("processSchemaAuditJobPayload", () => {
         </head>
       </html>
     `;
-    const result = await processSchemaAuditJobPayload("https://example.com", mockHtml);
+    const result = await processSchemaAuditJobPayload(mockHtml);
     expect(result.score).toBeGreaterThan(0);
     expect(result.rawScriptCount).toBe(1);
     expect(result.validNodes.length).toBe(1);
+  });
+
+  it("survives null JSON-LD roots without emitting nodes", async () => {
+    const mockHtml = `
+      <html>
+        <head>
+          <script type="application/ld+json">null</script>
+        </head>
+      </html>
+    `;
+    const result = await processSchemaAuditJobPayload(mockHtml);
+    expect(result.rawScriptCount).toBe(1);
+    expect(result.validNodes).toEqual([]);
+    expect(result.parseErrors).toEqual([]);
   });
 });

@@ -50,4 +50,13 @@ export {
   type ScheduledAuditPayload,
 } from "./queue/scheduled-monitor.js";
 export { processSchemaAuditJobPayload } from "./processors/schema-audit.js";
+export {
+  submitSchemaAudit,
+  closeSchemaSubmissionQueue,
+  SCHEMA_QUEUE_NAME,
+  SCHEMA_JOB_NAME,
+  SCHEMA_JOB_RECORD_QUEUE_NAME,
+  type SubmitSchemaAuditInput,
+  type SubmitSchemaAuditResult,
+} from "./queue/schema-submission.js";
 
