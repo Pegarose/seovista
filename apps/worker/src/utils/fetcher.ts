@@ -90,6 +90,185 @@ async function validateSSRF(urlString: string): Promise<void> {
 }
 
 /**
+ * Thrown when any URL in a redirect chain (including the initial URL) fails
+ * {@link validateSSRF}. Processors can map this to a permanent failure class —
+ * retrying will not make a private/loopback target fetchable.
+ */
+export class SsrfRedirectBlockedError extends Error {
+  readonly url: string;
+
+  constructor(url: string, reason: string) {
+    super(`SSRF redirect target blocked for ${url}: ${reason}`);
+    this.name = "SsrfRedirectBlockedError";
+    this.url = url;
+  }
+}
+
+/**
+ * Thrown when a redirect chain exceeds the allowed hop count. Mapped to a
+ * permanent failure class — the origin is redirect-looping.
+ */
+export class TooManyRedirectsError extends Error {
+  readonly url: string;
+  readonly maxHops: number;
+
+  constructor(url: string, maxHops: number) {
+    super(`Too many redirects: exceeded ${maxHops} hops while fetching ${url}`);
+    this.name = "TooManyRedirectsError";
+    this.url = url;
+    this.maxHops = maxHops;
+  }
+}
+
+/**
+ * Thrown when a response body grows past the caller's byte cap. The stream is
+ * aborted at the cap instead of buffering the full body, so a hostile or
+ * misconfigured origin cannot exhaust worker memory.
+ */
+export class BodyTooLargeError extends Error {
+  readonly url: string;
+  readonly maxBodyBytes: number;
+
+  constructor(url: string, maxBodyBytes: number) {
+    super(`Response body from ${url} exceeded the ${maxBodyBytes}-byte limit`);
+    this.name = "BodyTooLargeError";
+    this.url = url;
+    this.maxBodyBytes = maxBodyBytes;
+  }
+}
+
+export interface FetchWithValidatedRedirectsOptions {
+  /** Maximum redirect hops to follow before rejecting (default 5). */
+  maxHops?: number;
+  /** Hard cap on the accumulated response body size, in bytes. */
+  maxBodyBytes: number;
+  /** Per-request timeout in milliseconds (applied to every hop). */
+  timeoutMs?: number;
+  /** Request headers applied to every hop. */
+  headers?: Record<string, string>;
+}
+
+export interface ValidatedFetchResult {
+  readonly body: string;
+  readonly finalUrl: string;
+  readonly status: number;
+  readonly headers: Record<string, string>;
+}
+
+const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
+
+/**
+ * Streams a response body up to `maxBodyBytes`, aborting the reader (and
+ * throwing {@link BodyTooLargeError}) as soon as the cap is exceeded so the
+ * full body is never buffered.
+ *
+ * Falls back to `response.text()` for the plain-object fetch mocks used by
+ * the unit tests, which do not expose a `ReadableStream` body.
+ */
+async function readBodyWithCap(response: Response, maxBodyBytes: number, url: string): Promise<string> {
+  const stream = response.body;
+  if (stream && typeof stream.getReader === "function") {
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value && value.byteLength > 0) {
+        received += value.byteLength;
+        if (received > maxBodyBytes) {
+          await reader.cancel().catch(() => undefined);
+          throw new BodyTooLargeError(url, maxBodyBytes);
+        }
+        chunks.push(value);
+      }
+    }
+    const merged = new Uint8Array(received);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(merged);
+  }
+
+  const text = await response.text();
+  if (new TextEncoder().encode(text).byteLength > maxBodyBytes) {
+    throw new BodyTooLargeError(url, maxBodyBytes);
+  }
+  return text;
+}
+
+/**
+ * SSRF-safe fetch with manual redirect following and a response body cap.
+ *
+ * Redirect handling: undici's automatic redirect policy (`redirect: "follow"`)
+ * would chase a 301/302/303/307/308 into any target — including a private or
+ * loopback address — without re-running {@link validateSSRF}. Redirects are
+ * therefore followed manually here: every hop URL (relative `Location` values
+ * resolved against the URL that produced them) is re-validated, including DNS
+ * re-resolution, BEFORE the request is issued, and chains longer than
+ * `maxHops` are rejected with {@link TooManyRedirectsError}.
+ *
+ * DNS-TOCTOU residual: `validateSSRF` re-resolves the hostname on every hop,
+ * but the actual TCP connect inside undici performs its own independent DNS
+ * resolution, so a DNS-rebinding attacker could theoretically answer the
+ * validator with a public IP and the connector with a private one.
+ * Connect-time DNS pinning is intentionally OUT OF SCOPE for the Sprint 0
+ * mock-era posture (deterministic mocks, no live provider traffic per
+ * AGENTS.md); revisit before enabling live outbound providers.
+ */
+export async function fetchWithValidatedRedirects(
+  url: string,
+  options: FetchWithValidatedRedirectsOptions,
+): Promise<ValidatedFetchResult> {
+  const maxHops = options.maxHops ?? 5;
+  let currentUrl = url;
+  let hops = 0;
+
+  for (;;) {
+    try {
+      await validateSSRF(currentUrl);
+    } catch (err) {
+      throw new SsrfRedirectBlockedError(currentUrl, (err as Error).message);
+    }
+
+    const init: RequestInit = {
+      redirect: "manual",
+      headers: options.headers ?? {},
+    };
+    if (options.timeoutMs !== undefined) {
+      init.signal = AbortSignal.timeout(options.timeoutMs);
+    }
+
+    const response = await fetch(currentUrl, init);
+
+    if (REDIRECT_STATUS_CODES.has(response.status)) {
+      const location = typeof response.headers.get === "function"
+        ? response.headers.get("location")
+        : null;
+      // Release the redirect response body before following the next hop.
+      await response.body?.cancel().catch(() => undefined);
+      if (location) {
+        hops += 1;
+        if (hops > maxHops) {
+          throw new TooManyRedirectsError(url, maxHops);
+        }
+        currentUrl = new URL(location, currentUrl).toString();
+        continue;
+      }
+    }
+
+    const body = await readBodyWithCap(response, options.maxBodyBytes, currentUrl);
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
+    return { body, finalUrl: currentUrl, status: response.status, headers };
+  }
+}
+
+/**
  * Helper function to parse HTML string into ParsedPage using Cheerio.
  */
 function parseHtmlToParsedPage(rawHtml: string, targetUrl: string, statusCode: number = 200, headers: Record<string, string> = {}): ParsedPage {
@@ -438,10 +617,15 @@ async function fetchViaBrowseract(targetUrl: string, apiKey: string): Promise<st
 
 /**
  * Standard Cheerio network fetch.
+ *
+ * Delegates to {@link fetchWithValidatedRedirects} so redirect chains are
+ * SSRF-revalidated per hop and the HTML body is capped at 2 MiB. Behavior is
+ * otherwise unchanged: same crawler headers, same status/header propagation
+ * into the Cheerio parse step.
  */
 async function fetchViaCheerio(targetUrl: string): Promise<{ rawHtml: string; statusCode: number; headers: Record<string, string> }> {
-  const requestUrl = new URL(targetUrl);
-  const response = await fetch(requestUrl.toString(), {
+  const result = await fetchWithValidatedRedirects(targetUrl, {
+    maxBodyBytes: 2 * 1024 * 1024,
     headers: {
       "User-Agent": "SeoVista Crawler/1.0",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -449,15 +633,7 @@ async function fetchViaCheerio(targetUrl: string): Promise<{ rawHtml: string; st
     }
   });
 
-  const rawHtml = await response.text();
-  const statusCode = response.status;
-  
-  const headersRecord: Record<string, string> = {};
-  response.headers.forEach((value, key) => {
-    headersRecord[key.toLowerCase()] = value;
-  });
-
-  return { rawHtml, statusCode, headers: headersRecord };
+  return { rawHtml: result.body, statusCode: result.status, headers: result.headers };
 }
 
 /**
@@ -646,34 +822,31 @@ export interface SafeTextFetchResult {
 /**
  * SSRF-safe plain-text fetch for non-HTML resources (e.g. robots.txt).
  *
- * Reuses the same hostname/IP validation ({@link validateSSRF}) and the same
- * default redirect policy (`follow`, as in the Cheerio page fetch above) as
- * the HTML pipeline, but performs no HTML parsing, no render-cache lookup and
- * no Browseract involvement — a direct validated GET returning raw text.
- * Unlike the page fetch, a timeout guard (`AbortSignal.timeout`, default 15s)
- * is applied so a stalled origin cannot pin a queue job forever.
+ * Delegates to {@link fetchWithValidatedRedirects}: every redirect hop is
+ * re-validated with {@link validateSSRF} (a 302 can no longer smuggle the
+ * fetch to a private/loopback address) and the body is capped at 500 KiB per
+ * the RFC 9309 robots.txt size guidance. Performs no HTML parsing, no
+ * render-cache lookup and no Browseract involvement — a validated GET
+ * returning raw text. A timeout guard (`AbortSignal.timeout` per hop,
+ * default 15s) is applied so a stalled origin cannot pin a queue job forever.
  */
 export async function fetchTextSafely(
   targetUrl: string,
   options: { timeoutMs?: number } = {},
 ): Promise<SafeTextFetchResult> {
-  await validateSSRF(targetUrl);
-
-  const timeoutMs = options.timeoutMs ?? 15_000;
-  const response = await fetch(targetUrl, {
+  const result = await fetchWithValidatedRedirects(targetUrl, {
+    maxBodyBytes: 500 * 1024,
+    timeoutMs: options.timeoutMs ?? 15_000,
     headers: {
       "User-Agent": "SeoVista Crawler/1.0",
       "Accept": "text/plain,text/*,*/*;q=0.8",
     },
-    redirect: "follow",
-    signal: AbortSignal.timeout(timeoutMs),
   });
 
-  const body = await response.text();
   return {
-    statusCode: response.status,
-    body,
-    contentType: response.headers.get("content-type"),
+    statusCode: result.status,
+    body: result.body,
+    contentType: result.headers["content-type"] ?? null,
   };
 }
 
