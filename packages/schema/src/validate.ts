@@ -93,11 +93,53 @@ export interface SchemaAuditExtractionResult {
   score: number;
 }
 
+/**
+ * Normalizes a parsed JSON-LD root into the list of schema nodes it carries.
+ *
+ * JSON-LD payloads come in three shapes:
+ *   - a single node object (`{ "@type": "Organization", ... }`),
+ *   - a top-level array of nodes (`[{ ... }, { ... }]`),
+ *   - a `@graph` container (`{ "@context": ..., "@graph": [{ ... }, ...] }`).
+ *
+ * Arrays and `@graph` containers are flattened so every entry becomes its own
+ * node; root-level properties of a `@graph` container (e.g. `@context`) are
+ * merged into each entry that does not define them itself. Non-object roots
+ * (`null`, strings, numbers, booleans) and non-object array/`@graph` entries
+ * are valid JSON but not schema nodes, so they yield no nodes.
+ */
+function normalizeSchemaNodes(root: unknown): Record<string, unknown>[] {
+  if (Array.isArray(root)) {
+    return root.flatMap((item) => normalizeSchemaNodes(item));
+  }
+
+  if (typeof root !== "object" || root === null) {
+    return [];
+  }
+
+  const node = root as Record<string, unknown>;
+  const graph = node["@graph"];
+  if (Array.isArray(graph)) {
+    const { "@graph": _graph, ...containerProps } = node;
+    const hasContainerProps = Object.keys(containerProps).length > 0;
+    return graph.flatMap((entry) => {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+        return [];
+      }
+      const graphNode = entry as Record<string, unknown>;
+      return [hasContainerProps ? { ...containerProps, ...graphNode } : graphNode];
+    });
+  }
+
+  return [node];
+}
+
 export function extractAndValidateSchemas(
-  html: string,
-  _siteUrl: string
+  html: string
 ): SchemaAuditExtractionResult {
-  const jsonLdRegex = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  // Matches type="application/ld+json", type='application/ld+json',
+  // type = "application/ld+json" (whitespace around =) and the unquoted
+  // type=application/ld+json form; the `i` flag covers TYPE= casing.
+  const jsonLdRegex = /<script\b[^>]*?type\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json'|application\/ld\+json(?![\w/+.-]))[^>]*>([\s\S]*?)<\/script>/gi;
   let match: RegExpExecArray | null;
   const validNodes: Record<string, unknown>[] = [];
   const parseErrors: string[] = [];
@@ -112,12 +154,18 @@ export function extractAndValidateSchemas(
     if (!scriptContent) continue;
 
     try {
-      const parsed = JSON.parse(scriptContent) as Record<string, unknown>;
-      validNodes.push(parsed);
-
-      for (const claim of PROHIBITED_CLAIMS) {
-        if (claim.field in parsed) {
-          prohibitedClaims.push({ field: claim.field, reason: claim.reason });
+      // JSON.parse returns `unknown`-shaped data: "null", "true", "123" and
+      // strings parse successfully but are not schema nodes. Normalize only
+      // pushes real objects, so a null root can neither crash the
+      // prohibited-claim `in` check nor leak into `validNodes`.
+      const parsed: unknown = JSON.parse(scriptContent);
+      const nodes = normalizeSchemaNodes(parsed);
+      for (const node of nodes) {
+        validNodes.push(node);
+        for (const claim of PROHIBITED_CLAIMS) {
+          if (claim.field in node) {
+            prohibitedClaims.push({ field: claim.field, reason: claim.reason });
+          }
         }
       }
     } catch (e) {
