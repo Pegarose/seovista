@@ -30,9 +30,12 @@ export async function startAiCrawlerAuditAction(
   }
 
   const { url } = validated.data;
-  const db = getAdminDb();
 
   try {
+    // getAdminDb() throws when DATABASE_URL is unset; keep the call inside
+    // the try so the catch below returns the existing system-error contract
+    // instead of an unhandled 500.
+    const db = getAdminDb();
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
       throw new Error("REDIS_URL is required to submit an AI crawler audit");

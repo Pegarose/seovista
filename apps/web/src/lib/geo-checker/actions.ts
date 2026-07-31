@@ -70,10 +70,13 @@ export async function startGeoAuditAction(
   }
 
   const { domain, brandName, primaryMarket } = validatedFields.data;
-  const db = getAdminDb();
-  const repo = createGeoAuditRepository(db);
 
   try {
+    // getAdminDb() throws when DATABASE_URL is unset; keep the call inside
+    // the try so the catch below returns the existing system-error contract
+    // instead of an unhandled 500.
+    const db = getAdminDb();
+    const repo = createGeoAuditRepository(db);
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
       throw new Error("REDIS_URL is required to submit a geo audit");
@@ -119,6 +122,9 @@ export async function startGeoAuditAction(
     // AuditPoller until `job_records.status === 'completed'`).
     return redirect(`/tools/geo-readiness-checker/result/${result.jobId}`);
   } catch (error) {
+    if (error && typeof error === "object" && "digest" in error && typeof (error as { digest: unknown }).digest === "string" && (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
     console.error("Geo audit start error:", error);
     return {
       status: "error",
@@ -135,11 +141,13 @@ export async function checkJobStatusAction(jobId: string) {
   if (!UUID_RE.test(jobId)) {
     return { success: false, error: "Invalid job ID format" };
   }
-  
-  const db = getAdminDb();
-  const repo = createGeoAuditRepository(db);
 
   try {
+    // getAdminDb() throws when DATABASE_URL is unset; keep the call inside
+    // the try so the catch below returns the existing failure contract
+    // instead of an unhandled 500.
+    const db = getAdminDb();
+    const repo = createGeoAuditRepository(db);
     const job = await repo.getJobRecord(jobId);
     
     if (!job) {
@@ -174,11 +182,13 @@ export async function unlockDetailedReport(_prev: any, formData: FormData): Prom
   if (!UUID_RE.test(jobId) || !UUID_RE.test(leadId)) {
     return { error: "Invalid job or lead format" };
   }
-  
-  const db = getAdminDb();
-  const repo = createGeoAuditRepository(db);
-  
+
   try {
+    // getAdminDb() throws when DATABASE_URL is unset; keep the call inside
+    // the try so the catch below returns the existing failure contract
+    // instead of an unhandled 500.
+    const db = getAdminDb();
+    const repo = createGeoAuditRepository(db);
     await repo.updateLeadEmailForJob(jobId, leadId, email, consent);
     return { success: true };
   } catch (err) {

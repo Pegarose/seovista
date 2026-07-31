@@ -4,6 +4,10 @@ import { SchemaGraphTree } from "../../../../../src/components/schema-checker/sc
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
+import {
+  normalizeJobResultStatus,
+  UnknownJobStatusView,
+} from "../../../../../src/lib/admin/job-result-guard";
 import { getSchemaScoreBand } from "../../../../../src/lib/score-band";
 
 export const dynamic = "force-dynamic";
@@ -117,7 +121,10 @@ export default async function SchemaJobResultPage({
     );
   }
 
-  const status = jobRow.status as string;
+  // Normalize the persisted status into the public lifecycle vocabulary so
+  // an unrecognised persisted value renders the explicit unknown-status
+  // state instead of falling through to the completed-result payload path.
+  const status = normalizeJobResultStatus(jobRow.status);
 
   if (isAuditInFlightStatus(status)) {
     return (
@@ -147,6 +154,13 @@ export default async function SchemaJobResultPage({
         </div>
       </main>
     );
+  }
+
+  // -- Unknown persisted status: explicit unavailable state --
+  // Any status value not in the supported lifecycle vocabulary renders the
+  // shared explicit-unknown view rather than crashing on the result payload.
+  if (status === "unknown") {
+    return <UnknownJobStatusView />;
   }
 
   let payload: SchemaAuditResultPayload | null = null;

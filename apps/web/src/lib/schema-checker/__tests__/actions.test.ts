@@ -1,5 +1,30 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { validateSchemaInput } from "../validation";
+
+const { mockGetAdminDb, mockCheckIpRateLimit, mockSubmitSchemaAudit } = vi.hoisted(() => ({
+  mockGetAdminDb: vi.fn(),
+  mockCheckIpRateLimit: vi.fn(),
+  mockSubmitSchemaAudit: vi.fn(),
+}));
+
+vi.mock("../../admin/db", () => ({
+  getAdminDb: mockGetAdminDb,
+}));
+
+vi.mock("@seovista/worker", () => ({
+  checkIpRateLimit: mockCheckIpRateLimit,
+  submitSchemaAudit: mockSubmitSchemaAudit,
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+}));
+
+vi.mock("next/headers", () => ({
+  headers: vi.fn(),
+}));
+
+import { startSchemaAuditAction } from "../actions";
 
 describe("validateSchemaInput", () => {
   it("validates url format", () => {
@@ -66,5 +91,28 @@ describe("validateSchemaInput", () => {
     expect(validateSchemaInput("https://printer.local").success).toBe(false);
     expect(validateSchemaInput("https://service.internal").success).toBe(false);
     expect(validateSchemaInput("https://ad.corp").success).toBe(false);
+  });
+});
+
+describe("startSchemaAuditAction admin db guard (B3)", () => {
+  it("returns the existing system-error contract when DATABASE_URL is missing (getAdminDb throws)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockGetAdminDb.mockImplementation(() => {
+      throw new Error("DATABASE_URL is required for admin routes");
+    });
+
+    const formData = new FormData();
+    formData.set("url", "https://example.com");
+
+    const result = await startSchemaAuditAction({ status: "idle" }, formData);
+
+    expect(result).toEqual({
+      status: "error",
+      errors: {
+        form: ["Sistem hatası nedeniyle denetim başlatılamadı. Lütfen daha sonra tekrar deneyiniz."],
+      },
+    });
+    expect(mockCheckIpRateLimit).not.toHaveBeenCalled();
+    expect(mockSubmitSchemaAudit).not.toHaveBeenCalled();
   });
 });
