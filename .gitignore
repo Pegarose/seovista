@@ -19,6 +19,7 @@ coverage/
 .next-sentinel/
 e2e-results/
 test-results/
+.tmp/
 
 # Environment variables and local secrets
 .env
