@@ -66,7 +66,7 @@ describe("infrastructure walking skeleton", () => {
       const runner = createMigrationRunner(env.db, defaultMigrationsDir());
       const { appliedIds, pending } = await runner.getState();
       expect(pending.length).toBe(0);
-      expect(appliedIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+      expect(appliedIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
     });
 
     it("is a no-op on the second run and preserves data", async () => {
@@ -133,6 +133,9 @@ describe("infrastructure walking skeleton", () => {
       );
       const transitions = result.rows.map((r) => [r.from_status, r.to_status] as const);
       expect(transitions).toContainEqual(["queued", "running"]);
+      expect(transitions).toContainEqual(["queued", "failed"]);
+      expect(transitions).toContainEqual(["queued", "permanent"]);
+      expect(transitions).toContainEqual(["queued", "timeout"]);
       expect(transitions).toContainEqual(["running", "completed"]);
       expect(transitions).toContainEqual(["running", "failed"]);
       expect(transitions).toContainEqual(["failed", "running"]);
@@ -160,6 +163,33 @@ describe("infrastructure walking skeleton", () => {
       await jobs.complete(job.job_identity, result.id);
 
       await expect(jobs.start(job.job_identity)).rejects.toThrow();
+    });
+
+    it("accepts terminal failure transitions directly from queued (worker catch-path)", async () => {
+      // The worker catch-path UPDATE (schema-worker / ai-crawler-worker /
+      // geo-worker) maps processor errors to 'failed', 'permanent', or
+      // 'timeout' while the row can still be 'queued'. Migration 014 extends
+      // the transition graph so these UPDATEs stop being rejected by
+      // job_transition_trigger.
+      for (const terminalStatus of ["failed", "permanent", "timeout"] as const) {
+        const jobs = createJobRepository(env.db);
+        const job = await jobs.create({
+          jobIdentity: `queued-terminal-${terminalStatus}-${env.projectId}`,
+          queueName: "test",
+          correlationId: `queued-terminal-${terminalStatus}-corr`,
+        });
+
+        await env.db.query(
+          "UPDATE job_records SET status = $2, updated_at = now() WHERE id = $1",
+          [job.id, terminalStatus]
+        );
+
+        const row = await env.db.query<{ status: string }>(
+          "SELECT status FROM job_records WHERE id = $1",
+          [job.id]
+        );
+        expect(row.rows[0]?.status).toBe(terminalStatus);
+      }
     });
 
     it("rejects decreasing attempt counts", async () => {

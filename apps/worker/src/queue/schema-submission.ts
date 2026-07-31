@@ -121,11 +121,43 @@ export async function submitSchemaAudit(
   );
 
   const queue = getSchemaQueue(redisUrl, resolveQueueName());
-  await queue.add(
-    SCHEMA_JOB_NAME,
-    { jobId, url },
-    { jobId },
-  );
+  try {
+    await queue.add(
+      SCHEMA_JOB_NAME,
+      { jobId, url },
+      { jobId },
+    );
+  } catch (enqueueError) {
+    // Orphaned-row compensation: the job_records INSERT above has already
+    // committed, so a failed enqueue would leave a permanent 'queued' row no
+    // worker will ever consume. Delete the orphaned row before rethrowing so
+    // the caller sees the original enqueue error and no stale record remains.
+    //
+    // Long-term pattern: transactional outbox — persist the job_records row
+    // and the enqueue intent in one DB transaction, then let a relay publish
+    // to BullMQ. This DELETE compensation is the minimal correct fix until
+    // that lands.
+    try {
+      await db.query(`DELETE FROM job_records WHERE id = $1`, [jobId]);
+    } catch (compensationError) {
+      // The original enqueue error remains the error contract; a failed
+      // compensation is logged for operators instead of masking it.
+      console.error(
+        JSON.stringify({
+          name: "@seovista/worker",
+          layer: "schema-submission",
+          event: "orphan_compensation_failed",
+          jobId,
+          error:
+            compensationError instanceof Error
+              ? compensationError.message
+              : String(compensationError),
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    }
+    throw enqueueError;
+  }
 
   console.log(
     JSON.stringify({
