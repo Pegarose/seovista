@@ -52,17 +52,27 @@ services:
       - --maxmemory-policy
       - noeviction
 
-  # Optional SearXNG instance for the Keyword Rank Checker. When this service
-  # is not running (and SEARXNG_BASE_URL is unset), the worker uses its
-  # deterministic mock provider instead. Loopback-only, read-only config mount.
+  # Optional SearXNG instance for the Keyword Rank Checker. Profile-gated so a
+  # plain `docker compose up` never starts it: opt in with
+  # `docker compose --profile searxng up`. When this service is not running
+  # (and SEARXNG_BASE_URL is unset), the worker uses its deterministic mock
+  # provider instead. Loopback-only, read-only config mount.
   searxng:
     image: searxng/searxng:latest
+    profiles:
+      - searxng
     ports:
       - "127.0.0.1:${SEOVISTA_SEARXNG_PORT:-8088}:8080"
     labels:
       com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}
     volumes:
       - ./fixtures/searxng:/etc/searxng:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
 
 networks:
   default:
