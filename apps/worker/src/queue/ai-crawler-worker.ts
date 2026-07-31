@@ -24,7 +24,10 @@ function parseRedisUrl(redisUrl: string | undefined): { host: string; port: numb
 
 export interface AiCrawlerWorkerOptions {
   /**
-   * Override the BullMQ queue name. Defaults to "ai_crawler_audit_jobs".
+   * Override the BullMQ queue name. Resolution order:
+   * `options.queueName` → `AI_CRAWLER_QUEUE_NAME` env → the default
+   * `"ai_crawler_audit_jobs"` — the same env the submission side reads, so
+   * setting it on both sides keeps producer and consumer on the same queue.
    * Tests pass a unique name so parallel workers / orphaned processes
    * listening on the default queue cannot steal their jobs.
    */
@@ -56,7 +59,7 @@ export function startAiCrawlerWorker(options?: AiCrawlerWorkerOptions) {
   const db = createDbClient({ connectionString: process.env.DATABASE_URL, max: 2 });
 
   const worker = new Worker(
-    options?.queueName ?? AI_CRAWLER_QUEUE_NAME,
+    options?.queueName ?? process.env.AI_CRAWLER_QUEUE_NAME ?? AI_CRAWLER_QUEUE_NAME,
     async (job: Job) => {
       const { jobId, url } = job.data;
 

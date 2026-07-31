@@ -16,9 +16,12 @@ import type { DbClient } from "../db/client.js";
  *      `createJobRecord` writes. The `queue_name` column carries the service
  *      identifier `schema_audit` (geo uses `geo_audit` the same way); the
  *      result page filters on it.
- *   2. Enqueue exactly one BullMQ job on `schema_audit_jobs` carrying
- *      `{ jobId, url }` — the shape the schema worker
- *      (`apps/worker/src/queue/schema-worker.ts`) consumes.
+ *   2. Enqueue exactly one BullMQ job carrying `{ jobId, url }` — the shape
+ *      the schema worker (`apps/worker/src/queue/schema-worker.ts`)
+ *      consumes. The queue name resolves as `SCHEMA_QUEUE_NAME` env →
+ *      the `schema_audit_jobs` default; the worker resolves it as
+ *      `options.queueName` → the same env → the same default, so both sides
+ *      land on the same queue when the env is set consistently.
  */
 
 /** BullMQ queue name the production schema worker consumes. */
@@ -34,7 +37,13 @@ export const SCHEMA_JOB_NAME = "schema_audit";
  */
 export const SCHEMA_JOB_RECORD_QUEUE_NAME = "schema_audit";
 
-/** Default queue name override env (matches the worker's `startSchemaWorker`). */
+/**
+ * Queue name override env shared with the worker. Both sides resolve the
+ * queue the same way — worker: `options.queueName` → this env →
+ * `SCHEMA_QUEUE_NAME` default; submission: this env → the same default —
+ * so setting the env in both environments keeps producer and consumer on the
+ * same queue.
+ */
 const SCHEMA_QUEUE_NAME_ENV = "SCHEMA_QUEUE_NAME";
 
 let schemaQueue: Queue | null = null;

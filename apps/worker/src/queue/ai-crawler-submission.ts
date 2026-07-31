@@ -16,9 +16,12 @@ import type { DbClient } from "../db/client.js";
  *      `createJobRecord` writes. The `queue_name` column carries the service
  *      identifier `ai_crawler_audit` (geo uses `geo_audit` the same way); the
  *      result page filters on it.
- *   2. Enqueue exactly one BullMQ job on `ai_crawler_audit_jobs` carrying
- *      `{ jobId, url }` — the shape the AI crawler worker
- *      (`apps/worker/src/queue/ai-crawler-worker.ts`) consumes.
+ *   2. Enqueue exactly one BullMQ job carrying `{ jobId, url }` — the shape
+ *      the AI crawler worker (`apps/worker/src/queue/ai-crawler-worker.ts`)
+ *      consumes. The queue name resolves as `AI_CRAWLER_QUEUE_NAME` env →
+ *      the `ai_crawler_audit_jobs` default; the worker resolves it as
+ *      `options.queueName` → the same env → the same default, so both sides
+ *      land on the same queue when the env is set consistently.
  */
 
 /** BullMQ queue name the production AI crawler worker consumes. */
@@ -34,7 +37,13 @@ export const AI_CRAWLER_JOB_NAME = "ai_crawler_audit";
  */
 export const AI_CRAWLER_JOB_RECORD_QUEUE_NAME = "ai_crawler_audit";
 
-/** Default queue name override env (matches the worker's `startAiCrawlerWorker`). */
+/**
+ * Queue name override env shared with the worker. Both sides resolve the
+ * queue the same way — worker: `options.queueName` → this env →
+ * `AI_CRAWLER_QUEUE_NAME` default; submission: this env → the same default —
+ * so setting the env in both environments keeps producer and consumer on the
+ * same queue.
+ */
 const AI_CRAWLER_QUEUE_NAME_ENV = "AI_CRAWLER_QUEUE_NAME";
 
 let aiCrawlerQueue: Queue | null = null;

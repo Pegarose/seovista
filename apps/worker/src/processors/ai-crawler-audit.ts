@@ -74,9 +74,15 @@ export function processAiCrawlerAuditPayload(
   for (const crawler of crawlers) {
     if (crawler.status === "blocked" && crawler.category !== "ai-training") {
       penalty += BLOCK_PENALTY_SEARCH;
-      recommendations.push(
-        `${crawler.label} tamamen engellenmiş — AI cevap motorlarında görünürlüğünüz azalır. Engellemek istemiyorsanız ilgili Disallow kuralını kaldırın.`,
-      );
+      if (crawler.category === "search") {
+        recommendations.push(
+          `${crawler.label} tamamen engellenmiş — geleneksel arama sonuçlarında görünürlüğünüz azalır. Engellemek istemiyorsanız ilgili Disallow kuralını kaldırın.`,
+        );
+      } else {
+        recommendations.push(
+          `${crawler.label} tamamen engellenmiş — AI cevap motorlarında görünürlüğünüz azalır. Engellemek istemiyorsanız ilgili Disallow kuralını kaldırın.`,
+        );
+      }
     }
   }
   penalty += Math.min(contradictoryConflicts.length * CONFLICT_PENALTY, CONFLICT_PENALTY_CAP);

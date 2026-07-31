@@ -24,7 +24,10 @@ function parseRedisUrl(redisUrl: string | undefined): { host: string; port: numb
 
 export interface SchemaWorkerOptions {
   /**
-   * Override the BullMQ queue name. Defaults to "schema_audit_jobs".
+   * Override the BullMQ queue name. Resolution order:
+   * `options.queueName` → `SCHEMA_QUEUE_NAME` env → the default
+   * `"schema_audit_jobs"` — the same env the submission side reads, so
+   * setting it on both sides keeps producer and consumer on the same queue.
    * Tests pass a unique name so parallel workers / orphaned processes
    * listening on the default queue cannot steal their jobs.
    */
@@ -56,7 +59,7 @@ export function startSchemaWorker(options?: SchemaWorkerOptions) {
   const db = createDbClient({ connectionString: process.env.DATABASE_URL, max: 2 });
 
   const worker = new Worker(
-    options?.queueName ?? SCHEMA_QUEUE_NAME,
+    options?.queueName ?? process.env.SCHEMA_QUEUE_NAME ?? SCHEMA_QUEUE_NAME,
     async (job: Job) => {
       const { jobId, url } = job.data;
 
