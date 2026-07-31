@@ -162,7 +162,16 @@ export default async function SchemaJobResultPage({
   }
 
   const safePayload = payload!;
-  const scoreBand = safePayload.score >= 80 ? "high" : safePayload.score >= 50 ? "medium" : "low";
+  const scoreBand: "critical" | "poor" | "needs_improvement" | "good" | "excellent" =
+    safePayload.score >= 90
+      ? "excellent"
+      : safePayload.score >= 80
+        ? "good"
+        : safePayload.score >= 60
+          ? "needs_improvement"
+          : safePayload.score >= 40
+            ? "poor"
+            : "critical";
 
   return (
     <main className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">

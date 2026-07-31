@@ -24,6 +24,6 @@ describe("extractAndValidateSchemas", () => {
     expect(result.rawScriptCount).toBe(1);
     expect(result.validNodes.length).toBe(1);
     expect(result.prohibitedClaims.length).toBe(1);
-    expect(result.prohibitedClaims[0].field).toBe("aggregateRating");
+    expect(result.prohibitedClaims[0]?.field).toBe("aggregateRating");
   });
 });
