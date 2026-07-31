@@ -1,5 +1,5 @@
-import { SchemaValidationError, ensureString, rejectProhibitedClaims } from "../validate";
-import type { SchemaNode, FAQPageInput } from "../types";
+import { SchemaValidationError, ensureString, rejectProhibitedClaims } from "../validate.js";
+import type { SchemaNode, FAQPageInput } from "../types.js";
 
 export function buildFAQPage(input: FAQPageInput): SchemaNode {
   if (input.faqs.length === 0) {

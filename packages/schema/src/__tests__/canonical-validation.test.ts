@@ -4,7 +4,7 @@ import {
   buildAbsoluteUrl,
   validatePath,
   validateSiteUrl,
-} from "../index";
+} from "../index.js";
 
 const siteUrl = "https://seovista.com";
 

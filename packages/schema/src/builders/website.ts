@@ -1,7 +1,7 @@
 import { resolveRootUrl } from "@seovista/seo-core";
-import { organizationId, websiteId } from "../ids";
-import { ensureString } from "../validate";
-import type { SchemaNode } from "../types";
+import { organizationId, websiteId } from "../ids.js";
+import { ensureString } from "../validate.js";
+import type { SchemaNode } from "../types.js";
 
 export function buildWebSite(
   siteUrl: string,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractAndValidateSchemas } from "../validate";
+import { extractAndValidateSchemas } from "../validate.js";
 
 function wrapScript(content: string, typeAttr = 'type="application/ld+json"'): string {
   return `

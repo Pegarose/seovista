@@ -1,4 +1,4 @@
-import { validateSiteUrl } from "./validate";
+import { validateSiteUrl } from "./validate.js";
 
 export function organizationId(siteUrl: string): string {
   const { origin } = validateSiteUrl(siteUrl);

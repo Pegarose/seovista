@@ -1,8 +1,8 @@
 import type { Organization } from "@seovista/content-models";
 import { resolveRootUrl } from "@seovista/seo-core";
-import { organizationId } from "../ids";
-import { SchemaValidationError, ensureString, rejectProhibitedClaims } from "../validate";
-import type { SchemaNode } from "../types";
+import { organizationId } from "../ids.js";
+import { SchemaValidationError, ensureString, rejectProhibitedClaims } from "../validate.js";
+import type { SchemaNode } from "../types.js";
 
 const EXPECTED_PARENT_NAME = "GMedya Group";
 

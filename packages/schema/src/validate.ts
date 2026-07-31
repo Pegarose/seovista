@@ -4,7 +4,7 @@ import {
   parseSiteUrl,
   resolveCanonical,
 } from "@seovista/seo-core";
-import type { ProhibitedClaimCheck } from "./types";
+import type { ProhibitedClaimCheck } from "./types.js";
 
 export const PROHIBITED_CLAIMS: readonly ProhibitedClaimCheck[] = [
   { field: "aggregateRating", reason: "AggregateRating must not be fabricated." },

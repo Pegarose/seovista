@@ -10,8 +10,8 @@ import {
   organizationId,
   websiteId,
   type SchemaGraph,
-} from "../index";
-import { makePage, makeService, makeOrganization } from "./fixtures";
+} from "../index.js";
+import { makePage, makeService, makeOrganization } from "./fixtures.js";
 
 const siteUrl = "https://seovista.com";
 

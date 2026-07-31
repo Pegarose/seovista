@@ -1,6 +1,6 @@
-import { websiteId } from "../ids";
-import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate";
-import type { SchemaNode, WebPageInput } from "../types";
+import { websiteId } from "../ids.js";
+import { ensureString, rejectProhibitedClaims, buildAbsoluteUrl } from "../validate.js";
+import type { SchemaNode, WebPageInput } from "../types.js";
 
 export function buildWebPage(input: WebPageInput): SchemaNode {
   rejectProhibitedClaims(input.page as unknown as Record<string, unknown>);

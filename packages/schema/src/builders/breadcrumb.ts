@@ -1,5 +1,5 @@
-import { SchemaValidationError, buildAbsoluteUrl } from "../validate";
-import type { SchemaNode, BreadcrumbListInput } from "../types";
+import { SchemaValidationError, buildAbsoluteUrl } from "../validate.js";
+import type { SchemaNode, BreadcrumbListInput } from "../types.js";
 
 export function buildBreadcrumbList(input: BreadcrumbListInput): SchemaNode {
   if (input.items.length === 0) {

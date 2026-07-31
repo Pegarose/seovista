@@ -10,7 +10,7 @@ import {
   buildBreadcrumbList,
   buildBlogPosting,
   SchemaValidationError,
-} from "../index";
+} from "../index.js";
 import {
   makePage,
   makeService,
@@ -18,7 +18,7 @@ import {
   makeFAQ,
   makeArticle,
   makeOrganization,
-} from "./fixtures";
+} from "./fixtures.js";
 
 const siteUrl = "https://seovista.com";
 
