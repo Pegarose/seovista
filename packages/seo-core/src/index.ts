@@ -52,3 +52,30 @@ export {
   generateReportSignature,
   verifyReportSignature,
 } from "./security/report-signer.js";
+
+export type {
+  RobotsRule,
+  RobotsGroup as RobotsTxtGroup,
+  RobotsTxtDocument,
+  CrawlerAccessStatus,
+  RuleConflict,
+} from "./robots.js";
+
+export {
+  parseRobotsTxt,
+  robotsPatternMatches,
+  isPathAllowed,
+  evaluateCrawlerAccess,
+  detectRuleConflicts,
+} from "./robots.js";
+
+export type {
+  CrawlerCategory,
+  CrawlerDescriptor,
+  CrawlerEvaluation,
+} from "./ai-crawlers.js";
+
+export {
+  AI_CRAWLER_REGISTRY,
+  evaluateAllCrawlers,
+} from "./ai-crawlers.js";
