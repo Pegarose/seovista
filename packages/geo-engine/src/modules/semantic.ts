@@ -223,13 +223,13 @@ export class SemanticModule implements ScoreModule {
 
     // Without targetKeyword, always add info nudge
     issues.push({
-      code: 'TARGET_KEYWORD_NOT_PROVIDED',
-      title: 'No target keyword provided — semantic analysis run at reduced precision',
-      severity: 'info',
+      code: "TARGET_KEYWORD_NOT_PROVIDED",
+      title: "Hedef anahtar kelime girilmedi — anlamsal analiz genel konu bazlı çalıştırıldı",
+      severity: "info",
       module: this.key,
-      impact: 'Semantic gap suggestions are more actionable with a specific target keyword.',
+      impact: "Hedef bir anahtar kelime girildiğinde anlamsal boşluk tespitleri daha hassas sonuç verir.",
       evidence: { inferredPrimaryTopic },
-      recommendation: 'Add targetKeyword to the score request for topic-aligned gap detection.',
+      recommendation: "Özel bir anahtar kelime performansı ölçmek isterseniz analiz talebine hedef anahtar kelime ekleyebilirsiniz.",
       confidence: 0.95,
     });
 
