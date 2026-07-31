@@ -1,0 +1,13 @@
+# SearXNG configuration for the SeoVista disposable local dev stack.
+# The secret_key is a dev-only placeholder — never reuse it outside this
+# loopback-bound compose service.
+use_default_settings: true
+
+server:
+  secret_key: "dev-only-not-secret"
+  bind_address: "0.0.0.0"
+
+search:
+  formats:
+    - html
+    - json

@@ -52,6 +52,18 @@ services:
       - --maxmemory-policy
       - noeviction
 
+  # Optional SearXNG instance for the Keyword Rank Checker. When this service
+  # is not running (and SEARXNG_BASE_URL is unset), the worker uses its
+  # deterministic mock provider instead. Loopback-only, read-only config mount.
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "127.0.0.1:${SEOVISTA_SEARXNG_PORT:-8088}:8080"
+    labels:
+      com.seovista.lifecycle.token: ${SEOVISTA_OWNERSHIP_TOKEN:?missing ownership token}
+    volumes:
+      - ./fixtures/searxng:/etc/searxng:ro
+
 networks:
   default:
     labels:
