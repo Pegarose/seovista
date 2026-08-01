@@ -68,3 +68,5 @@ FEATURE COMPLETE (2026-08-01): CrewAgency AI Strategy Report. Tasks 1-4 shipped:
 FEATURE COMPLETE (2026-08-01): CrewAgency AI Strategy Report. Tasks 1-4 shipped: 20139a2, d450b9f+664e6c9, 39ef610+0546ed7, e9732aa. Final review LGTM_WITH_MINORS.
 
 FEATURE COMPLETE (2026-08-01): CrewAgency AI Strategy Report. 20139a2, d450b9f+664e6c9, 39ef610+0546ed7, e9732aa. Final review LGTM_WITH_MINORS.
+
+DEBT BATCH (2026-08-01): S2 xff spoofing (last-entry trust) + B5 skip-link id=main (10 pages + guard) + B6 clipboard guard — e7e5de0, reviewer LGTM. Live e2e contract fix 8a7a85f (rapor-uret body + 4xx->permanent) verified end-to-end vs real API.
