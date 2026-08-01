@@ -69,3 +69,9 @@ export {
   type CreateAdminUser,
   type CreateAdminSession,
 } from "./admin-auth.js";
+export {
+  createTrackerRepository,
+  type ActiveTarget,
+  type TargetWithObservations,
+  type SessionInfo,
+} from "./tracker-repository.js";
