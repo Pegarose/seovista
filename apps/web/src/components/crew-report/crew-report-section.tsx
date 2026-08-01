@@ -7,6 +7,7 @@ import {
   type CrewReportActionState,
 } from "@/lib/crew-report/actions";
 import type { CrewReportResultPayload, CrewReportTool } from "@seovista/worker";
+import { CrewReportView } from "./crew-report-view";
 
 /** Polling interval for the in-flight crew report status check. */
 const POLL_INTERVAL_MS = 3_000;
@@ -27,8 +28,8 @@ export interface CrewReportSectionProps {
  *   1. locked    — email + KVKK consent form (useActionState gate).
  *   2. in-flight — polls `checkCrewReportStatusAction` every 3 s until the
  *      crew report job reaches a terminal status (cleanup on unmount).
- *   3. completed — renders the report region (placeholder swapped for the
- *      bespoke CrewReportView in Task 4); failed/timeout renders a Turkish
+ *   3. completed — renders the bespoke CrewReportView (custom markdown
+ *      component map + guardrail badges); failed/timeout renders a Turkish
  *      error with a retry button returning to the locked gate.
  *
  * Uses an <h2> heading so the one-<h1>-per-page rule is preserved.
@@ -260,13 +261,8 @@ export function CrewReportSection({ sourceJobId, tool }: CrewReportSectionProps)
       )}
 
       {phase === "completed" && report && (
-        // Task 4 replaces this placeholder with the bespoke CrewReportView
-        // (custom markdown component map + guardrail badges).
-        <div
-          data-testid="crew-report-content"
-          className="mt-4 text-sm text-slate-700 whitespace-pre-wrap"
-        >
-          {report.reportMarkdown}
+        <div data-testid="crew-report-content" className="mt-4">
+          <CrewReportView report={report} />
         </div>
       )}
     </section>
