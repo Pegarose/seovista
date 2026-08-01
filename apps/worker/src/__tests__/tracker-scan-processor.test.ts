@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 import type { DbClient } from "../db/client.js";
-import type { SerpProvider, SerpEntry } from "../utils/serp-provider.js";
+import type { SerpProvider } from "../utils/serp-provider.js";
+import type { SerpEntry } from "@seovista/seo-core";
 
 const mockProvider: SerpProvider = {
   source: "mock",
@@ -15,11 +16,11 @@ const mockProvider: SerpProvider = {
 
 function createFakeDb(targetRows: Array<{ id: string; sessionId: string; keyword: string; domain: string; locale: string }>): {
   db: DbClient;
-  queries: Array<{ sql: string; params?: unknown[] }>;
+  queries: Array<{ sql: string; params: unknown[] | undefined }>;
   insertObservationCalls: Array<{ targetId: string; position: number }>;
   updateLastCheckedCalls: string[];
 } {
-  const queries: Array<{ sql: string; params?: unknown[] }> = [];
+  const queries: Array<{ sql: string; params: unknown[] | undefined }> = [];
   const insertObservationCalls: Array<{ targetId: string; position: number }> = [];
   const updateLastCheckedCalls: string[] = [];
 
