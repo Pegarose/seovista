@@ -102,6 +102,11 @@ describe("CrewAgencyClient.kickoff", () => {
     [401, "crew.auth", false],
     [403, "crew.auth", false],
     [429, "crew.rate_limited", true],
+    // Contract violations (e.g. a missing required body field) are permanent:
+    // retrying the identical request can never succeed.
+    [400, "crew.client_error", false],
+    [404, "crew.client_error", false],
+    [422, "crew.client_error", false],
     [503, "crew.unavailable", true],
     [500, "crew.unavailable", true],
   ] as const)("maps HTTP %i to %s (retryable=%s)", async (status, code, retryable) => {

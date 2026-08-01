@@ -9,8 +9,11 @@
  *   1. `buildCrewReportRequest` — maps the source audit payload to the
  *      CrewAgency kickoff request. Keyword rank checks go to the dedicated
  *      `/api/seo-brief` brief endpoint; the three audit tools go to
- *      `/api/rapor-uret` with a Turkish, human-readable context summary
- *      capped at 4000 chars (CrewAgency prompt-budget guardrail).
+ *      `/api/rapor-uret` with the live API contract: a required Turkish
+ *      `rapor_konusu` report topic (≤200 chars), the required
+ *      `raw_data_context` findings summary (capped at 4000 chars — the
+ *      CrewAgency prompt-budget guardrail), the optional `brand_context`
+ *      target/domain when known, and `dil: "tr"`.
  *   2. `buildCrewReportResultPayload` — builds the `crew-report:result`
  *      payload persisted in `job_results`. There is intentionally NO score
  *      field: the report is an AI-generated strategy document and an
@@ -47,8 +50,11 @@ export const CREW_REPORT_ENDPOINT = "/api/rapor-uret";
 /** CrewAgency endpoint for keyword-rank SEO briefs. */
 export const CREW_SEO_BRIEF_ENDPOINT = "/api/seo-brief";
 
-/** Hard cap on the brand_context string sent to CrewAgency. */
+/** Hard cap on the raw_data_context string sent to CrewAgency. */
 export const MAX_BRAND_CONTEXT_CHARS = 4000;
+
+/** Hard cap on the rapor_konusu (report topic) string sent to CrewAgency. */
+export const MAX_RAPOR_KONUSU_CHARS = 200;
 
 /** Marker appended when the context summary had to be truncated. */
 const TRUNCATION_MARKER = "…";
@@ -77,8 +83,9 @@ export interface CrewReportRequest {
 /**
  * Builds the CrewAgency kickoff request for a tool. Keyword rank checks map
  * to `/api/seo-brief` with `{ konu, brand_context, dil }`; the audit tools
- * map to `/api/rapor-uret` with a summarized Turkish context. Unknown tools
- * throw — the worker maps that to a permanent failure.
+ * map to `/api/rapor-uret` with the live contract `{ rapor_konusu,
+ * raw_data_context, brand_context?, dil }`. Unknown tools throw — the worker
+ * maps that to a permanent failure.
  */
 export function buildCrewReportRequest(input: BuildCrewReportRequestInput): CrewReportRequest {
   const { tool, sourcePayload, sourceTarget } = input;
@@ -105,10 +112,18 @@ export function buildCrewReportRequest(input: BuildCrewReportRequestInput): Crew
     };
   }
 
-  return {
-    endpoint: CREW_REPORT_ENDPOINT,
-    body: { brand_context: summarizeSourceContext(tool, record, sourceTarget), dil: "tr" },
+  const target = resolveTarget(record, sourceTarget);
+  const body: Record<string, unknown> = {
+    rapor_konusu: buildRaporKonusu(tool, target),
+    raw_data_context: summarizeSourceContext(tool, record, sourceTarget),
+    dil: "tr",
   };
+  // brand_context is optional in the live contract — include it only when
+  // the target/domain is actually known.
+  if (target) {
+    body.brand_context = target;
+  }
+  return { endpoint: CREW_REPORT_ENDPOINT, body };
 }
 
 export interface BuildCrewReportResultPayloadInput {
@@ -163,6 +178,42 @@ const TOOL_SUMMARY_LABELS: Record<CrewReportTool, string> = {
 };
 
 /**
+ * Per-tool Turkish report topics for the required `rapor_konusu` field of
+ * the live `/api/rapor-uret` contract.
+ */
+const RAPOR_KONUSU_TOPICS: Record<Exclude<CrewReportTool, "keyword-rank">, string> = {
+  "geo-readiness": "GEO görünürlük strateji raporu",
+  schema: "yapısal veri (schema.org) strateji raporu",
+  "ai-crawler": "AI tarayıcı erişilebilirlik strateji raporu",
+};
+
+/**
+ * Builds the required `rapor_konusu` report topic: "{target} için {topic}"
+ * when the target is known, otherwise the bare per-tool topic. Capped at
+ * `MAX_RAPOR_KONUSU_CHARS` with an ellipsis marker.
+ */
+function buildRaporKonusu(
+  tool: Exclude<CrewReportTool, "keyword-rank">,
+  target: string | null,
+): string {
+  const topic = RAPOR_KONUSU_TOPICS[tool];
+  const full = target ? `${target} için ${topic}` : topic;
+  return truncateWithMarker(full, MAX_RAPOR_KONUSU_CHARS);
+}
+
+/**
+ * Resolves the audit target from the payload's own fields first, falling
+ * back to the source job record's target (some payloads — e.g. the schema
+ * audit's `SchemaAuditExtractionResult` — carry no url/target field).
+ */
+function resolveTarget(record: Record<string, unknown>, sourceTarget?: string): string | null {
+  return (
+    pickString(record, ["target", "url", "domain", "robotsTxtUrl"]) ??
+    (typeof sourceTarget === "string" && sourceTarget.trim().length > 0 ? sourceTarget : null)
+  );
+}
+
+/**
  * Summarizes a source audit payload into a compact Turkish context brief:
  * target/domain line, tool label, score when the payload carries one, and up
  * to 10 key findings/issues. The result is truncated to
@@ -176,9 +227,7 @@ function summarizeSourceContext(
 ): string {
   const lines: string[] = [];
 
-  const target =
-    pickString(record, ["target", "url", "domain", "robotsTxtUrl"]) ??
-    (typeof sourceTarget === "string" && sourceTarget.trim().length > 0 ? sourceTarget : null);
+  const target = resolveTarget(record, sourceTarget);
   if (target) {
     lines.push(`Hedef: ${target}`);
   }

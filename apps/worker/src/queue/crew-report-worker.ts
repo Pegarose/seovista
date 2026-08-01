@@ -197,15 +197,19 @@ export function startCrewReportWorker(options?: CrewReportWorkerOptions) {
         );
       } catch (err) {
         console.error("Crew report worker failed job:", err);
-        // Terminal-status mapping: CrewAgency auth and configuration failures
-        // are permanent (no retry can fix them); rate limiting, transient
-        // unavailability, request timeouts, and the 10-minute poll ceiling
-        // map to 'timeout'; source-payload/tool validation problems are
-        // permanent; everything else is 'failed'.
+        // Terminal-status mapping: CrewAgency auth, configuration, and
+        // client-contract failures are permanent (no retry can fix them);
+        // rate limiting, transient unavailability, request timeouts, and the
+        // 10-minute poll ceiling map to 'timeout'; source-payload/tool
+        // validation problems are permanent; everything else is 'failed'.
         let terminalStatus = 'failed';
 
         if (err instanceof CrewAgencyError) {
-          if (err.code === "crew.auth" || err.code === "crew.misconfigured") {
+          if (
+            err.code === "crew.auth" ||
+            err.code === "crew.misconfigured" ||
+            err.code === "crew.client_error"
+          ) {
             terminalStatus = 'permanent';
           } else {
             // crew.timeout, crew.unavailable, crew.rate_limited

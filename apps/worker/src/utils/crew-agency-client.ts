@@ -17,7 +17,10 @@
  *
  *   - `crew.auth`         — 401/403; the API key is wrong/revoked. Permanent.
  *   - `crew.rate_limited` — 429; transient, safe to retry later.
- *   - `crew.unavailable`  — 503, other non-OK statuses, network errors, or a
+ *   - `crew.client_error` — other 4xx (400/404/422/…); the request itself is
+ *                           rejected (e.g. a contract mismatch), so retrying
+ *                           the identical request can never succeed. Permanent.
+ *   - `crew.unavailable`  — 5xx, other non-OK statuses, network errors, or a
  *                           malformed response; transient (fail-closed).
  *   - `crew.timeout`      — request aborted by the per-request timeout.
  *   - `crew.misconfigured`— invalid base URL or missing API key. Permanent.
@@ -26,6 +29,7 @@
 export type CrewAgencyErrorCode =
   | "crew.auth"
   | "crew.rate_limited"
+  | "crew.client_error"
   | "crew.unavailable"
   | "crew.timeout"
   | "crew.misconfigured";
@@ -163,7 +167,8 @@ export class CrewAgencyClient {
    * Performs the fetch with the shared header set, timeout, and error
    * mapping. Transport errors become `crew.timeout`/`crew.unavailable`;
    * non-OK statuses become `crew.auth` (401/403), `crew.rate_limited` (429),
-   * or `crew.unavailable` (503 and everything else).
+   * `crew.client_error` (other 4xx), or `crew.unavailable` (5xx and
+   * everything else).
    */
   private async request(
     url: string,
@@ -226,6 +231,16 @@ function statusToError(status: number, url: string): CrewAgencyError {
   }
   if (status === 429) {
     return new CrewAgencyError("crew.rate_limited", `CrewAgency rate limited the request to ${url}`);
+  }
+  if (status >= 400 && status < 500) {
+    // Other 4xx (400/404/422/…): the request itself is rejected — e.g. a
+    // body-contract mismatch — so a retry of the identical request would
+    // fail again. Non-retryable by construction (CrewAgencyError sets
+    // retryable=false for this code).
+    return new CrewAgencyError(
+      "crew.client_error",
+      `CrewAgency rejected the request (HTTP ${status}) for ${url}`,
+    );
   }
   return new CrewAgencyError(
     "crew.unavailable",

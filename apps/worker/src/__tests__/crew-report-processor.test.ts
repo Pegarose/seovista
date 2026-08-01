@@ -62,6 +62,7 @@ describe("buildCrewReportRequest", () => {
       },
       undefined,
       "https://example.com",
+      "GEO görünürlük strateji raporu",
     ],
     [
       "schema",
@@ -78,6 +79,7 @@ describe("buildCrewReportRequest", () => {
       },
       "https://example.com",
       "https://example.com",
+      "yapısal veri (schema.org) strateji raporu",
     ],
     [
       "ai-crawler",
@@ -89,22 +91,65 @@ describe("buildCrewReportRequest", () => {
       },
       undefined,
       "https://example.com/robots.txt",
+      "AI tarayıcı erişilebilirlik strateji raporu",
     ],
   ] as const)(
-    "maps %s to /api/rapor-uret with a Turkish summarized context containing the target",
-    (tool, sourcePayload, sourceTarget, expectedTarget) => {
+    "maps %s to /api/rapor-uret with the real API contract: rapor_konusu + raw_data_context + brand_context + dil",
+    (tool, sourcePayload, sourceTarget, expectedTarget, expectedTopic) => {
       const request = buildCrewReportRequest({ tool, sourcePayload, sourceTarget });
 
       expect(request.endpoint).toBe("/api/rapor-uret");
-      const body = request.body as { brand_context: unknown; dil: unknown };
+      const body = request.body as {
+        rapor_konusu: unknown;
+        raw_data_context: unknown;
+        brand_context: unknown;
+        dil: unknown;
+      };
+
+      // Required by the live CrewAgency /api/rapor-uret contract.
       expect(body.dil).toBe("tr");
-      expect(typeof body.brand_context).toBe("string");
-      const brandContext = body.brand_context as string;
-      expect(brandContext.length).toBeGreaterThan(0);
-      expect(brandContext.length).toBeLessThanOrEqual(4000);
-      expect(brandContext).toContain(expectedTarget);
+
+      expect(typeof body.rapor_konusu).toBe("string");
+      const raporKonusu = body.rapor_konusu as string;
+      expect(raporKonusu.length).toBeGreaterThan(0);
+      expect(raporKonusu.length).toBeLessThanOrEqual(200);
+      expect(raporKonusu).toContain(expectedTarget);
+      expect(raporKonusu).toContain(expectedTopic);
+
+      expect(typeof body.raw_data_context).toBe("string");
+      const rawDataContext = body.raw_data_context as string;
+      expect(rawDataContext.length).toBeGreaterThan(0);
+      expect(rawDataContext.length).toBeLessThanOrEqual(4000);
+      expect(rawDataContext).toContain(expectedTarget);
+
+      // Optional field — present because the target is known.
+      expect(body.brand_context).toBe(expectedTarget);
     },
   );
+
+  it("omits the optional brand_context and targets the generic topic when no target is known", () => {
+    const request = buildCrewReportRequest({
+      tool: "schema",
+      sourcePayload: { score: 80, parseErrors: ["Bozuk JSON-LD bloğu"] },
+    });
+
+    const body = request.body as Record<string, unknown>;
+    expect(body.rapor_konusu).toBe("yapısal veri (schema.org) strateji raporu");
+    expect(typeof body.raw_data_context).toBe("string");
+    expect(body.dil).toBe("tr");
+    expect(body).not.toHaveProperty("brand_context");
+  });
+
+  it("truncates an over-long rapor_konusu to 200 chars", () => {
+    const request = buildCrewReportRequest({
+      tool: "geo-readiness",
+      sourcePayload: { target: `https://${"a".repeat(300)}.com`, scores: { overall: 42 } },
+    });
+
+    const body = request.body as { rapor_konusu: string };
+    expect(body.rapor_konusu.length).toBeLessThanOrEqual(200);
+    expect(body.rapor_konusu.endsWith("…")).toBe(true);
+  });
 
   it("prefers the payload's own target over the sourceTarget fallback", () => {
     const request = buildCrewReportRequest({
@@ -113,9 +158,16 @@ describe("buildCrewReportRequest", () => {
       sourceTarget: "https://job-record-target.com",
     });
 
-    const body = request.body as { brand_context: string };
-    expect(body.brand_context).toContain("https://payload-target.com");
-    expect(body.brand_context).not.toContain("https://job-record-target.com");
+    const body = request.body as {
+      rapor_konusu: string;
+      raw_data_context: string;
+      brand_context: string;
+    };
+    expect(body.brand_context).toBe("https://payload-target.com");
+    expect(body.rapor_konusu).toContain("https://payload-target.com");
+    expect(body.rapor_konusu).not.toContain("https://job-record-target.com");
+    expect(body.raw_data_context).toContain("https://payload-target.com");
+    expect(body.raw_data_context).not.toContain("https://job-record-target.com");
   });
 
   it("throws a validation-coded error for a malformed keyword-rank source payload", () => {
@@ -136,7 +188,7 @@ describe("buildCrewReportRequest", () => {
     expect((caught as { code?: unknown }).code).toBe("validation.crew_report");
   });
 
-  it("truncates an oversized audit context to 4000 chars with an ellipsis marker", () => {
+  it("truncates an oversized raw_data_context to 4000 chars with an ellipsis marker", () => {
     const request = buildCrewReportRequest({
       tool: "geo-readiness",
       sourcePayload: {
@@ -146,9 +198,9 @@ describe("buildCrewReportRequest", () => {
       },
     });
 
-    const body = request.body as { brand_context: string };
-    expect(body.brand_context.length).toBeLessThanOrEqual(4000);
-    expect(body.brand_context.endsWith("…")).toBe(true);
+    const body = request.body as { raw_data_context: string };
+    expect(body.raw_data_context.length).toBeLessThanOrEqual(4000);
+    expect(body.raw_data_context.endsWith("…")).toBe(true);
   });
 
   it("throws for an unknown tool", () => {
