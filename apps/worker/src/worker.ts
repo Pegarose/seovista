@@ -9,6 +9,11 @@ import { startSchemaWorker } from "./queue/schema-worker.js";
 import { startAiCrawlerWorker } from "./queue/ai-crawler-worker.js";
 import { startKeywordRankWorker } from "./queue/keyword-rank-worker.js";
 import { startCrewReportWorker } from "./queue/crew-report-worker.js";
+import { startTrackerScanWorker } from "./queue/tracker-scan-worker.js";
+import {
+  registerTrackerScanRepeatable,
+  closeTrackerScanSubmissionQueue,
+} from "./queue/tracker-scan-submission.js";
 import { closeCacheRedis } from "./utils/render-cache.js";
 import { logDailyCreditBudgetOnBoot } from "./utils/credit-guard.js";
 import { getWorkerEnv, getProjectId } from "./env.js";
@@ -26,6 +31,7 @@ interface RunningWorker {
   aiCrawlerWorker: Worker;
   keywordRankWorker: Worker;
   crewReportWorker: Worker;
+  trackerScanWorker: Worker;
 }
 
 let running: RunningWorker | null = null;
@@ -76,8 +82,14 @@ async function run(): Promise<void> {
   const aiCrawlerWorker = startAiCrawlerWorker();
   const keywordRankWorker = startKeywordRankWorker();
   const crewReportWorker = startCrewReportWorker();
+  const trackerScanWorker = startTrackerScanWorker();
+  // Register the daily repeatable batch job. Safe to call on every startup —
+  // BullMQ deduplicates repeatable jobs by their repeat key (job name +
+  // pattern), so re-registering with the same cron does not create duplicate
+  // schedules.
+  await registerTrackerScanRepeatable(workerEnv.REDIS_URL);
 
-  running = { db, queue, worker, geoWorker, schemaWorker, aiCrawlerWorker, keywordRankWorker, crewReportWorker };
+  running = { db, queue, worker, geoWorker, schemaWorker, aiCrawlerWorker, keywordRankWorker, crewReportWorker, trackerScanWorker };
 
   // Phase A — VAL-A-MIT-004: on boot, log the remaining daily Browseract
   // credit budget so operators can see the daily cap state at startup. Reads
@@ -146,6 +158,8 @@ async function shutdown(signal: string): Promise<void> {
     // polling loop and should stop picking up new work before the audit
     // chains that feed it drain.
     await current.crewReportWorker.close(false);
+    await current.trackerScanWorker.close(false);
+    await closeTrackerScanSubmissionQueue();
     await current.keywordRankWorker.close(false);
     await current.aiCrawlerWorker.close(false);
     await current.schemaWorker.close(false);
