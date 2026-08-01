@@ -2,6 +2,7 @@ import { SERP_LOCALES } from "@seovista/seo-core";
 import type { KeywordRankResultPayload } from "@seovista/worker";
 import { getAdminDb } from "../../../../../src/lib/admin/db";
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
+import { CrewReportSection } from "../../../../../src/components/crew-report/crew-report-section";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
 import {
   normalizeJobResultStatus,
@@ -300,6 +301,8 @@ export default async function KeywordRankJobResultPage({
             GEO Hazırlık Denetimi ile sitenizi AI aramaya hazırlayın →
           </a>
         </div>
+
+        <CrewReportSection sourceJobId={jobId} tool="keyword-rank" />
       </div>
     </main>
   );

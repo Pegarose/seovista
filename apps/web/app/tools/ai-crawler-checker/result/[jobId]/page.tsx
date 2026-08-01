@@ -3,6 +3,7 @@ import { CrawlerAccessMatrix } from "../../../../../src/components/ai-crawler-ch
 import { CrawlerIssues } from "../../../../../src/components/ai-crawler-checker/crawler-issues";
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
+import { CrewReportSection } from "../../../../../src/components/crew-report/crew-report-section";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
 import {
   normalizeJobResultStatus,
@@ -314,6 +315,8 @@ export default async function AiCrawlerJobResultPage({
         <CrawlerIssues conflicts={conflicts} recommendations={recommendations} />
 
         <CrewCtaView scoreBand={scoreBand} />
+
+        <CrewReportSection sourceJobId={jobId} tool="ai-crawler" />
       </div>
     </main>
   );

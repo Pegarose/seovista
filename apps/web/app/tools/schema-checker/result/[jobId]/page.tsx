@@ -3,6 +3,7 @@ import { SchemaScoreOverview } from "../../../../../src/components/schema-checke
 import { SchemaGraphTree } from "../../../../../src/components/schema-checker/schema-graph-tree";
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
+import { CrewReportSection } from "../../../../../src/components/crew-report/crew-report-section";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
 import {
   normalizeJobResultStatus,
@@ -246,6 +247,8 @@ export default async function SchemaJobResultPage({
         <SchemaGraphTree nodes={safePayload.validNodes || []} />
 
         <CrewCtaView scoreBand={scoreBand} />
+
+        <CrewReportSection sourceJobId={jobId} tool="schema" />
       </div>
     </main>
   );

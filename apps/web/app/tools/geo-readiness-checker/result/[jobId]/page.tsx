@@ -3,6 +3,7 @@ import { AuditPoller } from "../../../../../src/components/geo-checker/audit-pol
 import { GatedReportForm } from "../../../../../src/components/geo-checker/gated-report-form";
 import { ScoreBreakdownView } from "../../../../../src/components/geo-checker/score-breakdown";
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
+import { CrewReportSection } from "../../../../../src/components/crew-report/crew-report-section";
 import { MatchedServicesView } from "../../../../../src/components/geo-checker/matched-services-view";
 import { SerpPreview } from "../../../../../src/components/geo-checker/serp-preview";
 import { createGeoAuditRepository, type DbClient } from "@seovista/worker";
@@ -255,6 +256,10 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
 
       <ScoreBreakdownView breakdown={safeBreakdown} />
       {matchedServices !== undefined && <MatchedServicesView services={matchedServices} />}
+
+      <div className="max-w-2xl mx-auto w-full">
+        <CrewReportSection sourceJobId={jobId} tool="geo-readiness" />
+      </div>
     </main>
   );
 }
