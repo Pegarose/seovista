@@ -60,6 +60,13 @@ export interface BuildCrewReportRequestInput {
   tool: CrewReportTool;
   /** Raw `job_results.payload` of the source audit job (shape varies by tool). */
   sourcePayload: unknown;
+  /**
+   * Target URL of the source audit job (`job_records.target`), selected by
+   * the worker's correlation join. Used as the summarizer's target fallback
+   * when the payload itself carries none — e.g. the persisted schema payload
+   * (`SchemaAuditExtractionResult`) has no url/target/domain field.
+   */
+  sourceTarget?: string | undefined;
 }
 
 export interface CrewReportRequest {
@@ -74,7 +81,7 @@ export interface CrewReportRequest {
  * throw — the worker maps that to a permanent failure.
  */
 export function buildCrewReportRequest(input: BuildCrewReportRequestInput): CrewReportRequest {
-  const { tool, sourcePayload } = input;
+  const { tool, sourcePayload, sourceTarget } = input;
 
   if (!isCrewReportTool(tool)) {
     throw new Error(`Unknown crew report tool: ${String(tool)}`);
@@ -86,7 +93,9 @@ export function buildCrewReportRequest(input: BuildCrewReportRequestInput): Crew
     const keyword = pickString(record, ["keyword"]);
     const domain = pickString(record, ["domain"]);
     if (!keyword || !domain) {
-      throw new Error(
+      // Validation-coded so the worker maps it to 'permanent': a malformed
+      // source payload will never change, so retrying is pointless.
+      throw validationCrewReportError(
         "keyword-rank source payload must include non-empty keyword and domain strings",
       );
     }
@@ -98,7 +107,7 @@ export function buildCrewReportRequest(input: BuildCrewReportRequestInput): Crew
 
   return {
     endpoint: CREW_REPORT_ENDPOINT,
-    body: { brand_context: summarizeSourceContext(tool, record), dil: "tr" },
+    body: { brand_context: summarizeSourceContext(tool, record, sourceTarget), dil: "tr" },
   };
 }
 
@@ -163,10 +172,13 @@ const TOOL_SUMMARY_LABELS: Record<CrewReportTool, string> = {
 function summarizeSourceContext(
   tool: Exclude<CrewReportTool, "keyword-rank">,
   record: Record<string, unknown>,
+  sourceTarget?: string,
 ): string {
   const lines: string[] = [];
 
-  const target = pickString(record, ["target", "url", "domain", "robotsTxtUrl"]);
+  const target =
+    pickString(record, ["target", "url", "domain", "robotsTxtUrl"]) ??
+    (typeof sourceTarget === "string" && sourceTarget.trim().length > 0 ? sourceTarget : null);
   if (target) {
     lines.push(`Hedef: ${target}`);
   }
@@ -222,6 +234,17 @@ function extractFindings(
     case "ai-crawler":
       return pickStringArray(record.recommendations);
   }
+}
+
+/**
+ * Builds an input-side validation failure carrying the `validation.*` code
+ * convention the crew report worker's catch block maps to the 'permanent'
+ * terminal status (same mechanism as the worker's `permanentCrewReportError`).
+ */
+function validationCrewReportError(message: string): Error {
+  const error = new Error(message) as Error & { code: string };
+  error.code = "validation.crew_report";
+  return error;
 }
 
 function truncateWithMarker(text: string, maxChars: number): string {

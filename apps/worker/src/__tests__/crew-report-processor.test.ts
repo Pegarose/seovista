@@ -60,18 +60,23 @@ describe("buildCrewReportRequest", () => {
           { code: "missing-jsonld", title: "JSON-LD yapısal verisi eksik", severity: "high" },
         ],
       },
+      undefined,
       "https://example.com",
     ],
     [
       "schema",
+      // Real SchemaAuditExtractionResult shape (packages/schema/src/validate.ts):
+      // it carries NO url/target/domain field, so the audited URL reaches the
+      // summarizer only via `sourceTarget` (job_records.target of the source
+      // audit job, selected by the worker's correlation join).
       {
-        url: "https://example.com",
-        score: 80,
         rawScriptCount: 2,
         validNodes: [{ "@type": "Organization" }],
         parseErrors: ["Bozuk JSON-LD bloğu"],
         prohibitedClaims: [],
+        score: 80,
       },
+      "https://example.com",
       "https://example.com",
     ],
     [
@@ -82,12 +87,13 @@ describe("buildCrewReportRequest", () => {
         robotsTxtFound: true,
         recommendations: ["robots.txt içinde Sitemap direktifi bulunamadı"],
       },
+      undefined,
       "https://example.com/robots.txt",
     ],
   ] as const)(
     "maps %s to /api/rapor-uret with a Turkish summarized context containing the target",
-    (tool, sourcePayload, target) => {
-      const request = buildCrewReportRequest({ tool, sourcePayload });
+    (tool, sourcePayload, sourceTarget, expectedTarget) => {
+      const request = buildCrewReportRequest({ tool, sourcePayload, sourceTarget });
 
       expect(request.endpoint).toBe("/api/rapor-uret");
       const body = request.body as { brand_context: unknown; dil: unknown };
@@ -96,9 +102,39 @@ describe("buildCrewReportRequest", () => {
       const brandContext = body.brand_context as string;
       expect(brandContext.length).toBeGreaterThan(0);
       expect(brandContext.length).toBeLessThanOrEqual(4000);
-      expect(brandContext).toContain(target);
+      expect(brandContext).toContain(expectedTarget);
     },
   );
+
+  it("prefers the payload's own target over the sourceTarget fallback", () => {
+    const request = buildCrewReportRequest({
+      tool: "geo-readiness",
+      sourcePayload: { target: "https://payload-target.com", scores: { overall: 42 } },
+      sourceTarget: "https://job-record-target.com",
+    });
+
+    const body = request.body as { brand_context: string };
+    expect(body.brand_context).toContain("https://payload-target.com");
+    expect(body.brand_context).not.toContain("https://job-record-target.com");
+  });
+
+  it("throws a validation-coded error for a malformed keyword-rank source payload", () => {
+    let caught: unknown;
+    try {
+      buildCrewReportRequest({
+        tool: "keyword-rank",
+        sourcePayload: { kind: "keyword-rank", keyword: "seo" },
+      });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toMatch(/keyword and domain/);
+    // The worker maps `validation.*` codes to the 'permanent' terminal status
+    // so a malformed source payload is not retried pointlessly.
+    expect((caught as { code?: unknown }).code).toBe("validation.crew_report");
+  });
 
   it("truncates an oversized audit context to 4000 chars with an ellipsis marker", () => {
     const request = buildCrewReportRequest({

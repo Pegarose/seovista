@@ -121,8 +121,12 @@ export function startCrewReportWorker(options?: CrewReportWorkerOptions) {
 
         // Load the source audit payload through the correlation join, scoped
         // to the queue_name of the chain that produced it (TOOL_QUEUE_NAMES).
+        // j.target is selected alongside the payload: some source payloads
+        // (e.g. the schema audit's SchemaAuditExtractionResult) carry no
+        // url/target field, so the job record's target is threaded through as
+        // the brand_context fallback.
         const sourceRes = await db.query(
-          `SELECT r.payload FROM job_records j JOIN job_results r ON r.correlation_id = j.correlation_id WHERE j.id = $1 AND j.queue_name = $2 ORDER BY r.created_at DESC LIMIT 1`,
+          `SELECT r.payload, j.target AS source_target FROM job_records j JOIN job_results r ON r.correlation_id = j.correlation_id WHERE j.id = $1 AND j.queue_name = $2 ORDER BY r.created_at DESC LIMIT 1`,
           [sourceJobId, sourceQueueName]
         );
         const sourceRow = sourceRes.rows[0];
@@ -132,7 +136,12 @@ export function startCrewReportWorker(options?: CrewReportWorkerOptions) {
           );
         }
 
-        const request = buildCrewReportRequest({ tool, sourcePayload: sourceRow.payload });
+        const request = buildCrewReportRequest({
+          tool,
+          sourcePayload: sourceRow.payload,
+          sourceTarget:
+            typeof sourceRow.source_target === "string" ? sourceRow.source_target : undefined,
+        });
         const { jobId: crewJobId } = await client.kickoff(request.endpoint, request.body);
 
         const sleep = options?.sleep ?? defaultSleep;
