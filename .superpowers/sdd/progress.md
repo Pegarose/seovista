@@ -28,3 +28,34 @@ Plan: docs/superpowers/plans/2026-07-31-serp-preview-implementation.md
 Task 1: complete (commit 816849b, spec OK, quality Approved; deviation: Math.round removed for linearity test — pixelWidth float, UI must round at display; Minor: ellipsis>maxPx edge unreachable, table approximation notes -> final review triage)
 Task 2: complete (commit 510b2d5, spec OK, quality Approved; Minor: unguarded clipboard call, breadcrumb startsWith('http') edge, act() warning -> final review triage)
 Final review: LGTM. Feature SERP Preview complete. Gates: web 173/173, seo-core 98/98, typecheck 0, lint 0.
+
+---
+Feature: Debt fixes pre-Keyword-Tracking
+Plan: docs/superpowers/plans/2026-07-31-debt-fixes-pre-keyword-tracking.md
+Fix A: SSRF redirect revalidation + body caps (9ad4da0)
+Fix B: migration 014 queued transitions + orphan compensation (b68a057)
+Fix C: getAdminDb-in-try + job-result-guard (6530c19, U1 ride-along)
+Fix D: working tree cleanup (84fa3e5, 606fe5e, 655d37a, 7e981dc) + tsconfig revert + .tmp ignored
+Bonus: schema dist ESM .js extensions (e7eaa65) — worker suite 221/1-env/0-skip
+Gates: web 182/182, seo-core 98/98, geo-engine 174/174, content-intelligence 30/30, schema 52/52, worker 221+1-env, typecheck 0, lint 0.
+
+---
+Feature: Keyword Rank Checker (Tier A)
+Plan: docs/superpowers/plans/2026-08-01-keyword-rank-checker-implementation.md
+Decisions: SearXNG top-10 (mock fallback), tr-TR + en-US, no score
+Task 1: complete (commit 7e8f04a, spec OK, quality Approved; 8x Minor edge-case notes all acceptable -> final review triage)
+Task 2: complete (commit 68a16a9, 230/231 worker — known env failure only)
+Task 2 review: spec OK, quality Approved; 5x Minor (mock locale unused, interface domain param, queue env comment, close fn test gap, parseRedisUrl NaN fallback — all inherited/acceptable) -> final review triage
+Task 3: complete (commit 9248830, 197/197 web)
+Task 3 review: spec OK, quality Approved; 2x Minor (z.enum Zod-version note, import path depth — inherited patterns) -> final review triage
+Task 4: complete (commit fb9e18d, 201/201 web)
+Task 4 review: spec OK, quality Approved; 2x Minor (CTA simple card vs CrewCtaView — plan'd, tools index dil tutarlılığı) -> final review triage
+Task 4 review: spec OK, quality Approved; 2x Minor (CTA simple card vs CrewCtaView — plan'd, tools index dil tutarliligi) -> final review triage
+Final review: LGTM. Feature Keyword Rank Checker complete. Follow-up applied: searxng profiles+healthcheck (a415044). Gates: web 201/201, seo-core 109/109, worker 230+1-env, typecheck 0, lint 0.
+
+---
+Feature: CrewAgency AI Strategy Report
+Plan: docs/superpowers/plans/2026-08-01-crew-ai-strategy-report-implementation.md
+Decisions: queue template (A), email gate (geo lead repo), bespoke markdown view + guardrail badges, audit->rapor-uret / keyword->seo-brief, 4 tools
+
+RESUME POINT (2026-08-01, shutdown): Task 1 done (20139a2, reviewer LGTM). Next: re-dispatch Task 2 implementer (queue chain + processor + rate-limit bucket) per plan Task 2 section. Tasks 3-4 + final review pending. Dev stack seovista-run-fb867d236f9d still running for test ports.
