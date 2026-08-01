@@ -5,6 +5,14 @@ export interface CheckIpRateLimitInput {
   ip: string;
   limit?: number;
   windowSeconds?: number;
+  /**
+   * Optional bucket namespace for features that need their own per-IP
+   * counter (e.g. `"crew-report"`). When provided the Redis key becomes
+   * `geo:ratelimit:ip:{bucket}:{ip}`; when absent the key stays exactly
+   * `geo:ratelimit:ip:{ip}` so existing callers and their live counters are
+   * unaffected (backwards compatible).
+   */
+  bucket?: string;
 }
 
 export interface RateLimitResult {
@@ -24,10 +32,11 @@ export async function checkIpRateLimit(
     ip,
     limit = DEFAULT_RATE_LIMIT,
     windowSeconds = DEFAULT_WINDOW_SECONDS,
+    bucket,
   } = input;
 
   const redis = new IORedis(redisUrl, { maxRetriesPerRequest: 1 });
-  const key = `geo:ratelimit:ip:${ip}`;
+  const key = `geo:ratelimit:ip${bucket ? `:${bucket}` : ""}:${ip}`;
 
   try {
     const current = await redis.incr(key);

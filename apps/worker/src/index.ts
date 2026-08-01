@@ -86,4 +86,40 @@ export {
   type SubmitKeywordRankCheckInput,
   type SubmitKeywordRankCheckResult,
 } from "./queue/keyword-rank-submission.js";
+export {
+  CREW_REPORT_TOOLS,
+  TOOL_QUEUE_NAMES,
+  CREW_REPORT_ENDPOINT,
+  CREW_SEO_BRIEF_ENDPOINT,
+  MAX_BRAND_CONTEXT_CHARS,
+  buildCrewReportRequest,
+  buildCrewReportResultPayload,
+  type CrewReportTool,
+  type BuildCrewReportRequestInput,
+  type CrewReportRequest,
+  type BuildCrewReportResultPayloadInput,
+  type CrewReportResultPayload,
+} from "./processors/crew-report.js";
+export {
+  submitCrewReport,
+  closeCrewReportSubmissionQueue,
+  CREW_REPORT_QUEUE_NAME,
+  CREW_REPORT_JOB_NAME,
+  CREW_REPORT_JOB_RECORD_QUEUE_NAME,
+  type SubmitCrewReportInput,
+  type SubmitCrewReportResult,
+} from "./queue/crew-report-submission.js";
+export {
+  startCrewReportWorker,
+  getCrewReportWorkerConcurrency,
+  type CrewReportWorkerOptions,
+} from "./queue/crew-report-worker.js";
+export {
+  CrewAgencyClient,
+  CrewAgencyError,
+  resolveCrewAgencyClient,
+  type CrewAgencyErrorCode,
+  type CrewAgencyClientOptions,
+  type CrewJobStatus,
+} from "./utils/crew-agency-client.js";
 
