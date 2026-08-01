@@ -29,7 +29,7 @@ export default async function KeywordRankJobResultPage({
 
   if (!UUID_RE.test(jobId)) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             İşlem Bulunamadı
@@ -47,7 +47,7 @@ export default async function KeywordRankJobResultPage({
     db = getAdminDb();
   } catch {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Hizmet Geçici Olarak Kullanılamıyor
@@ -84,7 +84,7 @@ export default async function KeywordRankJobResultPage({
   } catch (err) {
     console.error("Failed to query keyword_rank_audit job record:", err);
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Hizmet Geçici Olarak Kullanılamıyor
@@ -99,7 +99,7 @@ export default async function KeywordRankJobResultPage({
 
   if (!jobRow) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             İşlem Bulunamadı
@@ -119,7 +119,7 @@ export default async function KeywordRankJobResultPage({
 
   if (isAuditInFlightStatus(status)) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
         <h1 className="text-3xl font-display font-semibold text-slate-900 text-center">
           {status === "queued"
             ? "Sıralama Kontrolü Sırada"
@@ -134,7 +134,7 @@ export default async function KeywordRankJobResultPage({
 
   if (status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure") {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Sıralama Kontrolü Başarısız Oldu
@@ -174,7 +174,7 @@ export default async function KeywordRankJobResultPage({
 
   if (status === "completed" && !payload) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Sonuç Verisi Kullanılamıyor
@@ -193,7 +193,7 @@ export default async function KeywordRankJobResultPage({
   const localeLabel = localeMeta?.label ?? safePayload.locale;
 
   return (
-    <main className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
+    <main id="main" className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <h1 className="text-3xl font-display font-bold text-slate-900">

@@ -11,7 +11,7 @@ export default function SchemaCheckerPage() {
   const [state, formAction, isPending] = useActionState(startSchemaAuditAction, initialState);
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <main id="main" className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
         <div className="p-8">
           <div className="text-center mb-8">

@@ -96,7 +96,7 @@ export default async function InsightPage({ params }: PageProps) {
   };
 
   return (
-    <main className="insight-page-container mx-auto max-w-4xl px-4 py-8">
+    <main id="main" className="insight-page-container mx-auto max-w-4xl px-4 py-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

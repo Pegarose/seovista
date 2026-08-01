@@ -31,4 +31,34 @@ describe("SerpPreviewTool", () => {
     expect(copied).toContain("/tools/serp-preview/?");
     expect(copied).toContain("title=");
   });
+
+  it("falls back to execCommand copy when the clipboard API is unavailable", async () => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, "execCommand", { value: execCommand, configurable: true, writable: true });
+    render(<SerpPreviewTool initialTitle="Paylaş" initialDescription="Açıklama" initialUrl="https://example.com" />);
+    fireEvent.click(screen.getByRole("button", { name: /bağlantıyı kopyala/i }));
+    await screen.findByText(/kopyalandı/i);
+    expect(execCommand).toHaveBeenCalledWith("copy");
+  });
+
+  it("falls back to execCommand copy when clipboard writeText rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("NotAllowedError"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, "execCommand", { value: execCommand, configurable: true, writable: true });
+    render(<SerpPreviewTool initialTitle="Paylaş" initialDescription="Açıklama" initialUrl="https://example.com" />);
+    fireEvent.click(screen.getByRole("button", { name: /bağlantıyı kopyala/i }));
+    await screen.findByText(/kopyalandı/i);
+    expect(execCommand).toHaveBeenCalledWith("copy");
+  });
+
+  it("shows a Turkish error message when every copy method fails", async () => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    const execCommand = vi.fn().mockReturnValue(false);
+    Object.defineProperty(document, "execCommand", { value: execCommand, configurable: true, writable: true });
+    render(<SerpPreviewTool initialTitle="Paylaş" initialDescription="Açıklama" initialUrl="https://example.com" />);
+    fireEvent.click(screen.getByRole("button", { name: /bağlantıyı kopyala/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Kopyalama başarısız");
+  });
 });

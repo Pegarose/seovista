@@ -32,7 +32,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // input never reaches PostgreSQL and renders the documented not-found state.
   if (!UUID_RE.test(jobId)) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Job not found
@@ -52,7 +52,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
     repo = createGeoAuditRepository(db);
   } catch {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Service temporarily unavailable
@@ -70,7 +70,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
     row = await repo.getJobRecord(jobId);
   } catch {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Service temporarily unavailable
@@ -87,7 +87,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // documented not-found state.
   if (!row) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Job not found
@@ -130,7 +130,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // -- In-flight states (queued / running / pending) --
   if (isAuditInFlightStatus(status)) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
         <h1 className="text-3xl font-display font-semibold text-slate-900 text-center">
           {status === "queued" ? "Audit in queue" : status === "running" ? "Audit running…" : "Audit pending"}
         </h1>
@@ -142,7 +142,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // -- Terminal failed states --
   if (status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure") {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Durum: Başarısız</h1>
           <p className="text-slate-700">Analiz işlemi başarısız oldu veya zaman aşımına uğradı. Lütfen daha sonra tekrar deneyin.</p>
@@ -158,7 +158,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // undefined for an unrecognised status.
   if (status === "unknown") {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Audit status unavailable
@@ -174,7 +174,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // -- Completed: degraded (no valid result payload) --
   if (status === "completed" && !breakdown) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Result temporarily unavailable
@@ -198,7 +198,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // if every required signal were available.
   if (status === "completed" && breakdown?.degraded === true) {
     return (
-      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
           <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
             Result temporarily unavailable
@@ -216,7 +216,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // Narrow breakdown after the degraded early-return above.
   const safeBreakdown = breakdown!;
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
+    <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
       <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full">
         <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Geo Readiness Analiz Sonucu</h1>
         <div className="my-8 bg-slate-50 p-4 rounded-lg text-center border border-slate-100">

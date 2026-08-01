@@ -31,7 +31,7 @@ export function normalizeJobResultStatus(rawStatus: unknown): AuditStatus {
  */
 export function UnknownJobStatusView() {
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+    <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
       <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
         <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
           Denetim Durumu Belirlenemedi

@@ -68,19 +68,52 @@ function PixelMeter({ label, metrics }: { label: string; metrics: SerpVariantMet
   );
 }
 
+type CopyState = "idle" | "copied" | "error";
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  // navigator.clipboard is undefined in non-secure (http) contexts and
+  // writeText can reject on permission denial — fall back to execCommand.
+  if (typeof navigator.clipboard?.writeText === "function") {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to the legacy fallback below.
+    }
+  }
+  return legacyCopyToClipboard(text);
+}
+
+function legacyCopyToClipboard(text: string): boolean {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-9999px";
+  document.body.appendChild(textarea);
+  try {
+    textarea.select();
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
+}
+
 export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }: SerpPreviewToolProps): ReactElement {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [siteUrl, setSiteUrl] = useState(initialUrl);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<CopyState>("idle");
 
   const analysis = analyzeSerpSnippet(title, description);
 
   async function copyShareLink(): Promise<void> {
     const shareUrl = `${window.location.origin}/tools/serp-preview/?title=${encodeURIComponent(title)}&desc=${encodeURIComponent(description)}&url=${encodeURIComponent(siteUrl)}`;
-    await navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+    const succeeded = await copyTextToClipboard(shareUrl);
+    setCopyState(succeeded ? "copied" : "error");
+    window.setTimeout(() => setCopyState("idle"), 2000);
   }
 
   return (
@@ -178,8 +211,13 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
           aria-label="Bağlantıyı Kopyala"
           className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
         >
-          {copied ? "Kopyalandı ✓" : "Bağlantıyı Kopyala"}
+          {copyState === "copied" ? "Kopyalandı ✓" : "Bağlantıyı Kopyala"}
         </button>
+        {copyState === "error" ? (
+          <p role="alert" className="mt-2 text-sm text-red-700">
+            Kopyalama başarısız — metni seçip kopyalayın
+          </p>
+        ) : null}
       </div>
     </section>
   );

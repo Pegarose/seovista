@@ -17,7 +17,7 @@ export default async function SerpPreviewPage({
 }) {
   const params = await searchParams;
   return (
-    <main className="min-h-screen bg-gray-50 flex items-start justify-center p-4 sm:p-6 lg:p-8">
+    <main id="main" className="min-h-screen bg-gray-50 flex items-start justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-3xl">
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight text-center">
           SERP Preview

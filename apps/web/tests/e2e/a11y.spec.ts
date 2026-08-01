@@ -226,6 +226,16 @@ test("a11y: skip-link receives focus and is visible when focused", async ({ page
   await expect(page.locator("a[href='#main']:focus")).toBeVisible();
 });
 
+test("a11y: skip link target #main exists as the main landmark on all routes", async ({ page }) => {
+  for (const route of representativeRoutes) {
+    await page.goto(route);
+    const target = page.locator("#main");
+    expect(await target.count(), `Expected exactly 1 #main skip target on ${route}`).toBe(1);
+    const tagName = await target.evaluate((el) => el.tagName.toLowerCase());
+    expect(tagName, `#main on ${route} must be the <main> landmark`).toBe("main");
+  }
+});
+
 // ─── Reduced motion ──────────────────────────────────────────────────────────
 
 test("a11y: prefers-reduced-motion is supported (CSS media query or class exists)", async ({ page }) => {
