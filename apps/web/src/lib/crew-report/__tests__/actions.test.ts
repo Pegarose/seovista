@@ -300,6 +300,7 @@ describe("startCrewReportAction", () => {
       db: fakeDb,
       redisUrl: "redis://localhost:8637",
       sourceJobId: SOURCE_JOB_ID,
+      leadId: LEAD_ID,
       tool: "geo-readiness",
     });
     expect(mockUpdateLeadEmailForJob).toHaveBeenCalledWith(

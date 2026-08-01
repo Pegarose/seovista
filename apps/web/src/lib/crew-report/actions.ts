@@ -124,7 +124,13 @@ export async function startCrewReportAction(
       primaryMarket: "tr",
     });
 
-    const result = await submitCrewReport({ db, redisUrl, sourceJobId, tool });
+    const result = await submitCrewReport({
+      db,
+      redisUrl,
+      sourceJobId,
+      leadId: lead.id,
+      tool,
+    });
 
     await repo.updateLeadEmailForJob(result.jobId, lead.id, email, consent);
 

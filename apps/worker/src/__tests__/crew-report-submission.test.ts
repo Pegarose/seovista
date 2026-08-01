@@ -61,6 +61,7 @@ function createFakeDb(options?: { failOnDelete?: boolean }): {
 
 const REDIS_URL = "redis://127.0.0.1:8637";
 const SOURCE_JOB_ID = "7d3e1f2a-0000-4000-8000-abcdefabcdef";
+const LEAD_ID = "5f9c2a7b-1111-4000-8000-1234567890ab";
 const TOOL = "geo-readiness" as const;
 
 describe("submitCrewReport", () => {
@@ -81,6 +82,7 @@ describe("submitCrewReport", () => {
       db,
       redisUrl: REDIS_URL,
       sourceJobId: SOURCE_JOB_ID,
+      leadId: LEAD_ID,
       tool: TOOL,
     });
 
@@ -93,6 +95,10 @@ describe("submitCrewReport", () => {
     expect(insert!.params![2]).toBe(CREW_REPORT_JOB_RECORD_QUEUE_NAME);
     expect(CREW_REPORT_JOB_RECORD_QUEUE_NAME).toBe("crew_report");
     expect(insert!.params![4]).toBe(SOURCE_JOB_ID);
+    // The lead captured on the web side is threaded onto the job row so the
+    // repository's updateLeadEmailForJob can join job_records.lead_id.
+    expect(insert!.sql).toContain("lead_id");
+    expect(insert!.params![5]).toBe(LEAD_ID);
     expect(calls.some((c) => /DELETE FROM job_records/.test(c.sql))).toBe(false);
 
     // The BullMQ job carries exactly the shape the crew report worker consumes.
@@ -117,6 +123,7 @@ describe("submitCrewReport", () => {
         db,
         redisUrl: REDIS_URL,
         sourceJobId: SOURCE_JOB_ID,
+        leadId: LEAD_ID,
         tool: TOOL,
       }),
     ).rejects.toBe(enqueueError);
@@ -141,6 +148,7 @@ describe("submitCrewReport", () => {
           db,
           redisUrl: REDIS_URL,
           sourceJobId: SOURCE_JOB_ID,
+          leadId: LEAD_ID,
           tool: TOOL,
         }),
       ).rejects.toBe(enqueueError);

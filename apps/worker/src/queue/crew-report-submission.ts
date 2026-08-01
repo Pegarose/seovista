@@ -14,11 +14,14 @@ import type { CrewReportTool } from "../processors/crew-report.js";
  *
  *   1. Insert one `job_records` row with the authoritative column set
  *      (`id`, `job_identity`, `queue_name`, `correlation_id`, `target`,
- *      `status = 'queued'`) — the same columns the geo repository's
- *      `createJobRecord` writes. The `queue_name` column carries the service
- *      identifier `crew_report`; the status action filters on it. The
- *      `target` column carries the source job id the report is generated
- *      from.
+ *      `lead_id`, `status = 'queued'`) — the same columns the geo
+ *      repository's `createJobRecord` writes. The `queue_name` column
+ *      carries the service identifier `crew_report`; the status action
+ *      filters on it. The `target` column carries the source job id the
+ *      report is generated from. The `lead_id` column carries the lead
+ *      captured on the web side before submission so the repository's
+ *      `updateLeadEmailForJob` can join `job_records.lead_id` when the
+ *      email is persisted.
  *   2. Enqueue exactly one BullMQ job carrying `{ jobId, sourceJobId, tool }`
  *      — the shape the crew report worker
  *      (`apps/worker/src/queue/crew-report-worker.ts`) consumes. The queue
@@ -98,6 +101,12 @@ export interface SubmitCrewReportInput {
   redisUrl: string;
   /** The completed source audit job the report is generated from. */
   sourceJobId: string;
+  /**
+   * Lead id captured by the form action before calling submit. Stored on the
+   * job_records row (`lead_id`) exactly like the geo chain; the BullMQ job
+   * payload does not carry it.
+   */
+  leadId: string;
   /** Tool whose source result seeds the report. */
   tool: CrewReportTool;
 }
@@ -114,16 +123,16 @@ export interface SubmitCrewReportResult {
 export async function submitCrewReport(
   input: SubmitCrewReportInput,
 ): Promise<SubmitCrewReportResult> {
-  const { db, redisUrl, sourceJobId, tool } = input;
+  const { db, redisUrl, sourceJobId, leadId, tool } = input;
 
   const jobId = randomUUID();
   const jobIdentity = randomUUID();
   const correlationId = randomUUID();
 
   await db.query(
-    `INSERT INTO job_records (id, job_identity, queue_name, correlation_id, target, status)
-     VALUES ($1, $2, $3, $4, $5, 'queued')`,
-    [jobId, jobIdentity, CREW_REPORT_JOB_RECORD_QUEUE_NAME, correlationId, sourceJobId],
+    `INSERT INTO job_records (id, job_identity, queue_name, correlation_id, target, lead_id, status)
+     VALUES ($1, $2, $3, $4, $5, $6, 'queued')`,
+    [jobId, jobIdentity, CREW_REPORT_JOB_RECORD_QUEUE_NAME, correlationId, sourceJobId, leadId],
   );
 
   const queue = getCrewReportQueue(redisUrl, resolveQueueName());
