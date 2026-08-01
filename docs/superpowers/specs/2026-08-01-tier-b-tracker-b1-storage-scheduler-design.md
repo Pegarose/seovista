@@ -146,7 +146,7 @@ Reuses Tier A's SearXNG integration (`apps/worker/src/processors/serp-provider.t
 | `tracker-dashboard.tsx` | `apps/web/src/components/tracker/` | Client component: target table, add form, deactivate buttons |
 | `actions.ts` | `apps/web/src/lib/tracker/` | Server actions: createTarget, listTargets, deactivateTarget |
 | `validation.ts` | `apps/web/src/lib/tracker/` | Zod schemas for tracker inputs |
-| `tracker-repository.ts` | `apps/worker/src/utils/` or shared | DB queries: session lookup/create, target insert, active targets query, observation insert |
+| `tracker-repository.ts` | `apps/worker/src/utils/` | DB queries: session lookup/create, target insert, active targets query, observation insert. Web imports via `@seovista/worker` (same pattern as `createGeoAuditRepository`). |
 | `tracker-scan.ts` | `apps/worker/src/processors/` | Batch processor: iterate targets → SearXNG → observations |
 | `tracker-scan-submission.ts` | `apps/worker/src/queue/` | Repeatable job registration + queue setup |
 | `tracker-scan-worker.ts` | `apps/worker/src/queue/` | Worker registration, poll loop, error handling |
