@@ -16,3 +16,17 @@ export const TrackerTargetFormSchema = z.object({
 export function validateTrackerTargetInput(input: { email: string; keyword: string; domain: string }) {
   return TrackerTargetFormSchema.safeParse(input);
 }
+
+/**
+ * Session-based target validation — used by the inline AddTargetForm on the
+ * /tracker/[token] dashboard. Unlike TrackerTargetFormSchema, this schema
+ * omits email because the session is resolved from the URL token.
+ */
+export const TrackerSessionTargetSchema = z.object({
+  keyword: z.string().trim().min(1, "Anahtar kelime gereklidir.").max(200, "Anahtar kelime 200 karakteri geçemez."),
+  domain: z.string().trim().min(1, "Alan adı gereklidir.").max(253, "Alan adı 253 karakteri geçemez."),
+});
+
+export function validateTrackerSessionTargetInput(input: { keyword: string; domain: string }) {
+  return TrackerSessionTargetSchema.safeParse(input);
+}
