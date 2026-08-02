@@ -24,6 +24,7 @@ vi.mock("@/lib/admin/db", () => ({
 
 vi.mock("@/lib/tracker/actions", () => ({
   createTrackerTargetAction: vi.fn(),
+  createTrackerTargetForSessionAction: vi.fn(),
   listTrackerTargetsAction: mockListTrackerTargets,
   deactivateTrackerTargetAction: vi.fn(),
 }));
@@ -32,6 +33,7 @@ vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
   },
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -97,5 +99,62 @@ describe("Tracker pages landmark contract", () => {
     ).rejects.toThrow("NEXT_NOT_FOUND");
     // The malformed token must be rejected before any data access.
     expect(mockListTrackerTargets).not.toHaveBeenCalled();
+  });
+});
+
+describe("Tracker [token] page card layout", () => {
+  it("renders an export link with download attribute", async () => {
+    const el = await TrackerTokenPage({ params: Promise.resolve({ token: VALID_TOKEN }) });
+    const markup = renderToStaticMarkup(el);
+    expect(markup).toContain("export");
+    expect(markup).toContain("download");
+  });
+
+  it("renders an inline add-target form", async () => {
+    const el = await TrackerTokenPage({ params: Promise.resolve({ token: VALID_TOKEN }) });
+    const markup = renderToStaticMarkup(el);
+    expect(markup).toContain('name="keyword"');
+    expect(markup).toContain('name="domain"');
+  });
+
+  it("renders empty state text when no targets", async () => {
+    mockListTrackerTargets.mockResolvedValueOnce({
+      success: true,
+      targets: [],
+      email: "user@example.com",
+    });
+    const el = await TrackerTokenPage({ params: Promise.resolve({ token: VALID_TOKEN }) });
+    const markup = renderToStaticMarkup(el);
+    expect(markup).toContain("Henüz takip edilen anahtar kelime yok");
+  });
+
+  it("renders an h2 for each target card when targets exist", async () => {
+    mockListTrackerTargets.mockResolvedValueOnce({
+      success: true,
+      targets: [
+        {
+          id: randomUUID(),
+          keyword: "seo test",
+          domain: "test.com",
+          locale: "tr-TR",
+          active: true,
+          createdAt: new Date("2026-07-01"),
+          lastCheckedAt: new Date("2026-08-01"),
+          latestPosition: 3,
+          latestCheckedAt: "2026-08-01T03:00:00.000Z",
+          recentObservations: [
+            { position: 5, checkedAt: "2026-07-31T03:00:00.000Z", topCompetitors: [] },
+            { position: 3, checkedAt: "2026-08-01T03:00:00.000Z", topCompetitors: [] },
+          ],
+        },
+      ],
+      email: "user@example.com",
+    });
+    const el = await TrackerTokenPage({ params: Promise.resolve({ token: VALID_TOKEN }) });
+    const markup = renderToStaticMarkup(el);
+    expect(markup).toContain("seo test");
+    expect(countTag(markup, "h2")).toBeGreaterThanOrEqual(1);
+    // Still only one h1
+    expect(countTag(markup, "h1")).toBe(1);
   });
 });
