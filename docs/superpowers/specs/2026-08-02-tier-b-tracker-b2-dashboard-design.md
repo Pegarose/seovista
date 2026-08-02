@@ -53,7 +53,7 @@ The old `tracker-dashboard.tsx` is deleted. Its functionality is split across th
         └── <DeactivateButton token={token} targetId={target.id} active={target.active} />
 ```
 
-After a successful add or deactivate, the server action calls `revalidatePath("/tracker/[token]")` and the client island calls `router.refresh()` to re-render the RSC tree without a full page reload.
+After a successful add, the server action calls `revalidatePath("/tracker/{token}")` and `useActionState`'s built-in route refresh re-renders the RSC tree automatically — no explicit `router.refresh()` needed. After a successful deactivate (imperative call, not a form action), the `DeactivateButton` client island calls `router.refresh()` to trigger the re-render.
 
 ### 2.3 Render Approach: Server-Rendered SVG
 
@@ -136,7 +136,7 @@ Inactive targets show a "Pasif" badge and no deactivate button (observations ret
 
 ### 4.2 AddTargetForm (Client Island)
 
-A `"use client"` form with two inputs (keyword, domain) and a submit button. Uses `useActionState` with the new `createTrackerTargetForSessionAction`. On success, the action calls `revalidatePath` and the form calls `router.refresh()` to show the new target card.
+A `"use client"` form with two inputs (keyword, domain) and a submit button. Uses `useActionState` with the new `createTrackerTargetForSessionAction`. On success, the action calls `revalidatePath` and `useActionState`'s built-in route refresh re-renders the dashboard automatically to show the new target card. No explicit `router.refresh()` needed for form actions.
 
 - Email is **not** an input — the session is resolved from the token in the URL.
 - Validation errors (keyword too long, invalid domain, duplicate, max-targets, rate limit) are displayed inline below the form.
@@ -192,7 +192,7 @@ GET /tracker/{token}/export → text/csv
   - `keyword`: the target keyword (Turkish text, may contain special chars)
   - `domain`: the target domain
   - `date`: ISO date `YYYY-MM-DD` (from `checked_at` timestamp, date-only)
-  - `position`: raw integer. `0` means "not found in top 10" (documented in header comment — no, CSV has no comments; documented in the spec and the UI near the button)
+  - `position`: raw integer. `0` means "not found in top 10" (documented in the UI near the export button as a help text)
   - `top_competitors`: comma-separated `domain(#rank)` list, e.g. `rival.com(#1),other.com(#2)`. Comma is safe inside a semicolon-delimited field. Empty if no competitors were recorded.
 
 ### 5.3 Field Escaping
@@ -231,7 +231,7 @@ export type TrackerSessionTargetActionState = {
 ### 6.1 Flow
 
 1. Extract `keyword` and `domain` from `formData` (no email — implicit from session)
-2. Zod validation: reuse a new schema `TrackerSessionTargetSchema` (keyword + domain only, no email). Or reuse `TrackerTargetFormSchema` with a dummy email — **decision:** new schema to keep validation honest and avoid dummy values.
+2. Zod validation: new schema `TrackerSessionTargetSchema` (keyword + domain only, no email). A separate schema keeps validation honest — reusing `TrackerTargetFormSchema` would require a dummy email value.
 3. UUID regex check on `token` (defense in depth; page already gates, but this action is called from the client island which receives the token as a prop)
 4. `findSessionByToken(token)` → if null, return error "Oturum bulunamadı." (shouldn't happen on a valid dashboard, but defensive)
 5. `checkIpRateLimit` with bucket `"tracker-create"` (same bucket as the `/tracker` form — shared quota)
