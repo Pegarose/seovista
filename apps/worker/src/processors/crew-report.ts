@@ -91,7 +91,9 @@ export function buildCrewReportRequest(input: BuildCrewReportRequestInput): Crew
   const { tool, sourcePayload, sourceTarget } = input;
 
   if (!isCrewReportTool(tool)) {
-    throw new Error(`Unknown crew report tool: ${String(tool)}`);
+    // Validation-coded so the worker's terminal-status mapper treats this as
+    // 'permanent' (an unknown tool will never become valid on retry).
+    throw validationCrewReportError(`Unknown crew report tool: ${String(tool)}`);
   }
 
   const record = isRecord(sourcePayload) ? sourcePayload : {};

@@ -203,10 +203,24 @@ describe("buildCrewReportRequest", () => {
     expect(body.raw_data_context.endsWith("…")).toBe(true);
   });
 
-  it("throws for an unknown tool", () => {
+  it("buildCrewReportRequest throws a validation-coded error for an unknown tool", () => {
     expect(() =>
-      buildCrewReportRequest({ tool: "unknown-tool" as never, sourcePayload: {} }),
-    ).toThrow(/unknown/i);
+      buildCrewReportRequest({
+        tool: "bogus" as never,
+        sourcePayload: {},
+        sourceTarget: undefined,
+      }),
+    ).toThrow(/Unknown crew report tool/);
+
+    try {
+      buildCrewReportRequest({
+        tool: "bogus" as never,
+        sourcePayload: {},
+        sourceTarget: undefined,
+      });
+    } catch (err) {
+      expect((err as Error & { code?: string }).code).toBe("validation.crew_report");
+    }
   });
 });
 
