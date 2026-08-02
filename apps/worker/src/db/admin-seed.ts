@@ -1,6 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { createDbClient, type DbClient } from "./client.js";
 import { createMigrationRunner, defaultMigrationsDir, type Migration } from "./migrations.js";
+import { stdoutLogger, type Logger } from "../utils/logger.js";
 
 export const DEFAULT_ADMIN_EMAIL = "admin@seovista.local";
 export const DEFAULT_ADMIN_DISPLAY_NAME = "SeoVista Local Operator";
@@ -25,7 +26,7 @@ export interface LocalAdminBootstrapDependencies {
   createClient?: (options: { connectionString: string; max: number }) => DbClient;
   applyMigrations?: (client: DbClient) => Promise<Migration[]>;
   ensureAdmin?: (client: DbClient, password: string) => Promise<AdminBootstrapIdentity>;
-  logger?: (...values: unknown[]) => void;
+  logger?: Logger;
 }
 
 export interface LocalAdminBootstrapResult {
@@ -121,7 +122,7 @@ export async function runLocalAdminBootstrap(
   const applyMigrations = dependencies.applyMigrations ?? ((db) =>
     createMigrationRunner(db, defaultMigrationsDir()).applyAll());
   const ensureAdmin = dependencies.ensureAdmin ?? ensureAdminBootstrap;
-  const logger = dependencies.logger ?? console.log;
+  const logger = dependencies.logger ?? stdoutLogger;
 
   try {
     const appliedMigrations = await applyMigrations(client);

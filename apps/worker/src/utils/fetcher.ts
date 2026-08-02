@@ -9,6 +9,7 @@ import {
   incrementBrowseractCreditCounter,
 } from "./render-cache.js";
 import { getDailyCreditStatus } from "./credit-guard.js";
+import { stdoutLogger, type Logger } from "./logger.js";
 
 /**
  * Options passed to {@link fetchAndParseUrl}.
@@ -19,6 +20,8 @@ import { getDailyCreditStatus } from "./credit-guard.js";
  */
 export interface FetchAndParseUrlOptions {
   forceAudit?: boolean;
+  /** Injected stdout logger; defaults to the sanctioned stdoutLogger. */
+  logger?: Logger;
 }
 
 /**
@@ -691,13 +694,14 @@ export async function fetchAndParseUrlWithMeta(
   await validateSSRF(targetUrl);
 
   const forceAudit = options.forceAudit === true;
+  const logger = options.logger ?? stdoutLogger;
   const cacheKey = computeCacheKey(targetUrl);
 
   // 2. Cache lookup (skipped on forceAudit bypass)
   if (!forceAudit) {
     const cached = await getCachedRender(cacheKey);
     if (cached) {
-      console.log(
+      logger(
         JSON.stringify({
           name: "@seovista/worker",
           layer: "fetcher",
@@ -745,7 +749,7 @@ export async function fetchAndParseUrlWithMeta(
     await incrementBrowseractCreditCounter();
   }
 
-  console.log(
+  logger(
     JSON.stringify({
       name: "@seovista/worker",
       layer: "fetcher",

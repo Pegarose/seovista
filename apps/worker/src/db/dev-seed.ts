@@ -2,18 +2,19 @@ import { createDbClient } from "./client.js";
 import { createAdminAuthRepository } from "./admin-auth.js";
 import { createCmsRepository } from "./cms-repository.js";
 import { createGeoAuditRepository } from "./geo-audit-repository.js";
+import { stdoutLogger, type Logger } from "../utils/logger.js";
 
-async function main() {
+async function main(logger: Logger = stdoutLogger) {
   const connectionString = 
     process.env.DATABASE_URL || "postgresql://seovista:seovista@127.0.0.1:8543/seovista";
 
-  console.log(`Connecting to database at ${connectionString}...`);
+  logger(`Connecting to database at ${connectionString}...`);
   const dbClient = createDbClient({ connectionString });
 
   try {
     // 1. connection check
     await dbClient.query("SELECT 1");
-    console.log("Database connection successful.");
+    logger("Database connection successful.");
 
     const adminRepo = createAdminAuthRepository(dbClient);
     const cmsRepo = createCmsRepository(dbClient);
@@ -29,9 +30,9 @@ async function main() {
         passwordHash: "admin123", // Assuming fake unhashed for dev seeding based on requirements
         status: "active"
       });
-      console.log(`Inserted admin: ${adminEmail}`);
+      logger(`Inserted admin: ${adminEmail}`);
     } else {
-      console.log(`Admin ${adminEmail} already exists. Skipping.`);
+      logger(`Admin ${adminEmail} already exists. Skipping.`);
     }
 
     // 5. Insights - checking existence by slug
@@ -73,9 +74,9 @@ async function main() {
         });
 
         await cmsRepo.updatePublicationState(entry.id, 'published', revision.id);
-        console.log(`Inserted published insight: ${insight.slug}`);
+        logger(`Inserted published insight: ${insight.slug}`);
       } else {
-        console.log(`Insight ${insight.slug} already exists. Skipping.`);
+        logger(`Insight ${insight.slug} already exists. Skipping.`);
       }
     }
 
@@ -90,9 +91,9 @@ async function main() {
         primaryMarket: "US"
       });
       await dbClient.query('UPDATE geo_audit_leads SET work_email = $1, marketing_consent = $2 WHERE id = $3', ["lead@completed-lead.local", true, finishedLead.id]);
-      console.log(`Inserted finished lead: ${finishedLead.domain}`);
+      logger(`Inserted finished lead: ${finishedLead.domain}`);
     } else {
-      console.log(`Finished lead completed-lead.local already exists. Skipping.`);
+      logger(`Finished lead completed-lead.local already exists. Skipping.`);
     }
 
     // Abandoned Halfway Lead
@@ -103,12 +104,12 @@ async function main() {
         primaryMarket: "US"
       });
       // No email update
-      console.log(`Inserted abandoned lead: ${abandonedLead.domain}`);
+      logger(`Inserted abandoned lead: ${abandonedLead.domain}`);
     } else {
-       console.log(`Abandoned lead abandoned-lead.local already exists. Skipping.`);
+       logger(`Abandoned lead abandoned-lead.local already exists. Skipping.`);
     }
 
-    console.log("Seeding complete.");
+    logger("Seeding complete.");
 
   } catch (err) {
     console.error("Seeding failed:", err);
