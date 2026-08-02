@@ -81,9 +81,11 @@ export async function createTrackerTargetAction(
     }
 
     // The keyword_targets table has a UNIQUE(session_id, keyword, domain)
-    // constraint; a duplicate insert surfaces as a PG unique violation that
-    // we translate into the honest Turkish "already tracked" form error
-    // rather than a generic system error.
+    // constraint; a duplicate insert surfaces as a PG unique violation (23505)
+    // that we translate into the honest Turkish "already tracked" form error.
+    // Every other error (e.g. a real database outage) is rethrown so the
+    // outer catch returns the generic system-error contract instead of
+    // misleading the user with a duplicate message.
     try {
       await repo.createTarget({
         sessionId: session.id,
@@ -91,13 +93,21 @@ export async function createTrackerTargetAction(
         domain,
         locale: "tr-TR",
       });
-    } catch {
-      return {
-        status: "error",
-        errors: {
-          form: ["Bu anahtar kelime zaten takip ediliyor."],
-        },
-      };
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: string }).code === "23505"
+      ) {
+        return {
+          status: "error",
+          errors: {
+            form: ["Bu anahtar kelime zaten takip ediliyor."],
+          },
+        };
+      }
+      throw error;
     }
 
     return { status: "success", token: session.token };

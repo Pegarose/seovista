@@ -1,7 +1,13 @@
+import { notFound } from "next/navigation";
 import { listTrackerTargetsAction } from "../../../src/lib/tracker/actions";
 import { TrackerDashboard } from "../../../src/components/tracker/tracker-dashboard";
 
 export const dynamic = "force-dynamic";
+
+// Spec §8: invalid tokens must surface as 404. The token is a UUID issued by
+// the tracker session flow; anything outside that shape is rejected before
+// hitting the database.
+const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function generateMetadata() {
   return {
@@ -17,21 +23,14 @@ export default async function TrackerTokenPage({
 }) {
   const { token } = await params;
 
+  if (!TOKEN_RE.test(token)) notFound();
+
   const result = await listTrackerTargetsAction(token);
 
   if (!result.success) {
-    return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Takip Paneli Bulunamadı
-          </h1>
-          <p className="text-slate-700">
-            Takip paneli bağlantınız geçersiz veya bulunamadı. Lütfen bağlantıyı kontrol edin.
-          </p>
-        </div>
-      </main>
-    );
+    // Unknown token (or lookup failure) — render the 404 contract via
+    // not-found.tsx rather than an inline 200 view.
+    notFound();
   }
 
   return (
@@ -55,26 +54,15 @@ export default async function TrackerTokenPage({
 
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
           <h2 className="text-lg font-bold text-slate-900 mb-4">Yeni Hedef Ekle</h2>
-          <AddTargetForm token={token} email={result.email} />
+          <p className="text-sm text-slate-600">
+            Yeni hedef eklemek için{" "}
+            <a href="/tracker" className="font-semibold text-slate-900 hover:text-slate-600 underline">
+              takip formuna gidin
+            </a>{" "}
+            ve aynı e-posta adresini kullanın. Hedefleriniz bu panelde görünecek.
+          </p>
         </div>
       </div>
     </main>
-  );
-}
-
-function AddTargetForm({ token: _token, email }: { token: string; email: string }) {
-  // Reuses the TrackerForm but pre-fills the email since the session is known.
-  // For B1 simplicity, we use a simple form that calls the same action.
-  return (
-    <form action="/api/tracker/add" method="POST" className="space-y-4">
-      <input type="hidden" name="knownEmail" value={email} />
-      <p className="text-sm text-slate-600">
-        Yeni hedef eklemek için{" "}
-        <a href="/tracker" className="font-semibold text-slate-900 hover:text-slate-600 underline">
-          takip formuna gidin
-        </a>{" "}
-        ve aynı e-posta adresini kullanın. Hedefleriniz bu panelde görünecek.
-      </p>
-    </form>
   );
 }

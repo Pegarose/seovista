@@ -26,7 +26,7 @@ CREATE TABLE keyword_targets (
 CREATE TABLE rank_observations (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   target_id       UUID NOT NULL REFERENCES keyword_targets(id) ON DELETE CASCADE,
-  position        INTEGER NOT NULL,
+  position        INTEGER NOT NULL, -- 0 = not found in results
   checked_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   top_competitors JSONB NOT NULL DEFAULT '[]'::jsonb
 );

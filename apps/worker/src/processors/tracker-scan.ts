@@ -1,6 +1,7 @@
 import console from "node:console";
 import {
   extractKeywordRank,
+  normalizeHost,
   type SerpEntry,
   type SerpLocale,
 } from "@seovista/seo-core";
@@ -29,14 +30,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function extractDomainFromUrl(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
 /**
  * Processes a batch tracker scan: iterates all active keyword targets, queries
  * SearXNG for each via the injected SERP provider, extracts the target's
@@ -54,7 +47,7 @@ export async function processTrackerScanBatch(input: TrackerScanInput): Promise<
   let successes = 0;
   let failures = 0;
 
-  for (const target of targets) {
+  for (const [index, target] of targets.entries()) {
     try {
       const entries: SerpEntry[] = await provider.search(
         target.keyword,
@@ -69,7 +62,7 @@ export async function processTrackerScanBatch(input: TrackerScanInput): Promise<
 
       const topCompetitors = top10.map((entry) => ({
         rank: entry.position,
-        domain: extractDomainFromUrl(entry.url),
+        domain: normalizeHost(entry.url),
       }));
 
       await repo.insertObservation({
@@ -97,7 +90,7 @@ export async function processTrackerScanBatch(input: TrackerScanInput): Promise<
     }
 
     // Rate-limit courtesy delay between queries (skip after the last target).
-    if (delayMs > 0) await sleep(delayMs);
+    if (delayMs > 0 && index < targets.length - 1) await sleep(delayMs);
   }
 
   const durationMs = Date.now() - startTime;

@@ -8,6 +8,7 @@
  * React element is passed to renderToStaticMarkup.
  */
 import { describe, it, expect, vi, beforeAll } from "vitest";
+import { randomUUID } from "node:crypto";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -41,7 +42,11 @@ function countTag(markup: string, tag: string): number {
   return (markup.match(new RegExp(`<${tag}[\\s>]`, "g")) ?? []).length;
 }
 
-const VALID_TOKEN = "fixture-token";
+// UUID-shaped token: the page rejects non-UUID tokens via notFound() before
+// any data access, so tests must use a well-formed value. Generated at
+// runtime — the mocked action ignores the value, and no UUID literal is
+// hardcoded in the file.
+const VALID_TOKEN = randomUUID();
 
 let TrackerPage: () => React.ReactElement;
 let TrackerTokenPage: (props: { params: Promise<{ token: string }> }) => Promise<React.ReactElement>;
@@ -76,5 +81,21 @@ describe("Tracker pages landmark contract", () => {
     expect(countTag(markup, "main")).toBe(1);
     expect(markup).toContain('id="main"');
     expect(countTag(markup, "h1")).toBe(1);
+  });
+
+  it("/tracker/[token] throws NEXT_NOT_FOUND for an unknown token", async () => {
+    mockListTrackerTargets.mockResolvedValueOnce({ success: false, error: "Takip paneli bulunamadı." });
+    await expect(
+      TrackerTokenPage({ params: Promise.resolve({ token: VALID_TOKEN }) }),
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("/tracker/[token] throws NEXT_NOT_FOUND for a malformed token", async () => {
+    mockListTrackerTargets.mockClear();
+    await expect(
+      TrackerTokenPage({ params: Promise.resolve({ token: "not-a-uuid" }) }),
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+    // The malformed token must be rejected before any data access.
+    expect(mockListTrackerTargets).not.toHaveBeenCalled();
   });
 });
