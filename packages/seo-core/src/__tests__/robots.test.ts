@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   detectRuleConflicts,
+  detectContradictoryRuleConflicts,
   evaluateCrawlerAccess,
   isPathAllowed,
   parseRobotsTxt,
@@ -145,5 +146,21 @@ describe("isPathAllowed tie-break", () => {
   it("allow wins when Allow and Disallow patterns have equal length", () => {
     const doc = parseRobotsTxt("User-agent: *\nAllow: /x\nDisallow: /x\n");
     expect(isPathAllowed(doc, "Googlebot", "/x")).toBe(true);
+  });
+});
+
+describe("detectContradictoryRuleConflicts", () => {
+  it("detects same-pattern allow+disallow in one group", () => {
+    const doc = parseRobotsTxt("User-agent: *\nAllow: /x\nDisallow: /x\n");
+    const conflicts = detectContradictoryRuleConflicts(doc);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.description).toContain("/x");
+  });
+
+  it("does NOT report the wildcard-policy-vs-UA-full-block conflict (that stays in detectRuleConflicts)", () => {
+    const doc = parseRobotsTxt("User-agent: *\nDisallow:\nUser-agent: GPTBot\nDisallow: /\n");
+    expect(detectContradictoryRuleConflicts(doc)).toHaveLength(0);
+    // The full detectRuleConflicts DOES report it:
+    expect(detectRuleConflicts(doc).length).toBeGreaterThan(0);
   });
 });

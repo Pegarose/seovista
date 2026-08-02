@@ -1,10 +1,10 @@
 import {
+  detectContradictoryRuleConflicts,
   detectRuleConflicts,
   evaluateAllCrawlers,
   parseRobotsTxt,
   type CrawlerCategory,
   type CrawlerAccessStatus,
-  type RobotsTxtDocument,
   type RuleConflict,
 } from "@seovista/seo-core";
 
@@ -30,35 +30,6 @@ const CONFLICT_PENALTY_CAP = 24;
 const MISSING_ROBOTS_CAP = 60;
 const MISSING_SITEMAP_PENALTY = 5;
 
-/**
- * Detects genuine rule contradictions: the same path carrying both an Allow
- * and a Disallow rule inside one group.
- *
- * Deliberately NOT counted here: the `detectRuleConflicts` notices about a
- * user-agent-specific full block while the wildcard group stays open. Those
- * describe intentional per-bot policies (e.g. `GPTBot: Disallow /`), not
- * misconfigurations — the PRD honesty rules state that blocking AI training
- * bots is a legitimate policy choice and must never be scored or surfaced as
- * a defect, so only true Allow/Disallow contradictions carry a penalty.
- */
-function findContradictoryRuleConflicts(doc: RobotsTxtDocument): RuleConflict[] {
-  const conflicts: RuleConflict[] = [];
-  for (const group of doc.groups) {
-    const allows = new Set(
-      group.rules.filter((r) => r.type === "allow").map((r) => r.pattern),
-    );
-    for (const rule of group.rules) {
-      if (rule.type === "disallow" && allows.has(rule.pattern)) {
-        conflicts.push({
-          description: `Aynı yol için hem Allow hem Disallow kuralı tanımlı: ${rule.pattern}`,
-          lines: [`user-agent: ${group.userAgents.join(", ")} (satır ${group.line})`],
-        });
-      }
-    }
-  }
-  return conflicts;
-}
-
 export function processAiCrawlerAuditPayload(
   robotsTxtContent: string | null,
   robotsTxtUrl: string,
@@ -67,7 +38,7 @@ export function processAiCrawlerAuditPayload(
   const doc = parseRobotsTxt(robotsTxtContent ?? "");
   const crawlers = evaluateAllCrawlers(doc);
   const conflicts = found ? detectRuleConflicts(doc) : [];
-  const contradictoryConflicts = found ? findContradictoryRuleConflicts(doc) : [];
+  const contradictoryConflicts = found ? detectContradictoryRuleConflicts(doc) : [];
   const recommendations: string[] = [];
 
   let penalty = 0;

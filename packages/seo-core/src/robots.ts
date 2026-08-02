@@ -131,7 +131,13 @@ export interface RuleConflict {
 
 const FULL_BLOCK_PATTERNS = new Set(["/", "/*"]);
 
-export function detectRuleConflicts(doc: RobotsTxtDocument): RuleConflict[] {
+/**
+ * Detects genuine rule contradictions: the same path carrying both an Allow
+ * and a Disallow rule inside one group. This is the narrow, penalty-relevant
+ * subset of {@link detectRuleConflicts} — the worker's AI-crawler audit uses
+ * it directly so it does not duplicate the logic (M1(a) drift fix).
+ */
+export function detectContradictoryRuleConflicts(doc: RobotsTxtDocument): RuleConflict[] {
   const conflicts: RuleConflict[] = [];
   for (const group of doc.groups) {
     const allows = new Set(group.rules.filter((r) => r.type === "allow").map((r) => r.pattern));
@@ -144,6 +150,11 @@ export function detectRuleConflicts(doc: RobotsTxtDocument): RuleConflict[] {
       }
     }
   }
+  return conflicts;
+}
+
+export function detectRuleConflicts(doc: RobotsTxtDocument): RuleConflict[] {
+  const conflicts: RuleConflict[] = detectContradictoryRuleConflicts(doc);
   const wildcards = doc.groups.filter((g) => g.userAgents.includes("*"));
   const wildcardFullBlock = wildcards.some((g) =>
     g.rules.some((r) => r.type === "disallow" && FULL_BLOCK_PATTERNS.has(r.pattern)),

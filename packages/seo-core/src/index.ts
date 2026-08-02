@@ -67,6 +67,7 @@ export {
   isPathAllowed,
   evaluateCrawlerAccess,
   detectRuleConflicts,
+  detectContradictoryRuleConflicts,
 } from "./robots.js";
 
 export type {
