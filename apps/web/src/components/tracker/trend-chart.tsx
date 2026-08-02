@@ -18,10 +18,6 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 }
 
-// React's static renderer HTML-escapes the apostrophe in the Turkish
-// "not in top 10" label to `&#x27;`, which would break literal-substring
-// assertions. The label is a static literal (no user input), so we render
-// it raw via dangerouslySetInnerHTML at the call sites.
 const NOT_FOUND_LABEL = "İlk 10'da yok";
 const NOT_FOUND_TITLE = (iso: string) => `${formatDate(iso)} — İlk 10'da yok`;
 
@@ -115,7 +111,7 @@ export function TrendChart({ observations, keyword }: TrendChartProps) {
           const x = xPos(new Date(o.checkedAt).getTime());
           return (
             <circle key={`zero-${i}`} cx={x} cy={ZERO_BAND_Y} r="3" fill="#f59e0b">
-              <title dangerouslySetInnerHTML={{ __html: NOT_FOUND_TITLE(o.checkedAt) }} />
+              <title>{NOT_FOUND_TITLE(o.checkedAt)}</title>
             </circle>
           );
         })}
@@ -135,7 +131,7 @@ export function TrendChart({ observations, keyword }: TrendChartProps) {
               <tr key={i}>
                 <td className="py-1 pr-4 tabular-nums">{formatDate(o.checkedAt)}</td>
                 <td className="py-1 tabular-nums">
-                  {o.position > 0 ? `#${o.position}` : <span dangerouslySetInnerHTML={{ __html: NOT_FOUND_LABEL }} />}
+                  {o.position > 0 ? `#${o.position}` : <span>{NOT_FOUND_LABEL}</span>}
                 </td>
               </tr>
             ))}

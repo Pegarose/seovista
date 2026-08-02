@@ -11,6 +11,12 @@ function makeObservations(positions: number[]): Array<{ position: number; checke
   }).reverse(); // DESC like the repository
 }
 
+// React's static renderer HTML-escapes apostrophes to `&#x27;`. Decode before
+// assertions that match text containing apostrophes.
+function decodeEntities(s: string): string {
+  return s.replace(/&#x27;/g, "'");
+}
+
 describe("TrendChart", () => {
   it("renders an SVG with role=img and aria-label containing the keyword", () => {
     const markup = renderToStaticMarkup(
@@ -48,7 +54,7 @@ describe("TrendChart", () => {
       }),
     );
     expect(markup).toContain("#f59e0b"); // amber-500
-    expect(markup).toContain("İlk 10'da yok");
+    expect(decodeEntities(markup)).toContain("İlk 10'da yok");
   });
 
   it("renders a <title> tooltip with date and position for in-top-10 points", () => {

@@ -11,6 +11,12 @@ vi.mock("@/lib/tracker/actions", () => ({
   deactivateTrackerTargetAction: vi.fn(),
 }));
 
+// React's static renderer HTML-escapes apostrophes to `&#x27;`. Decode before
+// assertions that match text containing apostrophes.
+function decodeEntities(s: string): string {
+  return s.replace(/&#x27;/g, "'");
+}
+
 describe("TrackerTargetCard", () => {
   function makeTarget(overrides: Partial<{
     id: string;
@@ -81,7 +87,7 @@ describe("TrackerTargetCard", () => {
         token: randomUUID(),
       }),
     );
-    expect(markup).toContain("İlk 10'da yok");
+    expect(decodeEntities(markup)).toContain("İlk 10'da yok");
   });
 
   it("renders 'Henüz kontrol edilmedi' when latestPosition is null", async () => {
@@ -107,7 +113,7 @@ describe("TrackerTargetCard", () => {
         token: randomUUID(),
       }),
     );
-    expect(markup).toContain("İlk kontrol bu gece 03:00 UTC'de yapılacak");
+    expect(decodeEntities(markup)).toContain("İlk kontrol bu gece 03:00 UTC'de yapılacak");
   });
 
   it("renders Pasif badge and no Kaldır button when inactive", async () => {

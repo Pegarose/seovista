@@ -2,10 +2,6 @@ import { TrendChart } from "./trend-chart";
 import { DeactivateButton } from "./deactivate-button";
 import type { TargetWithObservations } from "@seovista/worker";
 
-// React's static renderer HTML-escapes the apostrophe in the Turkish
-// "not in top 10" and "first check tonight" labels to `&#x27;`, which would
-// break literal-substring assertions. Both labels are static literals (no
-// user input), so we render them raw via dangerouslySetInnerHTML.
 const NOT_FOUND_LABEL = "İlk 10'da yok";
 const EMPTY_STATE_LABEL = "İlk kontrol bu gece 03:00 UTC'de yapılacak.";
 
@@ -22,8 +18,6 @@ export function TrackerTargetCard({
       : target.latestPosition === 0
         ? NOT_FOUND_LABEL
         : "Henüz kontrol edilmedi";
-  const isNotFoundLabel = target.latestPosition === 0;
-
   const lastCheckedText = target.latestCheckedAt
     ? new Date(target.latestCheckedAt).toLocaleDateString("tr-TR")
     : "—";
@@ -43,14 +37,7 @@ export function TrackerTargetCard({
       </div>
 
       <div className="flex items-center gap-4 text-sm">
-        {isNotFoundLabel ? (
-          <span
-            className="tabular-nums font-semibold text-slate-900"
-            dangerouslySetInnerHTML={{ __html: latestPositionText }}
-          />
-        ) : (
-          <span className="tabular-nums font-semibold text-slate-900">{latestPositionText}</span>
-        )}
+        <span className="tabular-nums font-semibold text-slate-900">{latestPositionText}</span>
         <span className="text-slate-400">·</span>
         <span className="text-slate-600">Son kontrol: {lastCheckedText}</span>
       </div>
@@ -61,10 +48,7 @@ export function TrackerTargetCard({
           keyword={target.keyword}
         />
       ) : (
-        <p
-          className="text-sm text-slate-500 italic"
-          dangerouslySetInnerHTML={{ __html: EMPTY_STATE_LABEL }}
-        />
+        <p className="text-sm text-slate-500 italic">{EMPTY_STATE_LABEL}</p>
       )}
 
       {target.active && (

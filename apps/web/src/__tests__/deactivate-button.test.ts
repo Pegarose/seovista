@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/tracker/actions", () => ({
-  deactivateTrackerTargetAction: vi.fn(),
+  deactivateTrackerTargetAction: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 describe("DeactivateButton", () => {
