@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   processCrewReportJob,
+  resolveCrewReportClient,
   type CrewReportDb,
 } from "../queue/crew-report-worker.js";
 import { CrewAgencyError, type CrewAgencyClient } from "../utils/crew-agency-client.js";
@@ -80,11 +81,28 @@ describe("processCrewReportJob", () => {
     const { db, calls } = makeFakeDb([
       { match: "status = 'running'", rows: [] },
     ]);
-    // No client passed + resolveCrewAgencyClient returns null — but we inject
+    // No client passed + resolveCrewReportClient returns null — but we inject
     // a null client to simulate misconfiguration directly.
     await expect(
       processCrewReportJob(baseData, { db, client: null, sleep: instantSleep }),
     ).rejects.toThrow();
+    const terminal = calls.find((c) => c.text.includes("status = $2"));
+    expect(terminal?.params).toContain("permanent");
+  });
+
+  it("normalizes an invalid configured URL before handler mapping", async () => {
+    const { db, calls } = makeFakeDb([
+      { match: "status = 'running'", rows: [] },
+    ]);
+    const client = resolveCrewReportClient({
+      CREW_AGENCY_API_URL: "not-a-url",
+      CREW_AGENCY_API_KEY: "test-key",
+    });
+
+    expect(client).toBeNull();
+    await expect(
+      processCrewReportJob(baseData, { db, client, sleep: instantSleep }),
+    ).rejects.toMatchObject({ code: "crew.misconfigured" });
     const terminal = calls.find((c) => c.text.includes("status = $2"));
     expect(terminal?.params).toContain("permanent");
   });

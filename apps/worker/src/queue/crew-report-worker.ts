@@ -98,6 +98,24 @@ export interface CrewReportJobDeps {
 }
 
 /**
+ * Resolves the configured CrewAgency client for the worker wiring. Invalid
+ * operator configuration is normalized to null so the handler's single
+ * terminal-status mapping path records crew.misconfigured as permanent.
+ */
+export function resolveCrewReportClient(
+  env: { CREW_AGENCY_API_URL?: string | undefined; CREW_AGENCY_API_KEY?: string | undefined } = process.env,
+): CrewAgencyClient | null {
+  try {
+    return resolveCrewAgencyClient(env);
+  } catch (err) {
+    if (err instanceof CrewAgencyError && err.code === "crew.misconfigured") {
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
  * Pure job-processing logic extracted from the BullMQ Worker callback so it
  * can be unit-tested with a fake db, mock client, and instant sleep. The
  * terminal-status mapping (catch block) lives here so every error path is
@@ -245,7 +263,7 @@ export function startCrewReportWorker(options?: CrewReportWorkerOptions) {
         tool: CrewReportTool;
       };
 
-      const client = options?.client ?? resolveCrewAgencyClient();
+      const client = options?.client ?? resolveCrewReportClient();
       const sleep = options?.sleep ?? defaultSleep;
       await processCrewReportJob(
         { jobId, sourceJobId, tool },
