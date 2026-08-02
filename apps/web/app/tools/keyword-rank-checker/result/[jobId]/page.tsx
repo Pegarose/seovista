@@ -3,6 +3,7 @@ import type { KeywordRankResultPayload } from "@seovista/worker";
 import { getAdminDb } from "../../../../../src/lib/admin/db";
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { CrewReportSection } from "../../../../../src/components/crew-report/crew-report-section";
+import { TrackThisButton } from "../../../../../src/components/tracker/track-this-button";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
 import {
   normalizeJobResultStatus,
@@ -291,6 +292,11 @@ export default async function KeywordRankJobResultPage({
               </tbody>
             </table>
           </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">Günlük Takip</h2>
+          <TrackThisButton keyword={safePayload.keyword} domain={safePayload.domain} />
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
