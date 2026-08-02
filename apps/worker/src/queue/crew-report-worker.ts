@@ -80,6 +80,153 @@ export function getCrewReportWorkerConcurrency(options?: CrewReportWorkerOptions
   return 3;
 }
 
+export interface CrewReportDb {
+  query(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ rows: readonly Record<string, unknown>[] }>;
+}
+
+export interface CrewReportJobDeps {
+  db: CrewReportDb;
+  client: CrewAgencyClient | null;
+  sleep: (ms: number) => Promise<void>;
+  /** Poll ceiling override; defaults to the module POLL_CEILING_MS (10 min). */
+  pollCeilingMs?: number;
+  /** Poll interval override; defaults to the module POLL_INTERVAL_MS (5 s). */
+  pollIntervalMs?: number;
+}
+
+/**
+ * Pure job-processing logic extracted from the BullMQ Worker callback so it
+ * can be unit-tested with a fake db, mock client, and instant sleep. The
+ * terminal-status mapping (catch block) lives here so every error path is
+ * testable. `startCrewReportWorker` is thin wiring that resolves deps from
+ * env/options and delegates here.
+ */
+export async function processCrewReportJob(
+  data: { jobId: string; sourceJobId: string; tool: CrewReportTool },
+  deps: CrewReportJobDeps,
+): Promise<void> {
+  const { jobId, sourceJobId, tool } = data;
+  const { db, client, sleep } = deps;
+  const pollCeilingMs = deps.pollCeilingMs ?? POLL_CEILING_MS;
+  const pollIntervalMs = deps.pollIntervalMs ?? POLL_INTERVAL_MS;
+
+  try {
+    await db.query(`UPDATE job_records SET status = 'running', updated_at = now() WHERE id = $1`, [jobId]);
+
+    // Fail closed when CrewAgency is not configured: a null client maps to a
+    // permanent 'crew.misconfigured' failure (no retry can fix configuration).
+    if (!client) {
+      throw new CrewAgencyError(
+        "crew.misconfigured",
+        "CrewAgency is not configured: CREW_AGENCY_API_URL and CREW_AGENCY_API_KEY must both be set",
+      );
+    }
+
+    const sourceQueueName = TOOL_QUEUE_NAMES[tool];
+    if (!sourceQueueName) {
+      throw permanentCrewReportError(
+        `Unknown crew report tool '${String(tool)}' on job ${jobId}`,
+      );
+    }
+
+    const sourceRes = await db.query(
+      `SELECT r.payload, j.target AS source_target FROM job_records j JOIN job_results r ON r.correlation_id = j.correlation_id WHERE j.id = $1 AND j.queue_name = $2 ORDER BY r.created_at DESC LIMIT 1`,
+      [sourceJobId, sourceQueueName]
+    );
+    const sourceRow = sourceRes.rows[0];
+    if (!sourceRow) {
+      throw permanentCrewReportError(
+        `Source payload not found for crew report job ${jobId}: no ${sourceQueueName} result for source job ${sourceJobId}`,
+      );
+    }
+
+    const request = buildCrewReportRequest({
+      tool,
+      sourcePayload: sourceRow.payload,
+      sourceTarget:
+        typeof sourceRow.source_target === "string" ? sourceRow.source_target : undefined,
+    });
+    const { jobId: crewJobId } = await client.kickoff(request.endpoint, request.body);
+
+    const crewStatus = await pollCrewJobUntilTerminal(client, crewJobId, sleep, pollCeilingMs, pollIntervalMs);
+
+    if (crewStatus.status === "failed") {
+      throw new Error(
+        `CrewAgency job ${crewJobId} failed: ${crewStatus.error ?? "no error detail returned"}`,
+      );
+    }
+
+    const reportMarkdown = extractReportMarkdown(crewStatus.result);
+    if (!reportMarkdown) {
+      throw new CrewAgencyError(
+        "crew.unavailable",
+        `CrewAgency job ${crewJobId} completed without markdown report content`,
+      );
+    }
+
+    const result = buildCrewReportResultPayload({
+      sourceJobId,
+      tool,
+      endpoint: request.endpoint,
+      reportMarkdown,
+      crewJobId,
+    });
+
+    const jobRecordRes = await db.query(
+      `SELECT job_identity, correlation_id FROM job_records WHERE id = $1 AND queue_name = $2`,
+      [jobId, CREW_REPORT_JOB_RECORD_QUEUE_NAME]
+    );
+    const rawJobRecord = jobRecordRes.rows[0];
+    if (!rawJobRecord) {
+      throw new Error(`Job record ${jobId} not found during result saving.`);
+    }
+    const { job_identity, correlation_id } = rawJobRecord;
+
+    const jobResultRes = await db.query(
+      `INSERT INTO job_results (correlation_id, job_identity, result_type, payload)
+       VALUES ($1, $2, 'crew-report:result', $3) RETURNING id`,
+      [correlation_id, job_identity, JSON.stringify(result)]
+    );
+    const rawResultRes = jobResultRes.rows[0];
+    if (!rawResultRes) {
+      throw new Error(`Failed to return result ID after crew report job save.`);
+    }
+
+    const resultId = rawResultRes.id;
+
+    await db.query(
+      `UPDATE job_records SET status = 'completed', result_id = $2, completed_at = now(), updated_at = now() WHERE id = $1`,
+      [jobId, resultId]
+    );
+  } catch (err) {
+    console.error("Crew report worker failed job:", err);
+    let terminalStatus = 'failed';
+
+    if (err instanceof CrewAgencyError) {
+      if (
+        err.code === "crew.auth" ||
+        err.code === "crew.misconfigured" ||
+        err.code === "crew.client_error"
+      ) {
+        terminalStatus = 'permanent';
+      } else {
+        terminalStatus = 'timeout';
+      }
+    } else if (typeof err === 'object' && err !== null && 'code' in err) {
+      const code = err.code;
+      if (typeof code === 'string' && code.startsWith('validation.')) {
+        terminalStatus = 'permanent';
+      }
+    }
+
+    await db.query(`UPDATE job_records SET status = $2, updated_at = now() WHERE id = $1`, [jobId, terminalStatus]);
+    throw err;
+  }
+}
+
 export function startCrewReportWorker(options?: CrewReportWorkerOptions) {
   const connection = parseRedisUrl(process.env.REDIS_URL);
 
@@ -98,133 +245,12 @@ export function startCrewReportWorker(options?: CrewReportWorkerOptions) {
         tool: CrewReportTool;
       };
 
-      try {
-        await db.query(`UPDATE job_records SET status = 'running', updated_at = now() WHERE id = $1`, [jobId]);
-
-        // Fail closed when CrewAgency is not configured: the web action gates
-        // on the same envs, but a job can still reach the worker (direct
-        // enqueue, env drift) — permanent, no retry can fix configuration.
-        const client = options?.client ?? resolveCrewAgencyClient();
-        if (!client) {
-          throw new CrewAgencyError(
-            "crew.misconfigured",
-            "CrewAgency is not configured: CREW_AGENCY_API_URL and CREW_AGENCY_API_KEY must both be set",
-          );
-        }
-
-        const sourceQueueName = TOOL_QUEUE_NAMES[tool];
-        if (!sourceQueueName) {
-          throw permanentCrewReportError(
-            `Unknown crew report tool '${String(tool)}' on job ${jobId}`,
-          );
-        }
-
-        // Load the source audit payload through the correlation join, scoped
-        // to the queue_name of the chain that produced it (TOOL_QUEUE_NAMES).
-        // j.target is selected alongside the payload: some source payloads
-        // (e.g. the schema audit's SchemaAuditExtractionResult) carry no
-        // url/target field, so the job record's target is threaded through as
-        // the brand_context fallback.
-        const sourceRes = await db.query(
-          `SELECT r.payload, j.target AS source_target FROM job_records j JOIN job_results r ON r.correlation_id = j.correlation_id WHERE j.id = $1 AND j.queue_name = $2 ORDER BY r.created_at DESC LIMIT 1`,
-          [sourceJobId, sourceQueueName]
-        );
-        const sourceRow = sourceRes.rows[0];
-        if (!sourceRow) {
-          throw permanentCrewReportError(
-            `Source payload not found for crew report job ${jobId}: no ${sourceQueueName} result for source job ${sourceJobId}`,
-          );
-        }
-
-        const request = buildCrewReportRequest({
-          tool,
-          sourcePayload: sourceRow.payload,
-          sourceTarget:
-            typeof sourceRow.source_target === "string" ? sourceRow.source_target : undefined,
-        });
-        const { jobId: crewJobId } = await client.kickoff(request.endpoint, request.body);
-
-        const sleep = options?.sleep ?? defaultSleep;
-        const crewStatus = await pollCrewJobUntilTerminal(client, crewJobId, sleep);
-
-        if (crewStatus.status === "failed") {
-          throw new Error(
-            `CrewAgency job ${crewJobId} failed: ${crewStatus.error ?? "no error detail returned"}`,
-          );
-        }
-
-        const reportMarkdown = extractReportMarkdown(crewStatus.result);
-        if (!reportMarkdown) {
-          throw new CrewAgencyError(
-            "crew.unavailable",
-            `CrewAgency job ${crewJobId} completed without markdown report content`,
-          );
-        }
-
-        const result = buildCrewReportResultPayload({
-          sourceJobId,
-          tool,
-          endpoint: request.endpoint,
-          reportMarkdown,
-          crewJobId,
-        });
-
-        const jobRecordRes = await db.query(
-          `SELECT job_identity, correlation_id FROM job_records WHERE id = $1 AND queue_name = $2`,
-          [jobId, CREW_REPORT_JOB_RECORD_QUEUE_NAME]
-        );
-        const rawJobRecord = jobRecordRes.rows[0];
-        if (!rawJobRecord) {
-          throw new Error(`Job record ${jobId} not found during result saving.`);
-        }
-        const { job_identity, correlation_id } = rawJobRecord;
-
-        const jobResultRes = await db.query(
-          `INSERT INTO job_results (correlation_id, job_identity, result_type, payload)
-           VALUES ($1, $2, 'crew-report:result', $3) RETURNING id`,
-          [correlation_id, job_identity, JSON.stringify(result)]
-        );
-        const rawResultRes = jobResultRes.rows[0];
-        if (!rawResultRes) {
-          throw new Error(`Failed to return result ID after crew report job save.`);
-        }
-
-        const resultId = rawResultRes.id;
-
-        await db.query(
-          `UPDATE job_records SET status = 'completed', result_id = $2, completed_at = now(), updated_at = now() WHERE id = $1`,
-          [jobId, resultId]
-        );
-      } catch (err) {
-        console.error("Crew report worker failed job:", err);
-        // Terminal-status mapping: CrewAgency auth, configuration, and
-        // client-contract failures are permanent (no retry can fix them);
-        // rate limiting, transient unavailability, request timeouts, and the
-        // 10-minute poll ceiling map to 'timeout'; source-payload/tool
-        // validation problems are permanent; everything else is 'failed'.
-        let terminalStatus = 'failed';
-
-        if (err instanceof CrewAgencyError) {
-          if (
-            err.code === "crew.auth" ||
-            err.code === "crew.misconfigured" ||
-            err.code === "crew.client_error"
-          ) {
-            terminalStatus = 'permanent';
-          } else {
-            // crew.timeout, crew.unavailable, crew.rate_limited
-            terminalStatus = 'timeout';
-          }
-        } else if (typeof err === 'object' && err !== null && 'code' in err && typeof (err as any).code === 'string') {
-          const code = (err as any).code as string;
-          if (code.startsWith('validation.')) {
-            terminalStatus = 'permanent';
-          }
-        }
-
-        await db.query(`UPDATE job_records SET status = $2, updated_at = now() WHERE id = $1`, [jobId, terminalStatus]);
-        throw err;
-      }
+      const client = options?.client ?? resolveCrewAgencyClient();
+      const sleep = options?.sleep ?? defaultSleep;
+      await processCrewReportJob(
+        { jobId, sourceJobId, tool },
+        { db, client, sleep },
+      );
     },
     { connection, autorun: true, concurrency: getCrewReportWorkerConcurrency(options) }
   );
@@ -248,6 +274,8 @@ async function pollCrewJobUntilTerminal(
   client: CrewAgencyClient,
   crewJobId: string,
   sleep: (ms: number) => Promise<void>,
+  pollCeilingMs: number = POLL_CEILING_MS,
+  pollIntervalMs: number = POLL_INTERVAL_MS,
 ): Promise<CrewJobStatus> {
   const startedAt = Date.now();
   for (;;) {
@@ -255,13 +283,13 @@ async function pollCrewJobUntilTerminal(
     if (status.status === "completed" || status.status === "failed") {
       return status;
     }
-    if (Date.now() - startedAt >= POLL_CEILING_MS) {
+    if (Date.now() - startedAt >= pollCeilingMs) {
       throw new CrewAgencyError(
         "crew.timeout",
-        `CrewAgency job ${crewJobId} did not reach a terminal state within ${POLL_CEILING_MS}ms`,
+        `CrewAgency job ${crewJobId} did not reach a terminal state within ${pollCeilingMs}ms`,
       );
     }
-    await sleep(POLL_INTERVAL_MS);
+    await sleep(pollIntervalMs);
   }
 }
 
