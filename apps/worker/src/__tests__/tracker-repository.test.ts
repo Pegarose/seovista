@@ -86,6 +86,8 @@ describe("Tracker Repository", () => {
     expect(targets[0]!.latestPosition).toBe(3);
     expect(targets[0]!.latestCheckedAt).not.toBeNull();
     expect(targets[0]!.recentObservations).toHaveLength(1);
+    expect(targets[0]!.recentObservations[0]!.topCompetitors).toHaveLength(2);
+    expect(targets[0]!.recentObservations[0]!.topCompetitors[0]!.domain).toBe("rival1.com");
   });
 
   it("listTargetsByToken returns empty array for unknown token", async () => {
@@ -113,17 +115,17 @@ describe("Tracker Repository", () => {
     expect(result).toBe(false);
   });
 
-  it("listTargetsByToken includes up to 7 recent observations ordered by date desc", async () => {
+  it("listTargetsByToken includes up to 90 recent observations ordered by date desc with topCompetitors", async () => {
     const repo = createTrackerRepository(env.db);
     const session = await repo.findOrCreateSession("user@example.com");
     const target = await repo.createTarget({ sessionId: session.id, keyword: "seo", domain: "example.com", locale: "tr-TR" });
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 95; i++) {
       await repo.insertObservation({ targetId: target.id, position: i, topCompetitors: [] });
     }
     await repo.updateLastCheckedAt(target.id);
     const targets = await repo.listTargetsByToken(session.token);
-    expect(targets[0]!.recentObservations).toHaveLength(7);
-    expect(targets[0]!.recentObservations[0]!.position).toBe(10); // most recent first
+    expect(targets[0]!.recentObservations).toHaveLength(90);
+    expect(targets[0]!.recentObservations[0]!.position).toBe(95); // most recent first
   });
 
   it("findSessionByToken returns session for valid token", async () => {

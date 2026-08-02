@@ -19,7 +19,7 @@ export interface TargetWithObservations {
   lastCheckedAt: Date | null;
   latestPosition: number | null;
   latestCheckedAt: string | null;
-  recentObservations: Array<{ position: number; checkedAt: string }>;
+  recentObservations: Array<{ position: number; checkedAt: string; topCompetitors: Array<{ rank: number; domain: string }> }>;
 }
 
 export interface SessionInfo {
@@ -128,14 +128,15 @@ export function createTrackerRepository(client: DbClient) {
 
       const result: TargetWithObservations[] = [];
       for (const row of targetsRes.rows) {
-        const obsRes = await client.query<{ position: number; checked_at: Date }>(
-          `SELECT position, checked_at FROM rank_observations
-           WHERE target_id = $1 ORDER BY checked_at DESC LIMIT 7`,
+        const obsRes = await client.query<{ position: number; checked_at: Date; top_competitors: unknown }>(
+          `SELECT position, checked_at, top_competitors FROM rank_observations
+           WHERE target_id = $1 ORDER BY checked_at DESC LIMIT 90`,
           [row.id],
         );
         const recentObs = obsRes.rows.map((o) => ({
           position: o.position,
           checkedAt: o.checked_at.toISOString(),
+          topCompetitors: o.top_competitors as Array<{ rank: number; domain: string }>,
         }));
         result.push({
           id: row.id,
