@@ -1,10 +1,11 @@
 "use server";
 
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { getAdminDb } from "../admin/db";
 import { checkIpRateLimit, createTrackerRepository, type TargetWithObservations } from "@seovista/worker";
 import { extractClientIp } from "../geo-checker/ip";
-import { validateTrackerTargetInput } from "./validation";
+import { validateTrackerTargetInput, validateTrackerSessionTargetInput } from "./validation";
 
 export type TrackerTargetActionState = {
   status: "idle" | "error" | "success";
@@ -173,5 +174,140 @@ export async function deactivateTrackerTargetAction(
   } catch (error) {
     console.error("Failed to deactivate tracker target:", error);
     return { success: false, error: "Hedef kaldırılamadı." };
+  }
+}
+
+// --- B2: Session-based target creation (inline dashboard form) ---
+
+const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type TrackerSessionTargetActionState = {
+  status: "idle" | "error" | "success";
+  errors?: {
+    keyword?: string[];
+    domain?: string[];
+    form?: string[];
+  };
+};
+
+export async function createTrackerTargetForSessionAction(
+  token: string,
+  _prevState: TrackerSessionTargetActionState,
+  formData: FormData,
+): Promise<TrackerSessionTargetActionState> {
+  const validated = validateTrackerSessionTargetInput({
+    keyword: formData.get("keyword")?.toString() ?? "",
+    domain: formData.get("domain")?.toString() ?? "",
+  });
+
+  if (!validated.success) {
+    return {
+      status: "error",
+      errors: validated.error.flatten().fieldErrors,
+    };
+  }
+
+  const { keyword, domain } = validated.data;
+
+  try {
+    const db = getAdminDb();
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      throw new Error("REDIS_URL is required");
+    }
+
+    const reqHeaders = await headers();
+    const clientIp = extractClientIp(reqHeaders);
+    const limit = Number(process.env.TRACKER_PER_IP_RATE_LIMIT) || 3;
+
+    const rateLimit = await checkIpRateLimit({
+      redisUrl,
+      ip: clientIp,
+      limit,
+      bucket: "tracker-create",
+    });
+
+    if (!rateLimit.success) {
+      return {
+        status: "error",
+        errors: {
+          form: [`Saatlik takip limitine (${limit}) ulaştınız. Lütfen daha sonra tekrar deneyiniz.`],
+        },
+      };
+    }
+
+    const repo = createTrackerRepository(db);
+
+    // Defense in depth: the page already gates on UUID format, but this
+    // action is called from a client island that receives the token as a prop.
+    if (!TOKEN_RE.test(token)) {
+      return {
+        status: "error",
+        errors: { form: ["Oturum bulunamadı."] },
+      };
+    }
+
+    const session = await repo.findSessionByToken(token);
+    if (!session) {
+      return {
+        status: "error",
+        errors: { form: ["Oturum bulunamadı."] },
+      };
+    }
+
+    const maxTargets = Number(process.env.TRACKER_MAX_TARGETS_PER_EMAIL) || 5;
+    const currentCount = await repo.countActiveTargets(session.id);
+    if (currentCount >= maxTargets) {
+      return {
+        status: "error",
+        errors: {
+          form: [`Bu panel için maksimum hedef sayısına (${maxTargets}) ulaştınız.`],
+        },
+      };
+    }
+
+    try {
+      await repo.createTarget({
+        sessionId: session.id,
+        keyword,
+        domain,
+        locale: "tr-TR",
+      });
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: string }).code === "23505"
+      ) {
+        return {
+          status: "error",
+          errors: {
+            form: ["Bu anahtar kelime zaten takip ediliyor."],
+          },
+        };
+      }
+      throw error;
+    }
+
+    revalidatePath(`/tracker/${token}`);
+    return { status: "success" };
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof (error as { digest: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    console.error("Tracker session target creation error:", error);
+    return {
+      status: "error",
+      errors: {
+        form: ["Sistem hatası nedeniyle hedef eklenemedi. Lütfen daha sonra tekrar deneyiniz."],
+      },
+    };
   }
 }
