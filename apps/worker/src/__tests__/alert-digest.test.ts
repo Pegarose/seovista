@@ -59,7 +59,7 @@ describe("runAlertDigest", () => {
       siteUrl: "https://seovista.example",
       fromEmail: "noreply@seovista.example",
     });
-    expect(captured[0]).toContain('"seo" (a.com): İlk 10dan düştü (önceki #4)');
+    expect(captured[0]).toContain('"seo" (a.com): İlk 10\'dan düştü (önceki #4)');
     expect(captured[0]).toContain("https://seovista.example/tracker/11111111-1111-1111-1111-111111111111");
   });
 

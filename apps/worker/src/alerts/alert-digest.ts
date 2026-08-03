@@ -24,8 +24,8 @@ export interface AlertDigestResult {
 }
 
 const KIND_LABEL: Record<string, string> = {
-  dropped_out_of_top10: "İlk 10dan düştü",
-  entered_top10: "İlk 10a girdi",
+  dropped_out_of_top10: "İlk 10'dan düştü",
+  entered_top10: "İlk 10'a girdi",
   significant_drop: "Belirgin düşüş",
   significant_rise: "Belirgin yükseliş",
 };
@@ -35,7 +35,7 @@ function formatDate(date: Date): string {
 }
 
 function lineText(alert: UnsentAlertRow): string {
-  const base = `"${alert.keyword}" (${alert.domain}): ${KIND_LABEL[alert.kind] ?? alert.kind}`;
+  const base = `"${alert.keyword}" (${alert.domain}): ${KIND_LABEL[alert.kind]}`;
   if (alert.kind === "dropped_out_of_top10") return `${base} (önceki #${alert.from_position})`;
   if (alert.kind === "entered_top10") return `${base} (#${alert.to_position})`;
   return `${base} (#${alert.from_position} → #${alert.to_position})`;
