@@ -1,6 +1,7 @@
 import console from "node:console";
 import { Worker, type Job } from "bullmq";
 import { randomUUID } from "node:crypto";
+import { createMockEmail } from "@seovista/reports";
 import { createDbClient } from "../db/client.js";
 import { resolveSerpProvider } from "../utils/serp-provider.js";
 import type { SerpProvider } from "../utils/serp-provider.js";
@@ -77,7 +78,16 @@ export function startTrackerScanWorker(options?: TrackerScanWorkerOptions) {
         const provider = options?.provider ?? resolveSerpProvider();
         const delayMs = Number(process.env.TRACKER_SCAN_DELAY_MS) || 2000;
 
-        const result = await processTrackerScanBatch({ db, provider, delayMs });
+        const result = await processTrackerScanBatch({
+          db,
+          provider,
+          delayMs,
+          email: createMockEmail(),
+          siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "",
+          fromEmail: process.env.TRACKER_ALERTS_FROM_EMAIL ?? "noreply@seovista.com",
+          minDelta: Number(process.env.TRACKER_ALERT_MIN_DELTA) || 3,
+          retentionDays: Number(process.env.TRACKER_RETENTION_DAYS) || 90,
+        });
 
         // Store the batch summary in job_results for auditability.
         await db.query(

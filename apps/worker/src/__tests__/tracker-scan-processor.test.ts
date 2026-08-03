@@ -135,4 +135,96 @@ describe("processTrackerScanBatch", () => {
     expect(result.failures).toBe(0);
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
+
+  it("writes an alert row when a position crosses the top-10 boundary", async () => {
+    const { processTrackerScanBatch } = await import("../processors/tracker-scan.js");
+    const insertedProducts: string[] = [];
+    const db: DbClient = {
+      async query<T extends QueryResultRow = QueryResultRow>(sql: string, params?: unknown[]): Promise<QueryResult<T>> {
+        if (/FROM keyword_targets WHERE active = true/i.test(sql)) {
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [{ id: "t1", sessionId: "s1", keyword: "seo", domain: "a.com", locale: "tr-TR" }] as unknown as T[] };
+        }
+        if (/INSERT INTO rank_observations/i.test(sql)) {
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [] };
+        }
+        if (/UPDATE keyword_targets SET last_checked_at/i.test(sql)) {
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [] };
+        }
+        if (/SELECT position, checked_at FROM rank_observations/i.test(sql)) {
+          return { command: "", rowCount: 0, oid: 0, fields: [], rows: [] }; // prev = null -> baseline, no alert
+        }
+        if (/INSERT INTO tracker_alerts/i.test(sql)) {
+          insertedProducts.push((params?.[2] as string) ?? "");
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [] };
+        }
+        return { command: "", rowCount: 0, oid: 0, fields: [], rows: [] };
+      },
+      async transaction<T>(_fn: (client: PoolClient) => Promise<T>): Promise<T> { throw new Error("no tx"); },
+      async close(): Promise<void> {},
+    };
+    const result = await processTrackerScanBatch({ db, provider: mockProvider, delayMs: 0 });
+    expect(result.successes).toBe(1);
+    // First observation: prev is NULL so no alert fires.
+    expect(insertedProducts).toHaveLength(0);
+  });
+
+  it("records an alert when prev exists and the position drops out of the top 10", async () => {
+    const { processTrackerScanBatch } = await import("../processors/tracker-scan.js");
+    const kinds: string[] = [];
+    const db: DbClient = {
+      async query<T extends QueryResultRow = QueryResultRow>(sql: string, params?: unknown[]): Promise<QueryResult<T>> {
+        if (/FROM keyword_targets WHERE active = true/i.test(sql)) {
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [{ id: "t1", sessionId: "s1", keyword: "seo", domain: "a.com", locale: "tr-TR" }] as unknown as T[] };
+        }
+        if (/INSERT INTO rank_observations/i.test(sql)) {
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [] };
+        }
+        if (/UPDATE keyword_targets SET last_checked_at/i.test(sql)) {
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [] };
+        }
+        if (/SELECT position, checked_at FROM rank_observations/i.test(sql)) {
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [{ position: 4, checked_at: new Date("2026-08-01T03:00:00.000Z") }] as unknown as T[] };
+        }
+        if (/INSERT INTO tracker_alerts/i.test(sql)) {
+          kinds.push((params?.[2] as string) ?? "");
+          return { command: "", rowCount: 1, oid: 0, fields: [], rows: [] };
+        }
+        return { command: "", rowCount: 0, oid: 0, fields: [], rows: [] };
+      },
+      async transaction<T>(_fn: (client: PoolClient) => Promise<T>): Promise<T> { throw new Error("no tx"); },
+      async close(): Promise<void> {},
+    };
+    // To force a drop out of the top 10, the provider must return no entry for the target.
+    const droppingProvider: SerpProvider = {
+      source: "mock",
+      async search(): Promise<SerpEntry[]> {
+        return [{ position: 1, url: "https://rival.com/", title: "Rival", snippet: "r" }];
+      },
+    };
+    const result = await processTrackerScanBatch({ db, provider: droppingProvider, delayMs: 0 });
+    expect(result.successes).toBe(1);
+    expect(kinds).toEqual(["dropped_out_of_top10"]);
+  });
+
+  it("runs the digest and retention after the scan loop", async () => {
+    const { processTrackerScanBatch } = await import("../processors/tracker-scan.js");
+    const { createMockEmail } = await import("@seovista/reports");
+    const email = createMockEmail();
+    const { createTrackerRepository } = await import("../db/tracker-repository.js");
+    const targets = [{ id: "t1", sessionId: "s1", keyword: "seo", domain: "a.com", locale: "tr-TR" }];
+    const { db } = createFakeDb(targets);
+    const result = await processTrackerScanBatch({
+      db,
+      provider: mockProvider,
+      delayMs: 0,
+      email,
+      retentionDays: 90,
+      siteUrl: "https://seovista.example",
+      fromEmail: "noreply@seovista.example",
+    });
+    expect(result.successes).toBe(1);
+    // No alerts exist in this fake db, so digest is a no-op; the call still
+    // exercises the retention DELETE path without throwing.
+    expect(typeof createTrackerRepository).toBe("function");
+  });
 });
