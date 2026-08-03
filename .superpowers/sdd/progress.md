@@ -162,3 +162,19 @@ DEBT BATCH FINAL: complete (2026-08-03)
 - Full worker suite: 300 passed, with 3 environment/concurrency failures (geo-worker 429 status, migration advisory-lock cleanup, render-cache Redis DB counter). No failure implicated the debt batch; worker full suite is not claimed fully green.
 - Debt range: fad260a..9805ce5. Committed batch paths exclude scratch files and apps/web/tsconfig.json.
 - NEXT: Begin Tier B B3 Alerts only after this close-out.
+
+---
+Feature: Tier B B3 — Tracker Alerts
+Plan: docs/superpowers/plans/2026-08-03-tier-b-b3-alerts.md
+Base: 7081603
+Task 1: complete (commit 147562c, review clean — Spec ✅, quality Approved)
+
+Task 2: complete (commit e065ce7, 21/21 repository tests, typecheck/lint pass)
+Task 2: approved (review clean)
+Task 3: complete (commits 2c7c27d..58ac77b, alert-evaluator + off-by-one test fix; review approved)
+Task 4: complete (commits e1f9dac..c755388, alert-digest implementation; review approved)
+Task 5: complete (commit 57a4657, processor integration; review approved)
+Task 6: complete (commit 4f2c354, web consent validation + actions; review approved)
+Task 7: complete (commits cba48dd..4e2fe25, consent checkbox on forms; review approved — commit Co-authored-by trailer verified via git log --format=fuller)
+Task 8: complete (commit 91c90e5, alerts list + consent toggle + page integration; review approved with minor reservation: decodeEntities helper added to test for React 19 apostrophe escaping)
+Task 9: complete (commit 91e3193, env vars documentation; verified in tracker-scan-worker.ts)
