@@ -1,101 +1,124 @@
-## Task 3: Typed Block Validation
+### Task 3: Alert evaluator — pure `evaluateTransition`
 
 **Files:**
-- Create: `packages/content-models/src/blocks.ts`
-- Modify: `packages/content-models/src/index.ts`
+- Create: `apps/worker/src/alerts/alert-evaluator.ts`
+- Test: `apps/worker/src/__tests__/alert-evaluator.test.ts` (place in `apps/worker/src/__tests__/`)
 
 **Interfaces:**
-- Produces: Reusable Zod schemas for `ParagraphBlock`, `HeadingBlock`, `CtaBlock`.
-- Produces: Discriminated union `EditorBlockSchema`.
+- Consumes: nothing (pure module).
+- Produces: `export type AlertKind = "dropped_out_of_top10" | "entered_top10" | "significant_drop" | "significant_rise";` and `export function evaluateTransition(prev: number | null, next: number, minDelta: number): AlertKind | null;`.
 
-- [ ] **Step 1: Write block Zod schemas**
+- [ ] **Step 1: Write the failing test**
 
-```typescript
-// packages/content-models/src/blocks.ts
-import { z } from "zod";
+Create `apps/worker/src/__tests__/alert-evaluator.test.ts`:
 
-export const ParagraphBlockSchema = z.object({
-  type: z.literal("paragraph"),
-  text: z.string().trim(),
+```ts
+import { describe, it, expect } from "vitest";
+import { evaluateTransition } from "../alerts/alert-evaluator.js";
+
+const MIN = 3;
+
+describe("evaluateTransition", () => {
+  it("returns null for the first observation (no baseline)", () => {
+    expect(evaluateTransition(null, 1, MIN)).toBeNull();
+    expect(evaluateTransition(null, 0, MIN)).toBeNull();
+  });
+
+  it("detects dropped_out_of_top10", () => {
+    expect(evaluateTransition(4, 0, MIN)).toBe("dropped_out_of_top10");
+    expect(evaluateTransition(10, 0, MIN)).toBe("dropped_out_of_top10");
+  });
+
+  it("detects entered_top10", () => {
+    expect(evaluateTransition(0, 4, MIN)).toBe("entered_top10");
+    expect(evaluateTransition(0, 1, MIN)).toBe("entered_top10");
+  });
+
+  it("detects significant_drop at exactly the boundary delta", () => {
+    expect(evaluateTransition(1, 4, MIN)).toBe("significant_drop");
+    expect(evaluateTransition(2, 5, MIN)).toBe("significant_drop");
+  });
+
+  it("detects significant_rise at exactly the boundary delta", () => {
+    expect(evaluateTransition(4, 1, MIN)).toBe("significant_rise");
+    expect(evaluateTransition(7, 4, MIN)).toBe("significant_rise");
+  });
+
+  it("returns null for small movement and equality", () => {
+    expect(evaluateTransition(1, 3, MIN)).toBeNull(); // delta 2 < 3
+    expect(evaluateTransition(3, 1, MIN)).toBeNull(); // delta 2 < 3
+    expect(evaluateTransition(5, 5, MIN)).toBeNull();
+    expect(evaluateTransition(0, 0, MIN)).toBeNull();
+  });
+
+  it("respects a custom minDelta", () => {
+    expect(evaluateTransition(1, 5, 5)).toBe("significant_drop");
+    expect(evaluateTransition(1, 4, 5)).toBeNull();
+  });
+
+  it("does not treat 0-crossing as significant_drop/rise", () => {
+    expect(evaluateTransition(3, 0, MIN)).toBe("dropped_out_of_top10");
+    expect(evaluateTransition(0, 3, MIN)).toBe("entered_top10");
+  });
 });
-
-export const HeadingBlockSchema = z.object({
-  type: z.literal("heading"),
-  level: z.enum(["h2", "h3", "h4"]),
-  text: z.string().trim().min(1),
-});
-
-export const CtaBlockSchema = z.object({
-  type: z.literal("cta"),
-  label: z.string().min(1),
-  url: z.string().url().or(z.string().startsWith("/")),
-});
-
-export const EditorBlockSchema = z.discriminatedUnion("type", [
-  ParagraphBlockSchema,
-  HeadingBlockSchema,
-  CtaBlockSchema,
-]);
-
-export type EditorBlock = z.infer<typeof EditorBlockSchema>;
 ```
 
-- [ ] **Step 2: Export from package**
+- [ ] **Step 2: Run test to verify it fails**
 
-```typescript
-// packages/content-models/src/index.ts
-// Add:
-export * from "./blocks.js";
+Run: `pnpm --filter @seovista/worker test -- alert-evaluator`
+
+Expected: FAIL — module not found (`../alerts/alert-evaluator.js`).
+
+- [ ] **Step 3: Write the implementation**
+
+Create `apps/worker/src/alerts/alert-evaluator.ts`:
+
+```ts
+export type AlertKind =
+  | "dropped_out_of_top10"
+  | "entered_top10"
+  | "significant_drop"
+  | "significant_rise";
+
+/**
+ * Decide whether a position transition (previous observation -> new
+ * observation) fires an alert. `0` means the domain was not found in the
+ * top 10 results. Categories are mutually exclusive: a single transition
+ * yields at most one alert, so the return type is `AlertKind | null`.
+ *
+ * - First observation (prev === null): no alert — establishes the baseline.
+ * - 1..10 -> 0: dropped out of the top 10.
+ * - 0 -> 1..10: entered the top 10.
+ * - in-band movement of >= minDelta: significant_drop / significant_rise.
+ */
+export function evaluateTransition(
+  prev: number | null,
+  next: number,
+  minDelta: number,
+): AlertKind | null {
+  if (prev === null || prev === next) return null;
+  if (prev === 0) {
+    return next >= 1 && next <= 10 ? "entered_top10" : null;
+  }
+  if (next === 0) return "dropped_out_of_top10";
+  if (next - prev >= minDelta) return "significant_drop";
+  if (prev - next >= minDelta) return "significant_rise";
+  return null;
+}
 ```
 
-- [ ] **Step 3: Run typecheck**
+- [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @seovista/content-models build`
+Run: `pnpm --filter @seovista/worker test -- alert-evaluator`
+
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add packages/content-models/src/blocks.ts packages/content-models/src/index.ts
-git commit -m "feat(content-models): establish strictly typed editor block schemas"
+git add apps/worker/src/alerts/alert-evaluator.ts apps/worker/src/__tests__/alert-evaluator.test.ts
+git commit -m "feat(worker): add tracker alert transition evaluator"
 ```
 
 ---
 
-## Task 4: Dynamic Public Content Source and Isolation
-
-**Files:**
-- Create: `apps/web/src/content/dynamic-source.ts`
-- Modify: `apps/web/src/content/public-projections.ts`
-
-**Interfaces:**
-- Consumes: CMS DB queries via `getAdminDb()` (treated securely as read replica if applicable).
-- Produces: A new `Adapter` instance `createDynamicAdapter(siteUrl, mode)` matching the interface from `content-models`.
-
-- [ ] **Step 1: Implement the dynamic read adapter**
-
-```typescript
-// apps/web/src/content/dynamic-source.ts
-import "server-only";
-import { getAdminDb } from "../lib/admin/db";
-import { createAdapter, type ContentEntity } from "@seovista/content-models";
-
-export type ReadMode = "public" | "preview" | "admin";
-
-export function createDynamicAdapter(siteUrl: string, locales: readonly string[], mode: ReadMode) {
-  return createAdapter({
-    siteUrl,
-    supportedLocales: locales,
-    // Provide a loader that reads from PostgreSQL
-    async loadRawEntries() {
-      const db = getAdminDb();
-      let query = `
-        SELECT e.collection_name, e.slug, e.locale, e.publication_status, 
-               r.content, e.id, e.updated_at
-        FROM cms_entries e
-        JOIN cms_revisions r ON 
-      `;
-      if (mode === "public") {
-        query += `r.id = e.published_revision_id WHERE e.publication_status = 'published' AND e.archived_at IS NULL`;
-      } else {
-        // Fallback for logic: admin and preview implementations refine which revision to join

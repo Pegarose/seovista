@@ -1,101 +1,124 @@
-## Task 1: CMS Core Persistence
+### Task 1: Migration 016 — `tracker_alerts` table + session consent columns
 
 **Files:**
-- Create: `apps/worker/migrations/008_create_cms_entries_and_revisions.sql`
-- Create: `apps/worker/migrations/009_create_cms_events_and_preview.sql`
-- Create: `apps/worker/src/db/cms-repository.ts`
-- Modify: `apps/worker/src/db/index.ts` to export repository functions.
+- Create: `apps/worker/migrations/016_create_tracker_alerts.sql`
+- Test: `apps/worker/src/__tests__/migration-invariants.test.ts` (extend — see Step 1)
 
 **Interfaces:**
-- Produces: `cms_entries` and `cms_revisions` tables with `publication_status` and `archived_at`.
-- Produces: `publication_events` and `preview_grants` security tables.
-- Produces: `createCmsRepository(db)` providing `createEntry`, `saveRevision`, `updatePublicationState`, `createPreviewGrant`, `verifyPreviewGrant`.
+- Consumes: migration 015 schema (`tracker_sessions`, `keyword_targets`, `rank_observations`); `gen_random_uuid()` from pgcrypto (enabled in migration 003).
+- Produces: the `tracker_alerts` table and the `alert_consent` / `alert_consent_updated_at` columns on `tracker_sessions` that every later task depends on.
 
-- [ ] **Step 1: Write the entries and revisions migration**
+- [ ] **Step 1: Write the failing migration test**
 
-```sql
--- apps/worker/migrations/008_create_cms_entries_and_revisions.sql
-CREATE TABLE IF NOT EXISTS cms_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id UUID NOT NULL REFERENCES admin_organizations(id),
-  collection_name TEXT NOT NULL,
-  slug TEXT,
-  locale TEXT,
-  current_revision_id UUID,  -- Set via trigger or deferred FK
-  published_revision_id UUID,
-  publication_status TEXT NOT NULL DEFAULT 'draft' CHECK (publication_status IN ('draft', 'preview', 'published', 'private')),
-  archived_at TIMESTAMPTZ,
-  archived_by UUID REFERENCES admin_users(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  version INTEGER NOT NULL DEFAULT 1
-);
+Create `apps/worker/src/__tests__/tracker-alerts-migration.test.ts`:
 
-CREATE UNIQUE INDEX idx_cms_entries_active_slug ON cms_entries (collection_name, locale, slug) WHERE archived_at IS NULL AND slug IS NOT NULL AND locale IS NOT NULL;
+```ts
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import type { TestEnvironment } from "./helpers/test-env.js";
+import { setupTestEnvironment } from "./helpers/test-env.js";
 
-CREATE TABLE IF NOT EXISTS cms_revisions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entry_id UUID NOT NULL REFERENCES cms_entries(id) ON DELETE CASCADE,
-  revision_number INTEGER NOT NULL,
-  schema_version TEXT NOT NULL,
-  content JSONB NOT NULL,
-  content_checksum TEXT NOT NULL,
-  created_by UUID NOT NULL REFERENCES admin_users(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (entry_id, revision_number)
-);
+describe("Migration 016 — Tracker Alerts", () => {
+  let env: TestEnvironment;
 
--- Note: In production we would add FK constraints for current_revision_id and published_revision_id
+  beforeEach(async () => {
+    env = await setupTestEnvironment(); // applies all migrations including 016
+  });
+
+  afterEach(async () => {
+    await env.cleanup();
+  });
+
+  it("creates tracker_alerts with the required columns and check constraint", async () => {
+    const res = await env.db.query<{ column_name: string; data_type: string }>(
+      `SELECT column_name, data_type FROM information_schema.columns
+       WHERE table_name = 'tracker_alerts' ORDER BY ordinal_position`,
+    );
+    const cols = res.rows.map((r) => r.column_name);
+    expect(cols).toEqual(
+      expect.arrayContaining(["id", "target_id", "session_id", "kind", "from_position", "to_position", "observed_at", "created_at", "emailed_at"]),
+    );
+  });
+
+  it("adds alert_consent and alert_consent_updated_at to tracker_sessions", async () => {
+    const res = await env.db.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_name = 'tracker_sessions' AND column_name IN ('alert_consent', 'alert_consent_updated_at')`,
+    );
+    expect(res.rows.map((r) => r.column_name).sort()).toEqual(["alert_consent", "alert_consent_updated_at"]);
+  });
+
+  it("enforces the kind check constraint", async () => {
+    const session = await env.db.query<{ id: string }>(
+      `INSERT INTO tracker_sessions (email, token) VALUES ('a@example.com', '11111111-1111-1111-1111-111111111111') RETURNING id`,
+    );
+    const target = await env.db.query<{ id: string }>(
+      `INSERT INTO keyword_targets (session_id, keyword, domain, locale)
+       VALUES ($1, 'seo', 'example.com', 'tr-TR') RETURNING id`,
+      [session.rows[0]!.id],
+    );
+    await expect(
+      env.db.query(
+        `INSERT INTO tracker_alerts (target_id, session_id, kind, from_position, to_position, observed_at)
+         VALUES ($1, $2, 'not_a_kind', 1, 0, now())`,
+        [target.rows[0]!.id, session.rows[0]!.id],
+      ),
+    ).rejects.toThrow();
+  });
+});
 ```
 
-- [ ] **Step 2: Write the events and preview migration**
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `$env:SEOVISTA_LIFECYCLE_CONTEXT_PATH='C:\bc-proje\Seovista\.lifecycle-evidence\seovista-dev-665e4ef3e642-context.json'; pnpm --filter @seovista/worker test -- tracker-alerts-migration`
+
+Expected: FAIL — `relation "tracker_alerts" does not exist` (migration 016 not yet applied).
+
+- [ ] **Step 3: Write the migration**
+
+Create `apps/worker/migrations/016_create_tracker_alerts.sql`:
 
 ```sql
--- apps/worker/migrations/009_create_cms_events_and_preview.sql
-CREATE TABLE IF NOT EXISTS cms_publication_events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entry_id UUID NOT NULL REFERENCES cms_entries(id),
-  revision_id UUID NOT NULL REFERENCES cms_revisions(id),
-  actor_id UUID NOT NULL REFERENCES admin_users(id),
-  action TEXT NOT NULL,
-  previous_status TEXT,
-  new_status TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Migration 016: Tracker alerts for Tier B B3.
+-- Adds consent columns to tracker_sessions and creates the tracker_alerts
+-- table. Alerts are written by the daily tracker_scan batch job whenever a
+-- position transition crosses a fixed threshold; emailed_at gates the daily
+-- digest and the UNIQUE(target_id, kind, observed_at) key makes re-runs
+-- idempotent.
+
+ALTER TABLE tracker_sessions
+  ADD COLUMN alert_consent BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN alert_consent_updated_at TIMESTAMPTZ;
+
+CREATE TABLE tracker_alerts (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  target_id     UUID NOT NULL REFERENCES keyword_targets(id) ON DELETE CASCADE,
+  session_id    UUID NOT NULL REFERENCES tracker_sessions(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL CHECK (kind IN
+    ('dropped_out_of_top10','entered_top10','significant_drop','significant_rise')),
+  from_position INTEGER NOT NULL,
+  to_position   INTEGER NOT NULL,
+  observed_at   TIMESTAMPTZ NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  emailed_at    TIMESTAMPTZ,
+  UNIQUE(target_id, kind, observed_at)
 );
 
-CREATE TABLE IF NOT EXISTS cms_preview_grants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  token_hash TEXT NOT NULL UNIQUE,
-  entry_id UUID NOT NULL REFERENCES cms_entries(id),
-  revision_id UUID NOT NULL REFERENCES cms_revisions(id),
-  issued_by UUID NOT NULL REFERENCES admin_users(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  expires_at TIMESTAMPTZ NOT NULL,
-  revoked_at TIMESTAMPTZ,
-  exchanged_at TIMESTAMPTZ
-);
+CREATE INDEX idx_tracker_alerts_session ON tracker_alerts(session_id, created_at DESC);
+CREATE INDEX idx_tracker_alerts_unsent  ON tracker_alerts(session_id) WHERE emailed_at IS NULL;
 ```
 
-- [ ] **Step 3: Run the migrations locally to test validity**
+- [ ] **Step 4: Run the migration test to verify it passes**
 
-Run: `node --run db:migrate --filter @seovista/worker` (or equivalent migration script).
-Expected: PASS. The tables `cms_entries`, `cms_revisions`, `cms_publication_events`, and `cms_preview_grants` are created.
+Run: `$env:SEOVISTA_LIFECYCLE_CONTEXT_PATH='C:\bc-proje\Seovista\.lifecycle-evidence\seovista-dev-665e4ef3e642-context.json'; pnpm --filter @seovista/worker test -- tracker-alerts-migration`
 
-- [ ] **Step 4: Create the CMS repository layer**
+Expected: PASS (3 tests).
 
-```typescript
-// apps/worker/src/db/cms-repository.ts
-import type { DbClient } from "./client";
+- [ ] **Step 5: Commit**
 
-export interface CmsEntryRow {
-  id: string;
-  organization_id: string;
-  collection_name: string;
-  slug: string | null;
-  locale: string | null;
-  current_revision_id: string | null;
-  published_revision_id: string | null;
-  publication_status: 'draft' | 'preview' | 'published' | 'private';
-  archived_at: Date | null;
-  version: number;
-}
+```bash
+git add apps/worker/migrations/016_create_tracker_alerts.sql apps/worker/src/__tests__/tracker-alerts-migration.test.ts
+git commit -m "feat(worker): add tracker alerts migration 016"
+```
+
+---
+
