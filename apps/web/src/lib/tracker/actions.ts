@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getAdminDb } from "../admin/db";
-import { checkIpRateLimit, createTrackerRepository, type TargetWithObservations } from "@seovista/worker";
+import { checkIpRateLimit, createTrackerRepository, type TargetWithObservations, type AlertSummary } from "@seovista/worker";
 import { extractClientIp } from "../geo-checker/ip";
 import { validateTrackerTargetInput, validateTrackerSessionTargetInput } from "./validation";
 
@@ -136,7 +136,7 @@ export async function createTrackerTargetAction(
 }
 
 export type TrackerTargetsResult =
-  | { success: true; targets: TargetWithObservations[]; email: string }
+  | { success: true; targets: TargetWithObservations[]; email: string; consent: boolean }
   | { success: false; error: string };
 
 export async function listTrackerTargetsAction(token: string): Promise<TrackerTargetsResult> {
@@ -153,10 +153,30 @@ export async function listTrackerTargetsAction(token: string): Promise<TrackerTa
     }
 
     const targets = await repo.listTargetsByToken(token);
-    return { success: true, targets, email: session.email };
+    return { success: true, targets, email: session.email, consent: session.alert_consent };
   } catch (error) {
     console.error("Failed to list tracker targets:", error);
     return { success: false, error: "Takip paneli yüklenemedi." };
+  }
+}
+
+export type AlertsResult =
+  | { success: true; alerts: AlertSummary[] }
+  | { success: false; error: string };
+
+export async function listAlertsAction(token: string, limit = 30): Promise<AlertsResult> {
+  try {
+    const db = getAdminDb();
+    const repo = createTrackerRepository(db);
+    const session = await repo.findSessionByToken(token);
+    if (!session) {
+      return { success: false, error: "Takip paneli bulunamadı." };
+    }
+    const alerts = await repo.listAlertsByToken(token, limit);
+    return { success: true, alerts };
+  } catch (error) {
+    console.error("Failed to list tracker alerts:", error);
+    return { success: false, error: "Uyarılar yüklenemedi." };
   }
 }
 

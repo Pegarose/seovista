@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
-import { listTrackerTargetsAction } from "../../../src/lib/tracker/actions";
+import { listTrackerTargetsAction, listAlertsAction } from "../../../src/lib/tracker/actions";
 import { TrackerTargetCard } from "../../../src/components/tracker/tracker-target-card";
 import { AddTargetForm } from "../../../src/components/tracker/add-target-form";
+import { ConsentToggle } from "../../../src/components/tracker/consent-toggle";
+import { AlertsList } from "../../../src/components/tracker/alerts-list";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,8 @@ export default async function TrackerTokenPage({
   if (!TOKEN_RE.test(token)) notFound();
 
   const result = await listTrackerTargetsAction(token);
+  const alertsResult = await listAlertsAction(token);
+  const alerts = alertsResult.success ? alertsResult.alerts : [];
 
   if (!result.success) {
     notFound();
@@ -58,6 +62,11 @@ export default async function TrackerTokenPage({
         </div>
 
         <AddTargetForm token={token} />
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <ConsentToggle token={token} current={result.consent} />
+          <AlertsList alerts={alerts} email={result.email} token={token} />
+        </div>
 
         {result.targets.length === 0 ? (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">

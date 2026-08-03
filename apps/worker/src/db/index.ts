@@ -74,4 +74,5 @@ export {
   type ActiveTarget,
   type TargetWithObservations,
   type SessionInfo,
+  type AlertSummary,
 } from "./tracker-repository.js";

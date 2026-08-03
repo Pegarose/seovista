@@ -13,6 +13,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const mockListTrackerTargets = vi.fn();
+const mockListAlerts = vi.fn();
 
 vi.mock("@seovista/worker", () => ({
   createTrackerRepository: vi.fn(),
@@ -26,7 +27,9 @@ vi.mock("@/lib/tracker/actions", () => ({
   createTrackerTargetAction: vi.fn(),
   createTrackerTargetForSessionAction: vi.fn(),
   listTrackerTargetsAction: mockListTrackerTargets,
+  listAlertsAction: mockListAlerts,
   deactivateTrackerTargetAction: vi.fn(),
+  updateAlertConsentAction: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -61,7 +64,8 @@ beforeAll(async () => {
   TrackerTokenPage = tokenMod.default;
 
   // Mock listTrackerTargetsAction to return an empty list by default
-  mockListTrackerTargets.mockResolvedValue({ success: true, targets: [], email: "user@example.com" });
+  mockListTrackerTargets.mockResolvedValue({ success: true, targets: [], email: "user@example.com", consent: true });
+  mockListAlerts.mockResolvedValue({ success: true, alerts: [] });
 });
 
 describe("Tracker pages landmark contract", () => {
@@ -122,6 +126,7 @@ describe("Tracker [token] page card layout", () => {
       success: true,
       targets: [],
       email: "user@example.com",
+      consent: false,
     });
     const el = await TrackerTokenPage({ params: Promise.resolve({ token: VALID_TOKEN }) });
     const markup = renderToStaticMarkup(el);
@@ -149,6 +154,7 @@ describe("Tracker [token] page card layout", () => {
         },
       ],
       email: "user@example.com",
+      consent: true,
     });
     const el = await TrackerTokenPage({ params: Promise.resolve({ token: VALID_TOKEN }) });
     const markup = renderToStaticMarkup(el);
