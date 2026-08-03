@@ -1609,7 +1609,7 @@ describe("AlertsList", () => {
   });
 
   it("renders the empty state when there are no alerts", () => {
-    const el = React.createElement(AlertsList, { alerts: [], email: "a@example.com", token: "11111111-1111-1111-1111-111111111111" });
+    const el = React.createElement(AlertsList, { alerts: [], email: "a@example.com", token: "TOKEN_PLACEHOLDER" });
     const markup = renderToStaticMarkup(el);
     expect(markup).toContain("Henüz uyarı yok");
   });
