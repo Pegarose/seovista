@@ -26,6 +26,7 @@ export async function createTrackerTargetAction(
     email: formData.get("email")?.toString() ?? "",
     keyword: formData.get("keyword")?.toString() ?? "",
     domain: formData.get("domain")?.toString() ?? "",
+    consent: formData.get("consent")?.toString() ?? "",
   });
 
   if (!validated.success) {
@@ -35,7 +36,7 @@ export async function createTrackerTargetAction(
     };
   }
 
-  const { email, keyword, domain } = validated.data;
+  const { email, keyword, domain, consent } = validated.data;
 
   try {
     // getAdminDb() throws when DATABASE_URL is unset; keep the call inside
@@ -68,8 +69,7 @@ export async function createTrackerTargetAction(
     }
 
     const repo = createTrackerRepository(db);
-    const consent = formData.get("consent")?.toString() ?? "";
-    const session = await repo.findOrCreateSession(email, consent === "on");
+    const session = await repo.findOrCreateSession(email, consent);
 
     const maxTargets = Number(process.env.TRACKER_MAX_TARGETS_PER_EMAIL) || 5;
     const currentCount = await repo.countActiveTargets(session.id);

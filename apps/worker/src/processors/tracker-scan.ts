@@ -145,7 +145,7 @@ export async function processTrackerScanBatch(input: TrackerScanInput): Promise<
         fromEmail: input.fromEmail ?? "noreply@seovista.com",
       });
     } catch (error) {
-      console.error(
+      logger(
         JSON.stringify({
           name: "@seovista/worker",
           layer: "tracker-scan",

@@ -136,7 +136,7 @@ describe("processTrackerScanBatch", () => {
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
-  it("writes an alert row when a position crosses the top-10 boundary", async () => {
+  it("does not write an alert row on the first observation", async () => {
     const { processTrackerScanBatch } = await import("../processors/tracker-scan.js");
     const insertedProducts: string[] = [];
     const db: DbClient = {

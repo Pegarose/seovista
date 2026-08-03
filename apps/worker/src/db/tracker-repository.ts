@@ -82,11 +82,18 @@ export function createTrackerRepository(client: DbClient) {
         );
         return res.rows[0]!;
       } catch {
-        const retry = await client.query<{ id: string; token: string }>(
-          `SELECT id, token FROM tracker_sessions WHERE email = $1`,
+        const retry = await client.query<{ id: string; token: string; alert_consent: boolean }>(
+          `SELECT id, token, alert_consent FROM tracker_sessions WHERE email = $1`,
           [email],
         );
-        return retry.rows[0]!;
+        const existing = retry.rows[0]!;
+        if (consent && !existing.alert_consent) {
+          await client.query(
+            `UPDATE tracker_sessions SET alert_consent = true, alert_consent_updated_at = now() WHERE id = $1`,
+            [existing.id],
+          );
+        }
+        return existing;
       }
     },
 
