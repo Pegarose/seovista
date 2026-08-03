@@ -45,3 +45,6 @@ Thumbs.db
 
 # pnpm
 .pnpm-store/
+
+# SDD and other internal development artefacts .superpowers/sdd/
+# Large binary files you don’t want in version control *.zip *.rar *.mp4
