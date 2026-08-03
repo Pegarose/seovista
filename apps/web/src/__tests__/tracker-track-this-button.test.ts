@@ -27,7 +27,7 @@ describe("TrackerForm", () => {
     const markup = renderToStaticMarkup(React.createElement(TrackerForm));
     expect(markup).toContain('name="consent"');
     expect(markup).toContain(
-      "Pozisyon değişikliklerinde e-posta ile bilgilendirilmek istiyorum.",
+      "Pozisyon değişikliklerinde e-posta ile bilgilendirilmek istiyorum. (İsteğe bağlı)",
     );
   });
 });
