@@ -28,6 +28,7 @@
     "@seovista/audit-core": "workspace:*",
     "@seovista/content-models": "workspace:*",
     "@seovista/geo-engine": "workspace:*",
+    "@seovista/reports": "workspace:*",
     "@seovista/schema": "workspace:*",
     "@seovista/search-visibility": "workspace:*",
     "@seovista/seo-core": "workspace:*",

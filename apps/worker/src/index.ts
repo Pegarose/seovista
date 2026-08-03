@@ -122,4 +122,6 @@ export {
   type CrewAgencyClientOptions,
   type CrewJobStatus,
 } from "./utils/crew-agency-client.js";
+export { evaluateTransition, type AlertKind } from "./alerts/alert-evaluator.js";
+export { runAlertDigest, type AlertDigestDeps, type AlertDigestResult } from "./alerts/alert-digest.js";
 

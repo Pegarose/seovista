@@ -173,6 +173,9 @@ importers:
       '@seovista/geo-engine':
         specifier: workspace:*
         version: link:../../packages/geo-engine
+      '@seovista/reports':
+        specifier: workspace:*
+        version: link:../../packages/reports
       '@seovista/schema':
         specifier: workspace:*
         version: link:../../packages/schema
