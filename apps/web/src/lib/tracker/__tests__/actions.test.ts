@@ -31,10 +31,11 @@ vi.mock("@seovista/worker", () => ({
   createTrackerRepository: mockCreateTrackerRepository,
 }));
 vi.mock("next/headers", () => ({ headers: mockHeaders }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { createTrackerTargetAction, listTrackerTargetsAction, deactivateTrackerTargetAction } from "../actions";
 
-const SESSION_REF = "fixture-session-ref";
+const SESSION_REF = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
 const SESSION_ID = "fixture-session-id";
 const TARGET_ID = "fixture-target-id";
 
@@ -109,7 +110,7 @@ describe("createTrackerTargetAction", () => {
     }));
     expect(result.status).toBe("success");
     expect(result.token).toBe(SESSION_REF);
-    expect(mockFindOrCreateSession).toHaveBeenCalledWith("user@example.com");
+    expect(mockFindOrCreateSession).toHaveBeenCalledWith("user@example.com", false);
     expect(mockCreateTarget).toHaveBeenCalled();
   });
 
@@ -191,5 +192,87 @@ describe("deactivateTrackerTargetAction", () => {
     mockDeactivateTarget.mockResolvedValue(false);
     const result = await deactivateTrackerTargetAction(SESSION_REF, TARGET_ID);
     expect(result.success).toBe(false);
+  });
+});
+
+// --- B3: consent ---
+
+describe("validateTrackerTargetInput consent", () => {
+  it("preprocesses consent from 'on' to true", () => {
+    const fd = new FormData();
+    fd.set("email", "user@example.com");
+    fd.set("keyword", "seo");
+    fd.set("domain", "example.com");
+    fd.set("consent", "on");
+    const result = validateTrackerTargetInput({ email: "user@example.com", keyword: "seo", domain: "example.com", consent: fd.get("consent")?.toString() ?? "" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.consent).toBe(true);
+  });
+
+  it("preprocesses missing consent to false", () => {
+    const result = validateTrackerTargetInput({ email: "user@example.com", keyword: "seo", domain: "example.com", consent: "" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.consent).toBe(false);
+  });
+});
+
+describe("createTrackerTargetAction consent", () => {
+  beforeEach(() => {
+    process.env.REDIS_URL = "redis://localhost:8637";
+    mockGetAdminDb.mockReturnValue({ query: vi.fn() });
+    mockCheckIpRateLimit.mockResolvedValue({ success: true, remaining: 2, resetSeconds: 3600 });
+    mockHeaders.mockResolvedValue(new Headers({ "x-forwarded-for": "127.0.0.1" }));
+    mockFindOrCreateSession.mockResolvedValue({ id: SESSION_ID, token: SESSION_REF });
+    mockCountActiveTargets.mockResolvedValue(0);
+    mockCreateTarget.mockResolvedValue({ id: TARGET_ID });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    delete process.env.REDIS_URL;
+  });
+
+  it("passes consent=true to findOrCreateSession for a new session", async () => {
+    setupRepoMock();
+    const fd = buildFormData({ email: "user@example.com", keyword: "seo", domain: "example.com" });
+    fd.set("consent", "on");
+    await createTrackerTargetAction({ status: "idle" }, fd);
+    expect(mockFindOrCreateSession).toHaveBeenCalledWith("user@example.com", true);
+  });
+
+  it("passes consent=false when the checkbox is absent", async () => {
+    setupRepoMock();
+    const fd = buildFormData({ email: "user@example.com", keyword: "seo", domain: "example.com" });
+    await createTrackerTargetAction({ status: "idle" }, fd);
+    expect(mockFindOrCreateSession).toHaveBeenCalledWith("user@example.com", false);
+  });
+});
+
+describe("updateAlertConsentAction", () => {
+  it("rejects a malformed token", async () => {
+    const { updateAlertConsentAction } = await import("../actions");
+    const result = await updateAlertConsentAction("not-a-uuid", true);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an unknown token", async () => {
+    mockFindSessionByToken.mockResolvedValue(null);
+    const { updateAlertConsentAction } = await import("../actions");
+    const result = await updateAlertConsentAction(SESSION_REF, true);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Takip paneli bulunamadı.");
+  });
+
+  it("updates consent for a valid token", async () => {
+    mockFindSessionByToken.mockResolvedValue({ id: SESSION_ID, email: "user@example.com" });
+    const mockUpdateAlertConsent = vi.fn().mockResolvedValue(undefined);
+    mockCreateTrackerRepository.mockReturnValue({
+      findSessionByToken: mockFindSessionByToken,
+      updateAlertConsent: mockUpdateAlertConsent,
+    });
+    const { updateAlertConsentAction } = await import("../actions");
+    const result = await updateAlertConsentAction(SESSION_REF, true);
+    expect(result.success).toBe(true);
+    expect(mockUpdateAlertConsent).toHaveBeenCalledWith(SESSION_ID, true);
   });
 });

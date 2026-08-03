@@ -68,7 +68,8 @@ export async function createTrackerTargetAction(
     }
 
     const repo = createTrackerRepository(db);
-    const session = await repo.findOrCreateSession(email);
+    const consent = formData.get("consent")?.toString() ?? "";
+    const session = await repo.findOrCreateSession(email, consent === "on");
 
     const maxTargets = Number(process.env.TRACKER_MAX_TARGETS_PER_EMAIL) || 5;
     const currentCount = await repo.countActiveTargets(session.id);
@@ -309,5 +310,28 @@ export async function createTrackerTargetForSessionAction(
         form: ["Sistem hatası nedeniyle hedef eklenemedi. Lütfen daha sonra tekrar deneyiniz."],
       },
     };
+  }
+}
+
+export async function updateAlertConsentAction(
+  token: string,
+  consent: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!TOKEN_RE.test(token)) {
+      return { success: false, error: "Takip paneli bulunamadı." };
+    }
+    const db = getAdminDb();
+    const repo = createTrackerRepository(db);
+    const session = await repo.findSessionByToken(token);
+    if (!session) {
+      return { success: false, error: "Takip paneli bulunamadı." };
+    }
+    await repo.updateAlertConsent(session.id, consent);
+    revalidatePath(`/tracker/${token}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update alert consent:", error);
+    return { success: false, error: "E-posta uyarı tercihi güncellenemedi." };
   }
 }
