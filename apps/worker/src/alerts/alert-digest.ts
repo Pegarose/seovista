@@ -23,7 +23,7 @@ export interface AlertDigestResult {
   failures: number;
 }
 
-const KIND_LABEL: Record<string, string> = {
+const KIND_LABEL: Record<UnsentAlertRow["kind"], string> = {
   dropped_out_of_top10: "İlk 10'dan düştü",
   entered_top10: "İlk 10'a girdi",
   significant_drop: "Belirgin düşüş",
