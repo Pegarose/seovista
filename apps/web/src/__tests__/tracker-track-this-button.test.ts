@@ -20,3 +20,14 @@ describe("TrackThisButton", () => {
     expect(markup).toContain("Bu Anahtarı Takip Et");
   });
 });
+
+describe("TrackerForm", () => {
+  it("renders the alert consent checkbox with Turkish label", async () => {
+    const { TrackerForm } = await import("../components/tracker/tracker-form");
+    const markup = renderToStaticMarkup(React.createElement(TrackerForm));
+    expect(markup).toContain('name="consent"');
+    expect(markup).toContain(
+      "Pozisyon değişikliklerinde e-posta ile bilgilendirilmek istiyorum.",
+    );
+  });
+});

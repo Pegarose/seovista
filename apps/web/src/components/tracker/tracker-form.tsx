@@ -69,6 +69,19 @@ export function TrackerForm() {
           <p className="text-sm text-red-600" role="alert">{state.errors.form[0]}</p>
         )}
 
+        <div>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              name="consent"
+              className="mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+            />
+            <span>
+              Pozisyon değişikliklerinde e-posta ile bilgilendirilmek istiyorum. (İsteğe bağlı)
+            </span>
+          </label>
+        </div>
+
         <button
           type="submit"
           disabled={isPending}
