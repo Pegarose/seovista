@@ -6,6 +6,10 @@ const APPROVED_FINAL_PATHS = new Set([
   "/digital-authority/",
   "/tools/",
   "/tools/geo-readiness-checker/",
+  "/tools/schema-checker/",
+  "/tools/ai-crawler-checker/",
+  "/tools/serp-preview/",
+  "/tools/keyword-rank-checker/",
   "/about/",
   "/contact/",
   "/insights/",
@@ -13,6 +17,16 @@ const APPROVED_FINAL_PATHS = new Set([
   "/cookies/",
   "/terms/",
 ]);
+
+const APPROVED_DYNAMIC_PREFIXES = [
+  "/tools/geo-readiness-checker/result/",
+  "/tools/schema-checker/result/",
+  "/tools/ai-crawler-checker/result/",
+  "/tools/keyword-rank-checker/result/",
+];
+
+const DEVELOPMENT_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+const LOCAL_SERVER_PORTS = new Set(["3200"]);
 
 const NON_PAGE_PATHS = [
   "/_next/",
@@ -40,6 +54,10 @@ function isNonPagePath(pathname: string): boolean {
   return NON_PAGE_PATHS.some((path) => pathname === path || pathname.startsWith(path));
 }
 
+function isApprovedDynamicPath(pathname: string): boolean {
+  return APPROVED_DYNAMIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 function canonicalPath(pathname: string): string | undefined {
   const lowercasePathname = pathname.toLowerCase();
   const withTrailingSlash = lowercasePathname.endsWith("/")
@@ -47,6 +65,15 @@ function canonicalPath(pathname: string): string | undefined {
     : `${lowercasePathname}/`;
 
   return APPROVED_FINAL_PATHS.has(withTrailingSlash) ? withTrailingSlash : undefined;
+}
+
+function isDevelopmentRequest(request: NextRequest): boolean {
+  if (process.env.NODE_ENV === "development") return true;
+  const hostname = request.nextUrl.hostname.toLowerCase();
+  if (DEVELOPMENT_HOSTS.has(hostname)) return true;
+  // Production builds serving behind localhost-style infra (e.g. Docker bridge)
+  // are treated as non-public so canonical redirects stay host-relative.
+  return LOCAL_SERVER_PORTS.has(request.nextUrl.port);
 }
 
 function isApprovedFinalPath(pathname: string, canonical: string): boolean {
@@ -63,6 +90,12 @@ export function middleware(request: NextRequest): NextResponse {
   if (pathname.startsWith("/admin")) {
     response = NextResponse.next({ request: { headers: requestHeaders } });
   } else if (pathname === "/" || isNonPagePath(pathname)) {
+    response = NextResponse.next();
+  } else if (isApprovedDynamicPath(pathname)) {
+    response = NextResponse.next();
+  } else if (isDevelopmentRequest(request)) {
+    // Local/dev traffic: never send users to the production origin. If the
+    // path is canonical, do nothing and let the router handle it.
     response = NextResponse.next();
   } else {
     const canonical = canonicalPath(pathname);

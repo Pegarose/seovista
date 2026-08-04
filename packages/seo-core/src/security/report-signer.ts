@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "crypto";
 
 function canonicalizePayload(payload: unknown): string {
   if (typeof payload !== "object" || payload === null) {
@@ -12,6 +12,25 @@ function canonicalizePayload(payload: unknown): string {
   return JSON.stringify(sortedObj);
 }
 
+function hexToUint8Array(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a[i]! ^ b[i]!;
+  }
+  return diff === 0;
+}
+
 export function generateReportSignature(payload: unknown, secret: string): string {
   const data = canonicalizePayload(payload);
   return createHmac("sha256", secret).update(data).digest("hex");
@@ -23,14 +42,10 @@ export function verifyReportSignature(payload: unknown, signature: string, secre
   }
   try {
     const expected = generateReportSignature(payload, secret);
-    const expectedBuffer = Buffer.from(expected, "hex");
-    const signatureBuffer = Buffer.from(signature, "hex");
+    const expectedBytes = hexToUint8Array(expected);
+    const signatureBytes = hexToUint8Array(signature);
 
-    if (expectedBuffer.length !== signatureBuffer.length) {
-      return false;
-    }
-
-    return timingSafeEqual(expectedBuffer, signatureBuffer);
+    return timingSafeEqual(expectedBytes, signatureBytes);
   } catch {
     return false;
   }
