@@ -10,6 +10,9 @@ const APPROVED_FINAL_PATHS = new Set([
   "/tools/ai-crawler-checker/",
   "/tools/serp-preview/",
   "/tools/keyword-rank-checker/",
+  "/tools/schema-truth-check/",
+  "/tools/render-parity-diff/",
+  "/tools/attribution-trace/",
   "/about/",
   "/contact/",
   "/insights/",
@@ -23,6 +26,9 @@ const APPROVED_DYNAMIC_PREFIXES = [
   "/tools/schema-checker/result/",
   "/tools/ai-crawler-checker/result/",
   "/tools/keyword-rank-checker/result/",
+  "/tools/schema-truth-check/result/",
+  "/tools/render-parity-diff/result/",
+  "/tools/attribution-trace/result/",
 ];
 
 const DEVELOPMENT_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);

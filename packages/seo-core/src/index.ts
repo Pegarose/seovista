@@ -110,3 +110,40 @@ export {
   extractKeywordRank,
   isValidPublicDomain,
 } from "./serp-rank.js";
+
+export type {
+  TruthClaim,
+  SchemaTruthResult,
+} from "./schema-truth.js";
+
+export {
+  verifySchemaTruth,
+  normalizeForTruthMatch,
+} from "./schema-truth.js";
+
+export type {
+  RenderSide,
+  RenderParityIssue,
+  RenderParityResult,
+} from "./render-parity.js";
+
+export {
+  DEFAULT_BROWSER_UA,
+  CRAWLER_UA,
+  extractVisibleText,
+  parseRenderSide,
+  compareRenderSides,
+} from "./render-parity.js";
+
+export type {
+  SourceDocument,
+  AttributionVerdict,
+  AttributionVerdictKind,
+  AttributionTraceResult,
+} from "./attribution-trace.js";
+
+export {
+  tokenise,
+  splitClaims,
+  traceAttribution,
+} from "./attribution-trace.js";

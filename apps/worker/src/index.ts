@@ -60,6 +60,61 @@ export {
   type SubmitSchemaAuditResult,
 } from "./queue/schema-submission.js";
 export {
+  processSchemaTruthPayload,
+  type SchemaTruthResultPayload,
+} from "./processors/schema-truth.js";
+export {
+  submitSchemaTruthCheck,
+  closeSchemaTruthSubmissionQueue,
+  SCHEMA_TRUTH_QUEUE_NAME,
+  SCHEMA_TRUTH_JOB_NAME,
+  SCHEMA_TRUTH_JOB_RECORD_QUEUE_NAME,
+  type SubmitSchemaTruthInput,
+  type SubmitSchemaTruthResult,
+} from "./queue/schema-truth-submission.js";
+export {
+  startSchemaTruthWorker,
+  getSchemaTruthWorkerConcurrency,
+  type SchemaTruthWorkerOptions,
+} from "./queue/schema-truth-worker.js";
+export {
+  processRenderParityPayload,
+  type RenderParityResultPayload,
+} from "./processors/render-parity.js";
+export {
+  submitRenderParityCheck,
+  closeRenderParitySubmissionQueue,
+  RENDER_PARITY_QUEUE_NAME,
+  RENDER_PARITY_JOB_NAME,
+  RENDER_PARITY_JOB_RECORD_QUEUE_NAME,
+  type SubmitRenderParityInput,
+  type SubmitRenderParityResult,
+} from "./queue/render-parity-submission.js";
+export {
+  startRenderParityWorker,
+  getRenderParityWorkerConcurrency,
+  type RenderParityWorkerOptions,
+} from "./queue/render-parity-worker.js";
+export {
+  processAttributionTracePayload,
+  type ProcessAttributionTraceInput,
+  type AttributionTraceResultPayload,
+} from "./processors/attribution-trace.js";
+export {
+  submitAttributionTraceCheck,
+  closeAttributionTraceSubmissionQueue,
+  ATTRIBUTION_TRACE_QUEUE_NAME,
+  ATTRIBUTION_TRACE_JOB_NAME,
+  ATTRIBUTION_TRACE_JOB_RECORD_QUEUE_NAME,
+  type SubmitAttributionTraceInput,
+  type SubmitAttributionTraceResult,
+} from "./queue/attribution-trace-submission.js";
+export {
+  startAttributionTraceWorker,
+  getAttributionTraceWorkerConcurrency,
+  type AttributionTraceWorkerOptions,
+} from "./queue/attribution-trace-worker.js";
+export {
   processAiCrawlerAuditPayload,
   type AiCrawlerAuditResultPayload,
 } from "./processors/ai-crawler-audit.js";

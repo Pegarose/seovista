@@ -6,6 +6,9 @@ import { createDbClient, type DbClient } from "./db/client.js";
 import { createPingQueue, createPingWorker } from "./queue/ping.js";
 import { startGeoWorker } from "./queue/geo-worker.js";
 import { startSchemaWorker } from "./queue/schema-worker.js";
+import { startSchemaTruthWorker } from "./queue/schema-truth-worker.js";
+import { startRenderParityWorker } from "./queue/render-parity-worker.js";
+import { startAttributionTraceWorker } from "./queue/attribution-trace-worker.js";
 import { startAiCrawlerWorker } from "./queue/ai-crawler-worker.js";
 import { startKeywordRankWorker } from "./queue/keyword-rank-worker.js";
 import { startCrewReportWorker } from "./queue/crew-report-worker.js";
@@ -28,6 +31,9 @@ interface RunningWorker {
   worker: Worker;
   geoWorker: Worker;
   schemaWorker: Worker;
+  schemaTruthWorker: Worker;
+  renderParityWorker: Worker;
+  attributionTraceWorker: Worker;
   aiCrawlerWorker: Worker;
   keywordRankWorker: Worker;
   crewReportWorker: Worker;
@@ -79,6 +85,9 @@ async function run(): Promise<void> {
   const worker = createPingWorker(queueOptions);
   const geoWorker = startGeoWorker();
   const schemaWorker = startSchemaWorker();
+  const schemaTruthWorker = startSchemaTruthWorker();
+  const renderParityWorker = startRenderParityWorker();
+  const attributionTraceWorker = startAttributionTraceWorker();
   const aiCrawlerWorker = startAiCrawlerWorker();
   const keywordRankWorker = startKeywordRankWorker();
   const crewReportWorker = startCrewReportWorker();
@@ -89,7 +98,7 @@ async function run(): Promise<void> {
   // schedules.
   await registerTrackerScanRepeatable(workerEnv.REDIS_URL);
 
-  running = { db, queue, worker, geoWorker, schemaWorker, aiCrawlerWorker, keywordRankWorker, crewReportWorker, trackerScanWorker };
+  running = { db, queue, worker, geoWorker, schemaWorker, schemaTruthWorker, renderParityWorker, attributionTraceWorker, aiCrawlerWorker, keywordRankWorker, crewReportWorker, trackerScanWorker };
 
   // Phase A — VAL-A-MIT-004: on boot, log the remaining daily Browseract
   // credit budget so operators can see the daily cap state at startup. Reads
@@ -162,7 +171,10 @@ async function shutdown(signal: string): Promise<void> {
     await closeTrackerScanSubmissionQueue();
     await current.keywordRankWorker.close(false);
     await current.aiCrawlerWorker.close(false);
+    await current.renderParityWorker.close(false);
+    await current.attributionTraceWorker.close(false);
     await current.schemaWorker.close(false);
+    await current.schemaTruthWorker.close(false);
     await current.geoWorker.close(false);
     await current.worker.close(false);
     await current.queue.close();
