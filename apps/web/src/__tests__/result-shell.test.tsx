@@ -74,6 +74,9 @@ let SchemaTruthJobResultPage: (
 let RenderParityJobResultPage: (
   props: { params: Promise<{ jobId: string }> },
 ) => Promise<React.ReactElement>;
+let AttributionTraceJobResultPage: (
+  props: { params: Promise<{ jobId: string }> },
+) => Promise<React.ReactElement>;
 
 beforeAll(async () => {
   const schemaTruth = await import(
@@ -84,6 +87,10 @@ beforeAll(async () => {
     "../../app/tools/render-parity-diff/result/[jobId]/page"
   );
   RenderParityJobResultPage = renderParity.default;
+  const attributionTrace = await import(
+    "../../app/tools/attribution-trace/result/[jobId]/page"
+  );
+  AttributionTraceJobResultPage = attributionTrace.default;
 });
 
 // ---------------------------------------------------------------------------
@@ -585,6 +592,215 @@ describe("Render Parity Result Page", () => {
     expect(markup).toContain("Missing in crawler");
     // ratio 0.5 < 0.85 -> fail pill
     expect(markup).toContain(">Fail<");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Attribution Trace Result Page — Task 9 structural assertions
+// ---------------------------------------------------------------------------
+
+describe("Attribution Trace Result Page", () => {
+  function buildAttributionPayload(
+    overrides: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    return {
+      kind: "attribution-trace",
+      score: 82,
+      totalClaims: 2,
+      selfClaims: 0,
+      externalClaims: 1,
+      misattributedClaims: 0,
+      unverifiableClaims: 1,
+      verdicts: [
+        {
+          claim: "SeoVista measurably improves GEO visibility.",
+          kind: "external",
+          bestSourceId: "serp:1",
+          bestSimilarity: 0.85,
+        },
+        {
+          claim: "A claim with no traceable source.",
+          kind: "unverifiable",
+          bestSimilarity: 0,
+        },
+      ],
+      serpSources: [
+        {
+          id: "serp:1",
+          label: "SeoVista Blog",
+          text: "SeoVista measurably improves GEO visibility.",
+          kind: "external",
+          url: "https://blog.seovista.example/geo-visibility",
+        },
+      ],
+      ...overrides,
+    };
+  }
+
+  it("invalid UUID renders exactly one main + one h1 'Citation trace' with Report not found", async () => {
+    const el = await AttributionTraceJobResultPage({
+      params: Promise.resolve({ jobId: "not-a-uuid" }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(countTag(markup, "main")).toBe(1);
+    expect(countTag(markup, "h1")).toBe(1);
+    expect(markup).toContain("Citation trace");
+    expect(markup).toContain("Report not found");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("completed renders VerdictCard, score aria, stats row, ledger with source links and kind badges, no slate tokens", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildAttributionPayload(),
+    });
+    const el = await AttributionTraceJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(countTag(markup, "main")).toBe(1);
+    expect(countTag(markup, "h1")).toBe(1);
+    expect(markup).toContain("Citation trace");
+    expect(markup).toContain(
+      "Which sources support your claims, and how strongly."
+    );
+    // Score 82 -> info band, score aria via VerdictCard.
+    expect(markup).toContain('aria-label="Score: 82 out of 100"');
+    expect(markup).toContain("Traceability");
+
+    // Stats row: labels present; avg similarity (0.85 + 0.0)/2 = 42.5 -> 43
+    // is a distinctive numeral proving the mono stats render.
+    expect(markup).toContain("Claims checked");
+    expect(markup).toContain("Sources matched");
+    expect(markup).toContain("Best similarity");
+    expect(markup).toContain("Avg similarity");
+    expect(markup).toContain("43");
+
+    // Page identity line shows the URL-input target.
+    expect(markup).toContain("Page:");
+    expect(markup).toContain("https://example.com");
+
+    // Ledger: pass row + warn row, detail carries kind label + claim text.
+    expect(markup).toContain("Evidence ledger");
+    expect(markup).toContain("Source found");
+    expect(markup).toContain("Weak or no source");
+    expect(markup).toContain(
+      "External source: SeoVista measurably improves GEO visibility."
+    );
+
+    // Source link from the best-matched SERP source.
+    expect(markup).toContain(
+      'href="https://blog.seovista.example/geo-visibility"'
+    );
+    expect(markup).toContain("SeoVista Blog");
+
+    // Kind badge chips: label + token classes for the kinds present.
+    expect(markup).toContain("External source");
+    expect(markup).toContain("Unverifiable");
+    expect(markup).toContain("text-spectral");
+    expect(markup).toContain("text-muted-ink");
+
+    // Traceability footnote + schema-truth CTA.
+    expect(markup).toContain(
+      "Scores reflect how strongly search results support the claim text."
+    );
+    expect(markup).toContain('href="/tools/schema-truth-check/"');
+
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("completed with a >=90 score renders the pass verdict and score aria", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildAttributionPayload({
+        score: 92,
+        selfClaims: 0,
+        externalClaims: 1,
+        misattributedClaims: 0,
+        unverifiableClaims: 0,
+        verdicts: [
+          {
+            claim: "SeoVista measurably improves GEO visibility.",
+            kind: "external",
+            bestSourceId: "serp:1",
+            bestSimilarity: 0.95,
+          },
+        ],
+      }),
+    });
+    const el = await AttributionTraceJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(markup).toContain('aria-label="Score: 92 out of 100"');
+    expect(markup).toContain(">Pass<");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("completed with zero claims renders the info verdict and no fabricated score", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildAttributionPayload({
+        score: 100,
+        totalClaims: 0,
+        selfClaims: 0,
+        externalClaims: 0,
+        misattributedClaims: 0,
+        unverifiableClaims: 0,
+        verdicts: [],
+        serpSources: [],
+      }),
+    });
+    const el = await AttributionTraceJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(markup).toContain("Info");
+    expect(markup).toContain("No claims were found in the pasted answer.");
+    expect(markup).not.toContain("out of 100");
+    expect(markup).not.toContain("/100");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("completed with all-zero similarities renders the info verdict and no fabricated score", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildAttributionPayload({
+        score: 0,
+        selfClaims: 0,
+        externalClaims: 0,
+        misattributedClaims: 1,
+        unverifiableClaims: 0,
+        verdicts: [
+          {
+            claim: "A claim with no traceable source.",
+            kind: "misattributed",
+            bestSimilarity: 0,
+          },
+        ],
+      }),
+    });
+    const el = await AttributionTraceJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(markup).toContain("Info");
+    expect(markup).not.toContain("out of 100");
+    expect(markup).not.toContain("/100");
     expect(markup).not.toMatch(/slate-|gray-|indigo-/);
   });
 });

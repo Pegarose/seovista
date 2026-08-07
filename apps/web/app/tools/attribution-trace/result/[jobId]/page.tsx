@@ -1,75 +1,186 @@
-import Link from "next/link";
 import type { AttributionTraceResultPayload } from "@seovista/worker";
 import { getAdminDb } from "../../../../../src/lib/admin/db";
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
 import { normalizeJobResultStatus } from "../../../../../src/lib/admin/job-result-guard";
-import { UnknownJobStatusView } from "../../../../../src/components/result-pages";
+import {
+  IssueLedger,
+  ReportErrorPanel,
+  ResultShell,
+  UnknownJobStatusView,
+  VerdictCard,
+  type IssueLedgerItem,
+  type VerdictVariant,
+} from "../../../../../src/components/result-pages";
 
 export const dynamic = "force-dynamic";
 
+/** UUID v4/v7 format guard. Rejects malformed IDs before any repository query. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Shared editorial shell identity for every rendered state of this page. */
+const REPORT_SHELL = {
+  eyebrow: "Seovista / Lab report",
+  title: "Citation trace",
+} as const;
 
 export async function generateMetadata() {
   return {
-    title: "Attribution Trace Sonucu · SeoVista",
+    title: "Attribution Trace - SeoVista",
     robots: { index: false, follow: false, nocache: true },
   };
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      {children}
-    </main>
-  );
-}
-
-function ErrorState({ title, body }: { title: string; body: string }) {
-  return (
-    <Shell>
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-        <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">{title}</h1>
-        <p className="text-slate-700">{body}</p>
-      </div>
-    </Shell>
-  );
-}
-
+/** Per-claim attribution kind: human label + design-token chip classes. */
 type VerdictKind = "self" | "external" | "misattributed" | "unverifiable";
 
-const KIND_META: Record<VerdictKind, { label: string; badge: string }> = {
-  self: {
-    label: "Kendi içeriğiniz",
-    badge: "border-emerald-300 bg-emerald-100 text-emerald-800",
-  },
-  external: {
-    label: "Dış kaynak",
-    badge: "border-sky-300 bg-sky-100 text-sky-800",
-  },
-  misattributed: {
-    label: "Yanlış atıf",
-    badge: "border-rose-300 bg-rose-100 text-rose-800",
-  },
-  unverifiable: {
-    label: "Doğrulanamayan",
-    badge: "border-slate-300 bg-slate-100 text-slate-700",
-  },
+const KIND_META: Record<VerdictKind, { label: string; chip: string }> = {
+  // The four colour families from the legacy KIND_META palette, translated
+  // to the editorial tokens: emerald → signal, sky → spectral, rose → ember,
+  // slate → muted-ink.
+  self: { label: "Your own content", chip: "text-signal border-signal/40" },
+  external: { label: "External source", chip: "text-spectral border-spectral/40" },
+  misattributed: { label: "Misattributed", chip: "text-ember border-ember/40" },
+  unverifiable: { label: "Unverifiable", chip: "text-muted-ink border-hairline" },
 };
 
-function MetricTile({
-  label,
-  value,
-  borderClass,
-}: {
-  label: string;
-  value: number;
-  borderClass: string;
-}) {
+/**
+ * Map the 0–100 sourcedness score onto the editorial verdict variant.
+ * The brief's bands for this instrument are exact: ≥90 pass, 70–89 info,
+ * <70 fail — there is deliberately no warn band at the score level. A
+ * payload with no claims, or whose claims all carry zero best similarity,
+ * has nothing measurable to grade, so it renders the neutral info variant
+ * and the numeric score is omitted (VerdictCard's "n/100" would otherwise
+ * imply a grade where no overlap was observed).
+ */
+function attributionVariant(payload: AttributionTraceResultPayload): VerdictVariant {
+  if (!hasMeasurableSimilarity(payload)) return "info";
+  const score = payload.score;
+  if (score >= 90) return "pass";
+  if (score >= 70) return "info";
+  return "fail";
+}
+
+/** True when at least one claim carried a measurable overlap (> 0). */
+function hasMeasurableSimilarity(payload: AttributionTraceResultPayload): boolean {
   return (
-    <div className={`bg-white p-4 rounded-xl border-l-4 border border-slate-200 shadow-sm ${borderClass}`}>
-      <p className="text-2xl font-extrabold text-slate-900">{value}</p>
-      <p className="mt-1 text-xs font-medium text-slate-500">{label}</p>
+    payload.totalClaims > 0 && payload.verdicts.some((v) => v.bestSimilarity > 0)
+  );
+}
+
+/** Round a 0–1 similarity into a 0–100 integer for the stats row. */
+function pct(value: number): number {
+  return Math.round(value * 100);
+}
+
+/**
+ * Compact stats row values. "Claims checked" is the total claim count;
+ * "Sources matched" counts the claims that resolved to a source (own site
+ * or SERP); best/avg similarity are derived from the per-claim overlaps.
+ */
+function statsRow(payload: AttributionTraceResultPayload): {
+  claimsChecked: number;
+  sourcesMatched: number;
+  bestSimilarity: number;
+  avgSimilarity: number;
+} {
+  const similarities = payload.verdicts.map((v) => v.bestSimilarity);
+  const best = similarities.length > 0 ? Math.max(...similarities) : 0;
+  const avg =
+    similarities.length > 0
+      ? similarities.reduce((sum, value) => sum + value, 0) / similarities.length
+      : 0;
+  return {
+    claimsChecked: payload.totalClaims,
+    sourcesMatched: payload.selfClaims + payload.externalClaims,
+    bestSimilarity: pct(best),
+    avgSimilarity: pct(avg),
+  };
+}
+
+/** SERP source shape lifted from the payload (no extra dependency). */
+type SerpSource = AttributionTraceResultPayload["serpSources"][number];
+
+/**
+ * Resolve the best-source id into the IssueLedger source link. The "self"
+ * id resolves to the audited domain; otherwise the SERP source document
+ * supplies the label/url. Returns null when the source has no URL so the
+ * ledger omits the link instead of rendering a dead anchor.
+ */
+function resolveSourceUrl(
+  bestSourceId: string,
+  serpSources: readonly SerpSource[],
+  target: string | null,
+): { label: string; url: string } | null {
+  if (bestSourceId === "self") {
+    const domain = target ?? "";
+    return {
+      label: target ?? "Your site",
+      url: domain.startsWith("http") ? domain : `https://${domain}/`,
+    };
+  }
+  const src = serpSources.find((s) => s.id === bestSourceId);
+  if (!src || !src.url) return null;
+  return { label: src.label, url: src.url };
+}
+
+/**
+ * Evidence ledger rows for the attribution payload. One row per claim: the
+ * title carries the trace verdict ("Source found" when a source clears the
+ * 70% overlap threshold, otherwise "Weak or no source"), the detail carries
+ * the kind label plus the claim text, and the best-matching source renders
+ * as a mono link. Severity stays pass/warn only — per-claim strength needs
+ * that distinction even though the overall score has no warn band.
+ */
+function buildLedgerItems(
+  payload: AttributionTraceResultPayload,
+  serpSources: readonly SerpSource[],
+  target: string | null,
+): IssueLedgerItem[] {
+  return payload.verdicts.map((verdict, idx) => {
+    const similarityPct = Math.round(verdict.bestSimilarity * 100);
+    const hasSource =
+      typeof verdict.bestSourceId === "string" && verdict.bestSourceId.length > 0;
+    const pass = hasSource && similarityPct >= 70;
+    const source = hasSource
+      ? resolveSourceUrl(verdict.bestSourceId!, serpSources, target)
+      : null;
+    return {
+      id: `claim-${idx}`,
+      severity: pass ? "pass" : "warn",
+      title: pass ? "Source found" : "Weak or no source",
+      detail: `${KIND_META[verdict.kind].label}: ${verdict.claim}`,
+      ...(source ? { source } : {}),
+    };
+  });
+}
+
+/** Page-local kind badge key — only the kinds actually present in the data. */
+function KindBadges({ payload }: { payload: AttributionTraceResultPayload }) {
+  const kinds = (Object.keys(KIND_META) as VerdictKind[]).filter((kind) =>
+    payload.verdicts.some((v) => v.kind === kind)
+  );
+  if (kinds.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {kinds.map((kind) => (
+        <span
+          key={kind}
+          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${KIND_META[kind].chip}`}
+        >
+          {KIND_META[kind].label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Page-local stats cell for the metric row under the verdict. */
+function MetricStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-hairline bg-card p-4">
+      <p className="font-mono text-2xl text-ink">{value}</p>
+      <p className="mt-1 text-xs font-medium text-muted-ink">{label}</p>
     </div>
   );
 }
@@ -81,12 +192,16 @@ export default async function AttributionTraceJobResultPage({
 }) {
   const { jobId } = await params;
 
+  // Reject malformed non-UUID job IDs before any repository query so invalid
+  // input never reaches PostgreSQL and renders the documented not-found state.
   if (!UUID_RE.test(jobId)) {
     return (
-      <ErrorState
-        title="İşlem Bulunamadı"
-        body="İstenen Attribution Trace denetimi sonucu bulunamadı. Lütfen işlem kimliğini (Job ID) kontrol edip tekrar deneyin."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Report not found"
+          body="The requested report could not be found. Check the job id and try again."
+        />
+      </ResultShell>
     );
   }
 
@@ -95,10 +210,12 @@ export default async function AttributionTraceJobResultPage({
     db = getAdminDb();
   } catch {
     return (
-      <ErrorState
-        title="Hizmet Geçici Olarak Kullanılamıyor"
-        body="Attribution Trace denetimi hizmeti şu anda kullanılamıyor. Lütfen kısa süre sonra tekrar deneyin."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Service temporarily unavailable"
+          body="The report service is temporarily unavailable. Please try again shortly."
+        />
+      </ResultShell>
     );
   }
 
@@ -110,6 +227,9 @@ export default async function AttributionTraceJobResultPage({
   }
   let jobRow: AttributionTraceJobRow | undefined;
   try {
+    // Results live in job_results (JSONB), joined via correlation_id — the
+    // same contract the other tool result pages use. The queue_name filter
+    // scopes the lookup to attribution trace audits.
     const res = await db.query<AttributionTraceJobRow>(
       `SELECT j.id, j.target, j.status, r.payload AS result_payload
        FROM job_records j
@@ -117,54 +237,78 @@ export default async function AttributionTraceJobResultPage({
        WHERE j.id = $1 AND j.queue_name = 'attribution_trace_audit'
        ORDER BY r.created_at DESC
        LIMIT 1`,
-      [jobId],
+      [jobId]
     );
     jobRow = res.rows[0];
   } catch (err) {
     console.error("Failed to query attribution_trace_audit job record:", err);
     return (
-      <ErrorState
-        title="Hizmet Geçici Olarak Kullanılamıyor"
-        body="Attribution Trace denetimi sonucu şu anda alınamıyor. Lütfen tekrar deneyin."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Service temporarily unavailable"
+          body="The report service is temporarily unavailable. Please try again shortly."
+        />
+      </ResultShell>
     );
   }
 
+  // Syntactically valid UUID with no matching job record renders the
+  // documented not-found state.
   if (!jobRow) {
     return (
-      <ErrorState
-        title="İşlem Bulunamadı"
-        body="İstenen denetim kaydı sistemde bulunamadı."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Report not found"
+          body="The requested report could not be found. Check the job id and try again."
+        />
+      </ResultShell>
     );
   }
 
+  // Normalize the persisted status into the public lifecycle vocabulary so
+  // an unrecognised persisted value renders the explicit unknown-status
+  // state instead of falling through to the completed-result payload path.
   const status = normalizeJobResultStatus(jobRow.status);
 
+  // -- In-flight states (queued / running / pending) --
   if (isAuditInFlightStatus(status)) {
     return (
-      <Shell>
-        <h1 className="text-3xl font-display font-semibold text-slate-900 text-center">
-          {status === "queued"
-            ? "Attribution Trace Denetimi Sırada"
-            : status === "running"
-            ? "Attribution Trace Denetimi Çalışıyor..."
-            : "Attribution Trace Denetimi Beklemede"}
-        </h1>
+      <ResultShell
+        eyebrow={REPORT_SHELL.eyebrow}
+        title={REPORT_SHELL.title}
+        status="checking"
+        meta={{ jobId, queueName: "attribution_trace_audit", toolLabel: "Attribution Trace" }}
+      >
+        <p className="text-sm text-muted-ink">
+          The audit is running. This page refreshes automatically.
+        </p>
         <AuditPoller jobId={jobId} initialStatus={status} />
-      </Shell>
+      </ResultShell>
     );
   }
 
-  if (status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure") {
+  // -- Terminal failed states --
+  if (
+    status === "failed" ||
+    status === "timeout" ||
+    status === "permanent" ||
+    status === "permanent_failure"
+  ) {
     return (
-      <ErrorState
-        title="Denetim Başarısız Oldu"
-        body="Denetim sıraylayıcısı (worker) alan adını reddetmiş olabilir ya da sayfa çekme işlemi zaman aşımına uğradı. Lütfen URL'yi kontrol edip tekrar deneyin."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report failed"
+          body="We could not finish this audit. Keep the reference id below when you ask for help."
+          correlationId={jobId}
+          retryHref="/tools/attribution-trace/"
+        />
+      </ResultShell>
     );
   }
 
+  // -- Unknown persisted status: explicit unavailable state --
+  // Any status value not in the supported lifecycle vocabulary renders the
+  // shared explicit-unknown view rather than crashing on the result payload.
   if (status === "unknown") {
     return <UnknownJobStatusView />;
   }
@@ -187,130 +331,74 @@ export default async function AttributionTraceJobResultPage({
     }
   }
 
-  if (!payload) {
+  // -- Completed: degraded (no valid result payload) --
+  if (status === "completed" && !payload) {
     return (
-      <ErrorState
-        title="Sonuç Verisi Kullanılamıyor"
-        body="Denetim tamamlandı ancak sonuç verisi okunamadı. Lütfen sayfayı yenileyiniz."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report data is incomplete"
+          body="The audit finished, but the stored result is unreadable. Rerun the audit to regenerate it."
+          retryHref="/tools/attribution-trace/"
+        />
+      </ResultShell>
     );
   }
 
-  const safePayload = payload;
+  // -- Completed: valid payload --
+  // (status === "completed" && payload !== null) — narrowed after the
+  // degraded early-return above.
+  const safePayload = payload!;
   const serpSources = safePayload.serpSources ?? [];
-
-  const resolveSourceUrl = (bestSourceId: string): { label: string; url: string } | null => {
-    if (bestSourceId === "self") {
-      const domain = jobRow.target ?? "";
-      return {
-        label: jobRow.target ?? "Siteniz",
-        url: domain.startsWith("http") ? domain : `https://${domain}/`,
-      };
-    }
-    const src = serpSources.find((s) => s.id === bestSourceId);
-    if (!src || !src.url) return null;
-    return { label: src.label, url: src.url };
-  };
+  const stats = statsRow(safePayload);
+  const hasScore = hasMeasurableSimilarity(safePayload);
 
   return (
-    <main id="main" className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">
-            Attribution Trace Sonucu
-          </h1>
-          <div className="mt-3">
-            <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-mono text-slate-700 break-all">
-              {jobRow.target ?? "—"}
-            </span>
-          </div>
-        </div>
+    <ResultShell
+      eyebrow={REPORT_SHELL.eyebrow}
+      title={REPORT_SHELL.title}
+      status="completed"
+      meta={{ jobId, queueName: "attribution_trace_audit", toolLabel: "Attribution Trace" }}
+    >
+      <div className="flex flex-col gap-6">
+        <VerdictCard
+          variant={attributionVariant(safePayload)}
+          title="Citation trace"
+          summary="Which sources support your claims, and how strongly."
+          {...(hasScore ? { score: safePayload.score } : {})}
+          scoreLabel="Traceability"
+        />
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">İzlenebilirlik Skoru</h2>
-              <p className="text-sm text-slate-500 mt-1">
-                Yapıştırılan AI yanıtındaki iddiaların gözlemlenebilir kaynaklarla metinsel
-                örtüşmesi. Düşük skor = pek çok iddia herhangi bir kaynağa izlenemedi.
-              </p>
-            </div>
-            <div className="flex items-baseline gap-1" aria-label={`Skor: ${safePayload.score}/100`}>
-              <span className="text-5xl font-extrabold text-slate-900">{safePayload.score}</span>
-              <span className="text-lg font-semibold text-slate-400">/100</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <MetricTile label="Toplam iddia" value={safePayload.totalClaims} borderClass="border-l-slate-400" />
-          <MetricTile label="Kendi içeriğinizle desteklenen" value={safePayload.selfClaims} borderClass="border-l-emerald-500" />
-          <MetricTile label="Dış kaynak" value={safePayload.externalClaims} borderClass="border-l-sky-500" />
-          <MetricTile label="Doğrulanamayan" value={safePayload.unverifiableClaims + safePayload.misattributedClaims} borderClass="border-l-rose-500" />
-        </div>
-
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-slate-900">İddia Dökümü</h2>
-          {safePayload.verdicts.length === 0 ? (
-            <p className="text-sm text-slate-600">
-              Yanıtta denetlenecek iddia bulunamadı.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {safePayload.verdicts.map((verdict, idx) => {
-                const meta = KIND_META[verdict.kind];
-                const similarityPct = Math.round(verdict.bestSimilarity * 100);
-                const source = verdict.bestSourceId ? resolveSourceUrl(verdict.bestSourceId) : null;
-                return (
-                  <li
-                    key={`${idx}-${verdict.claim.slice(0, 32)}`}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm space-y-2"
-                  >
-                    <p className="text-sm text-slate-800">{verdict.claim}</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${meta.badge}`}
-                      >
-                        {meta.label}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        Benzerlik: %{similarityPct}
-                      </span>
-                    </div>
-                    {source && (
-                      <p className="text-xs text-slate-600">
-                        Kaynak:{" "}
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-mono break-all text-slate-900 underline decoration-slate-300 hover:decoration-slate-600"
-                        >
-                          {source.label}
-                        </a>
-                      </p>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        <p className="text-xs text-slate-500">
-          Bu skor yalnızca yapıştırılan AI yanıtı ile gözlemlenebilir kaynaklar arasındaki metin
-          örtüşmesini ölçer; LLM'in nasıl karar verdiğini veya sıralamanızı doğrudan etkilemez.
+        <p className="font-mono text-sm text-muted-ink">
+          Page: <span className="break-all text-ink">{jobRow.target ?? "—"}</span>
         </p>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <Link
-            href="/tools/schema-truth-check/"
-            className="block text-sm font-semibold text-slate-900 hover:text-slate-600 transition-colors"
-          >
-            Sitenizin iddialarını sayfa metniyle doğrulamak için Schema Truth aracını da deneyin →
-          </Link>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <MetricStat label="Claims checked" value={stats.claimsChecked} />
+          <MetricStat label="Sources matched" value={stats.sourcesMatched} />
+          <MetricStat label="Best similarity" value={stats.bestSimilarity} />
+          <MetricStat label="Avg similarity" value={stats.avgSimilarity} />
         </div>
+
+        <IssueLedger
+          heading="Evidence ledger"
+          items={buildLedgerItems(safePayload, serpSources, jobRow.target)}
+          emptyLabel="No claims were found in the pasted answer."
+        />
+
+        <KindBadges payload={safePayload} />
+
+        <p className="text-xs text-muted-ink">
+          Scores reflect how strongly search results support the claim text. They are not
+          a measure of truth, rank, or content quality.
+        </p>
+
+        <a
+          href="/tools/schema-truth-check/"
+          className="block rounded-lg border border-hairline bg-card p-6 text-sm font-semibold text-ink transition-colors hover:bg-mineral"
+        >
+          Check whether your structured data supports these claims with the Schema Truth Check →
+        </a>
       </div>
-    </main>
+    </ResultShell>
   );
 }
