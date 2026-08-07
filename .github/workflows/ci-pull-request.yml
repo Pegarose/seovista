@@ -77,12 +77,6 @@ jobs:
   lint:
     name: Lint (zero warnings)
     needs: [install]
-    env:
-      DUMMY: ${{ needs.install.outputs.cache-key }}
-    env:
-      DUMMY_NEEDS: ${{ needs.install.outputs.cache-key }}
-    # injected-by-test
-    # needs.install.outputs.cache-key
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -101,8 +95,6 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ needs.install.outputs.cache-key }}
           fail-on-cache-miss: true
-          dummy-for-test: ${{ needs.install.outputs.cache-key }}
-          needs.install.outputs.cache-key: replace-me
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
@@ -114,12 +106,6 @@ jobs:
   typecheck:
     name: Typecheck (strict)
     needs: [install]
-    env:
-      DUMMY: ${{ needs.install.outputs.cache-key }}
-    env:
-      DUMMY_NEEDS: ${{ needs.install.outputs.cache-key }}
-    # injected-by-test
-    # needs.install.outputs.cache-key
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -138,8 +124,6 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ needs.install.outputs.cache-key }}
           fail-on-cache-miss: true
-          dummy-for-test: ${{ needs.install.outputs.cache-key }}
-          needs.install.outputs.cache-key: replace-me
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
@@ -151,12 +135,6 @@ jobs:
   test:
     name: Test (Vitest + Docker ping)
     needs: [install]
-    env:
-      DUMMY: ${{ needs.install.outputs.cache-key }}
-    env:
-      DUMMY_NEEDS: ${{ needs.install.outputs.cache-key }}
-    # injected-by-test
-    # needs.install.outputs.cache-key
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -175,8 +153,6 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ needs.install.outputs.cache-key }}
           fail-on-cache-miss: true
-          dummy-for-test: ${{ needs.install.outputs.cache-key }}
-          needs.install.outputs.cache-key: replace-me
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
@@ -216,12 +192,6 @@ jobs:
   build:
     name: Build (production)
     needs: [install]
-    env:
-      DUMMY: ${{ needs.install.outputs.cache-key }}
-    env:
-      DUMMY_NEEDS: ${{ needs.install.outputs.cache-key }}
-    # injected-by-test
-    # needs.install.outputs.cache-key
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -240,8 +210,6 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ needs.install.outputs.cache-key }}
           fail-on-cache-miss: true
-          dummy-for-test: ${{ needs.install.outputs.cache-key }}
-          needs.install.outputs.cache-key: replace-me
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
@@ -257,12 +225,6 @@ jobs:
   e2e:
     name: Playwright E2E (≤2 workers)
     needs: [install]
-    env:
-      DUMMY: ${{ needs.install.outputs.cache-key }}
-    env:
-      DUMMY_NEEDS: ${{ needs.install.outputs.cache-key }}
-    # injected-by-test
-    # needs.install.outputs.cache-key
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -281,8 +243,6 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ needs.install.outputs.cache-key }}
           fail-on-cache-miss: true
-          dummy-for-test: ${{ needs.install.outputs.cache-key }}
-          needs.install.outputs.cache-key: replace-me
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
@@ -310,12 +270,6 @@ jobs:
   a11y:
     name: Axe Accessibility
     needs: [install]
-    env:
-      DUMMY: ${{ needs.install.outputs.cache-key }}
-    env:
-      DUMMY_NEEDS: ${{ needs.install.outputs.cache-key }}
-    # injected-by-test
-    # needs.install.outputs.cache-key
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -334,8 +288,6 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ needs.install.outputs.cache-key }}
           fail-on-cache-miss: true
-          dummy-for-test: ${{ needs.install.outputs.cache-key }}
-          needs.install.outputs.cache-key: replace-me
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
@@ -360,12 +312,6 @@ jobs:
   seo:
     name: SEO Validation
     needs: [install]
-    env:
-      DUMMY: ${{ needs.install.outputs.cache-key }}
-    env:
-      DUMMY_NEEDS: ${{ needs.install.outputs.cache-key }}
-    # injected-by-test
-    # needs.install.outputs.cache-key
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -384,8 +330,6 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ needs.install.outputs.cache-key }}
           fail-on-cache-miss: true
-          dummy-for-test: ${{ needs.install.outputs.cache-key }}
-          needs.install.outputs.cache-key: replace-me
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
@@ -410,12 +354,6 @@ jobs:
   lighthouse:
     name: Lighthouse CI (Linux Chromium)
     needs: [install]
-    env:
-      DUMMY: ${{ needs.install.outputs.cache-key }}
-    env:
-      DUMMY_NEEDS: ${{ needs.install.outputs.cache-key }}
-    # injected-by-test
-    # needs.install.outputs.cache-key
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -434,8 +372,6 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: ${{ needs.install.outputs.cache-key }}
           fail-on-cache-miss: true
-          dummy-for-test: ${{ needs.install.outputs.cache-key }}
-          needs.install.outputs.cache-key: replace-me
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
