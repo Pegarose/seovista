@@ -4,6 +4,7 @@ import { AuditPoller } from "../../../../../src/components/geo-checker/audit-pol
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
 import { normalizeJobResultStatus } from "../../../../../src/lib/admin/job-result-guard";
 import {
+  CitationGraph,
   IssueLedger,
   ReportErrorPanel,
   ResultShell,
@@ -71,6 +72,19 @@ function hasMeasurableSimilarity(payload: AttributionTraceResultPayload): boolea
 /** Round a 0–1 similarity into a 0–100 integer for the stats row. */
 function pct(value: number): number {
   return Math.round(value * 100);
+}
+
+/**
+ * Host label for the citation graph's "self" source node. Strips protocol,
+ * www prefix and any path/query so the node reads as the bare audited domain.
+ */
+function hostLabel(target: string | null): string {
+  if (!target) return "Your site";
+  const host = target
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .split(/[/?#]/)[0];
+  return typeof host === "string" && host.length > 0 ? host : "Your site";
 }
 
 /**
@@ -378,6 +392,12 @@ export default async function AttributionTraceJobResultPage({
           <MetricStat label="Best similarity" value={stats.bestSimilarity} />
           <MetricStat label="Avg similarity" value={stats.avgSimilarity} />
         </div>
+
+        <CitationGraph
+          verdicts={safePayload.verdicts}
+          serpSources={serpSources}
+          targetHost={hostLabel(jobRow.target)}
+        />
 
         <IssueLedger
           heading="Evidence ledger"

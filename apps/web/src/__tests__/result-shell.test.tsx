@@ -21,6 +21,8 @@ import {
   VerdictCard,
   IssueLedger,
   UnknownJobStatusView,
+  CitationGraph,
+  type CitationGraphProps,
 } from "@/components/result-pages";
 
 // ---------------------------------------------------------------------------
@@ -802,5 +804,158 @@ describe("Attribution Trace Result Page", () => {
     expect(markup).not.toContain("out of 100");
     expect(markup).not.toContain("/100");
     expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CitationGraph — SSR SVG citation graph (Task 10)
+// ---------------------------------------------------------------------------
+
+describe("CitationGraph", () => {
+  /**
+   * Fixture: 4 verdicts, every one resolved to a visible source (3 external
+   * → SERP docs, 1 → the site's own page) plus 3 SERP source docs and the
+   * implicit self node. Four verdicts all-with-sources is the only fixture
+   * that satisfies the brief's numeric contract simultaneously: "four <line>
+   * elements (one per verdict)" and "one node per verdict + one per source
+   * + the self node" (4 + 3 + 1 = 8 circles). The brief's "3-verdict + 3
+   * -source payload" phrasing cannot produce four edges under the normative
+   * "no edge when a verdict has no best source" rule, so the no-source ember
+   * path is exercised by its own focused test below.
+   */
+  function buildGraphFixture(): CitationGraphProps {
+    const verdicts: CitationGraphProps["verdicts"] = [
+      {
+        claim: "SeoVista measurably improves GEO visibility.",
+        kind: "external",
+        bestSourceId: "serp:1",
+        bestSimilarity: 0.85,
+      },
+      {
+        claim: "SeoVista ships a Schema Truth Check tool.",
+        kind: "external",
+        bestSourceId: "serp:2",
+        bestSimilarity: 0.5,
+      },
+      {
+        claim: "SeoVista supports 14 locales.",
+        kind: "external",
+        bestSourceId: "serp:3",
+        bestSimilarity: 0.3,
+      },
+      {
+        claim: "SeoVista publishes its methodology openly.",
+        kind: "self",
+        bestSourceId: "self",
+        bestSimilarity: 0.95,
+      },
+    ];
+    const serpSources: CitationGraphProps["serpSources"] = [
+      {
+        id: "serp:1",
+        label: "SeoVista Blog",
+        text: "SeoVista measurably improves GEO visibility.",
+        kind: "external",
+        url: "https://blog.seovista.example/geo-visibility",
+      },
+      {
+        id: "serp:2",
+        label: "SeoVista Docs",
+        text: "SeoVista ships a Schema Truth Check tool.",
+        kind: "external",
+        url: "https://docs.seovista.example/schema-truth",
+      },
+      {
+        id: "serp:3",
+        label: "SeoVista Pricing",
+        text: "SeoVista supports 14 locales.",
+        kind: "external",
+        url: "https://seovista.example/pricing",
+      },
+    ];
+    return { verdicts, serpSources, targetHost: "example.com" };
+  }
+
+  it("renders the figure as an image with 4 edges, 8 nodes and a similarity tooltip", () => {
+    const markup = renderToStaticMarkup(<CitationGraph {...buildGraphFixture()} />);
+
+    // figure carries the image semantics + the graph label.
+    expect(markup).toContain("<figure");
+    expect(markup).toContain('role="img"');
+    expect(markup).toContain('aria-label="Citation graph"');
+
+    // Fixed viewBox; one edge per verdict with the brief's stroke formula.
+    expect(markup).toContain('viewBox="0 0 900 240"');
+    expect(countTag(markup, "line")).toBe(4);
+    // 0.85 -> 0.5 + 2*0.85 = 2.2
+    expect(markup).toContain('stroke-width="2.2"');
+
+    // 4 claim nodes + 3 SERP source nodes + 1 self node.
+    expect(countTag(markup, "circle")).toBe(8);
+
+    // Tooltip inside one of the edges carries the similarity percentage.
+    expect(markup).toMatch(/→ .*\(85%\)/);
+
+    // figcaption carries the spec's summary sentence; self node is the host.
+    expect(markup).toContain(
+      "Where each claim came from, and which sources carried the most weight."
+    );
+    expect(markup).toContain("example.com");
+
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("renders an ember claim node and no edge for a verdict without a source", () => {
+    const { serpSources, targetHost } = buildGraphFixture();
+    const markup = renderToStaticMarkup(
+      <CitationGraph
+        verdicts={[
+          { claim: "A claim with no traceable source.", kind: "unverifiable", bestSimilarity: 0 },
+        ]}
+        serpSources={serpSources}
+        targetHost={targetHost}
+      />,
+    );
+
+    // No edges for the unsourced verdict; its node is ember; source nodes remain.
+    expect(countTag(markup, "line")).toBe(0);
+    expect(countTag(markup, "circle")).toBe(1 + serpSources.length + 1);
+    expect(markup).toContain('style="fill:var(--color-ember)"');
+    expect(markup).not.toContain("→");
+  });
+
+  it("caps claim rows at 7 and renders a muted +N more row", () => {
+    const { serpSources, targetHost } = buildGraphFixture();
+    const base = buildGraphFixture().verdicts;
+    const verdicts = Array.from({ length: 9 }, (_, i) => {
+      const seed = base[i % base.length]!;
+      return {
+        claim: `Claim number ${i + 1}.`,
+        kind: seed.kind,
+        bestSourceId: `serp:${(i % 3) + 1}`,
+        bestSimilarity: seed.bestSimilarity,
+      };
+    });
+
+    const markup = renderToStaticMarkup(
+      <CitationGraph verdicts={verdicts} serpSources={serpSources} targetHost={targetHost} />,
+    );
+
+    // 7 visible claim rows + 3 SERP sources + 1 self node; the rest surface as text.
+    expect(countTag(markup, "circle")).toBe(7 + serpSources.length + 1);
+    expect(markup).toContain("+2 more");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("falls back to the ledger empty state when there are no verdicts", () => {
+    const { serpSources, targetHost } = buildGraphFixture();
+    const markup = renderToStaticMarkup(
+      <CitationGraph verdicts={[]} serpSources={serpSources} targetHost={targetHost} />,
+    );
+
+    // No SVG; the IssueLedger empty visual (same copy the page uses) instead.
+    expect(markup).not.toContain("<svg");
+    expect(markup).not.toContain('aria-label="Citation graph"');
+    expect(markup).toContain("No claims were found in the pasted answer.");
   });
 });

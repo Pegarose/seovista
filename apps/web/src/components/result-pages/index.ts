@@ -23,4 +23,7 @@ export type { VerdictCardProps, VerdictVariant } from "./verdict-card";
 export { IssueLedger } from "./issue-ledger";
 export type { IssueLedgerItem, IssueLedgerProps } from "./issue-ledger";
 
+export { CitationGraph } from "./citation-graph";
+export type { CitationGraphProps } from "./citation-graph";
+
 export { UnknownJobStatusView } from "./unknown-job-status-view";
