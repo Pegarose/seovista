@@ -37,14 +37,20 @@
     ".next-runs/development-25128-93d7ebbd-4fd3-4258-bc7a-115b7c205118/types/**/*.ts",
     ".next-runs/development-25684-646d4b3e-56bc-4a24-adbd-92bb6683002e/types/**/*.ts",
     ".next-runs/development-32252-f554a7f3-14e4-47ec-a571-fc77bec14784/types/**/*.ts",
+    ".next-runs/development-35532-0d075c6f-1e92-4eed-936e-73ba8994cd6b/types/**/*.ts",
+    ".next-runs/development-39448-c4dc28f8-580d-47b0-b815-518498afc432/types/**/*.ts",
     ".next-runs/development-42472-87875dc9-d7ed-4bbd-9377-f0b8945a09ed/types/**/*.ts",
+    ".next-runs/development-43092-63540146-ced6-4c44-a38a-57e1c606d16d/types/**/*.ts",
     ".next-runs/development-44436-f4034252-9944-4edf-acb7-00011989a674/types/**/*.ts",
     ".next-runs/development-46616-c9807aa2-12c2-4473-aa7a-d97e48caba9f/types/**/*.ts",
     ".next-runs/development-47444-64189686-8f23-4719-b166-674111491029/types/**/*.ts",
     ".next-runs/development-48096-6f57b267-8e4d-488c-bcc5-c56b16c0bae9/types/**/*.ts",
     ".next-runs/development-54188-4d8271a8-b81c-4351-b002-6cee9e6430a8/types/**/*.ts",
+    ".next-runs/development-70912-57165c0f-c78e-49c8-9393-9e35808464aa/types/**/*.ts",
+    ".next-runs/development-71396-66aaaa09-d11c-4476-9f09-1e409fc0351a/types/**/*.ts",
+    ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-runs/development-43092-63540146-ced6-4c44-a38a-57e1c606d16d/types/**/*.ts"
+    ".next-runs/development-62404-8b9a5288-d262-4249-9e06-3f0394625135/types/**/*.ts"
   ],
   "extends": "../../tsconfig.base.json"
 }
