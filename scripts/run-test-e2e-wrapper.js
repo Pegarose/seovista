@@ -315,12 +315,13 @@ export async function runE2E(options = {}) {
 
     const activeContextObj = readContext(contextPath);
     const activeContext = activeContextObj.context || activeContextObj;
+    const postgresPort = activeContext.hostPorts ? activeContext.hostPorts.postgres : activeContext.postgresPort;
     const redisPort = activeContext.hostPorts ? activeContext.hostPorts.redis : activeContext.redisPort;
     const env = {
       ...process.env,
       ...(options.env ?? {}),
       SEOVISTA_LIFECYCLE_CONTEXT_PATH: contextPath,
-      DATABASE_URL: `************************************************/${activeContext.databaseName}`,
+      DATABASE_URL: `postgres://seovista:seovista@127.0.0.1:${postgresPort}/${activeContext.databaseName}`,
       REDIS_URL: `redis://127.0.0.1:${redisPort}/0`,
       SEOVISTA_PROJECT_ID: activeContext.projectId,
       SEOVISTA_QUEUE_PREFIX: activeContext.queuePrefix,

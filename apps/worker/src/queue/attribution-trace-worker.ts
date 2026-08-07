@@ -4,7 +4,7 @@ import { createDbClient } from "../db/client.js";
 import { fetchWithValidatedRedirects } from "../utils/fetcher.js";
 import { processAttributionTracePayload } from "../processors/attribution-trace.js";
 import { resolveSerpProvider } from "../utils/serp-provider.js";
-import { DEFAULT_BROWSER_UA, extractVisibleText } from "@seovista/seo-core";
+import { DEFAULT_BROWSER_UA, extractVisibleText, type SourceDocument } from "@seovista/seo-core";
 import {
   ATTRIBUTION_TRACE_JOB_RECORD_QUEUE_NAME,
   ATTRIBUTION_TRACE_QUEUE_NAME,
@@ -81,7 +81,7 @@ export function startAttributionTraceWorker(options?: AttributionTraceWorkerOpti
         // 2) Optionally resolve the configured SERP provider. A misconfigured
         //    provider or an unset SEARXNG_BASE_URL degrades to the
         //    deterministic mock — same posture as the other tools.
-        let serpSources: import("@seovista/seo-core").SourceDocument[] = [];
+        let serpSources: SourceDocument[] = [];
         if (trimmedKeyword) {
           try {
             const provider = resolveSerpProvider();

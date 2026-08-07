@@ -712,7 +712,7 @@ await coordinator.start();
     );
 
     const result = await coordinator.start();
-    expect(result).toMatch(/^C:\\.*\\\.lifecycle-evidence\\seovista-dev-[0-9a-f]{12}-context\.json$/);
+    expect(result).toMatch(/[\\/]\.lifecycle-evidence[\\/]seovista-dev-[0-9a-f]{12}-context\.json$/);
     expect(result).not.toBe(resolve(root, ".lifecycle-evidence", "recovered.json"));
     const staleQuarantine = quarantined.find((path) => path.endsWith(".stale"));
     expect(staleQuarantine).toBeDefined();

@@ -24,8 +24,9 @@ afterEach(() => {
 
 describe("web build isolation policy", () => {
   it("assigns every writer class a distinct app-local Next output directory", () => {
+    const webRoot = process.platform === "win32" ? "C:/repo/apps/web" : "/repo/apps/web";
     const directories = Object.keys(BUILD_PROFILES).map((profile) =>
-      getBuildOutputDirectory("C:/repo/apps/web", profile).replaceAll("\\", "/")
+      getBuildOutputDirectory(webRoot, profile).replaceAll("\\", "/")
     );
 
     expect(Object.keys(BUILD_PROFILES)).toEqual([
@@ -38,12 +39,12 @@ describe("web build isolation policy", () => {
     ]);
     expect(new Set(directories).size).toBe(directories.length);
     expect(directories).toEqual([
-      "C:/repo/apps/web/.next-canonical",
-      "C:/repo/apps/web/.next-development",
-      "C:/repo/apps/web/.next-playwright",
-      "C:/repo/apps/web/.next-lighthouse",
-      "C:/repo/apps/web/.next-sentinel",
-      "C:/repo/apps/web/.next-standalone",
+      `${webRoot}/.next-canonical`,
+      `${webRoot}/.next-development`,
+      `${webRoot}/.next-playwright`,
+      `${webRoot}/.next-lighthouse`,
+      `${webRoot}/.next-sentinel`,
+      `${webRoot}/.next-standalone`,
     ]);
   });
 

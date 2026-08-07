@@ -1,5 +1,4 @@
-import type { SourceDocument } from "@seovista/seo-core";
-import { traceAttribution, type AttributionTraceResult } from "@seovista/seo-core";
+import { traceAttribution, type AttributionTraceResult, type SourceDocument } from "@seovista/seo-core";
 
 /**
  * Inputs the worker provides to the attribution trace processor.

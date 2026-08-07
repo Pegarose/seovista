@@ -237,9 +237,10 @@ describe("production secret sentinel harness contract", () => {
   });
 
   it("scans only browser-visible build artifacts and excludes server trace files", () => {
-    expect(getPublicScanPaths("C:/repo/apps/web/.next").map((path) => path.replaceAll("\\", "/"))).toEqual([
-      "C:/repo/apps/web/.next/static",
-      "C:/repo/apps/web/.next/server/app",
+    const nextRoot = process.platform === "win32" ? "C:/repo/apps/web/.next" : "/repo/apps/web/.next";
+    expect(getPublicScanPaths(nextRoot).map((path) => path.replaceAll("\\", "/"))).toEqual([
+      `${nextRoot}/static`,
+      `${nextRoot}/server/app`,
     ]);
   });
 
@@ -256,15 +257,16 @@ describe("production secret sentinel harness contract", () => {
   });
 
   it("uses a run-unique sentinel output directory instead of the legacy profile path", () => {
+    const webRoot = process.platform === "win32" ? "C:/repo/apps/web" : "/repo/apps/web";
     const run = createBuildRun("sentinel", {
-      webDirectory: "C:/repo/apps/web",
+      webDirectory: webRoot,
       processId: 42,
       runId: "sentinel-42-owned",
       now: new Date("2026-07-15T00:00:00.000Z"),
     });
 
     expect(run.outputDirectory.replaceAll("\\", "/")).toBe(
-      "C:/repo/apps/web/.next-runs/sentinel-42-owned",
+      `${webRoot}/.next-runs/sentinel-42-owned`,
     );
     expect(run.outputDirectory.replaceAll("\\", "/")).not.toContain("/.next-sentinel");
   });
