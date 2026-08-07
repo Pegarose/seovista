@@ -1,1 +1,0 @@
-{"name":"@seovista/worker","layer":"fetcher","event":"browseract_credit_guard","message":"Browseract credit guard: limit reached, falling back to Cheerio","remaining":0,"limit":4000,"consumed":4000,"canonicalUrl":"https://example.com/","timestamp":"2026-07-24T04:10:02.485Z"}

@@ -55,6 +55,12 @@ Thumbs.db
 .windsurf/
 .continue/
 
+# Legacy scaffold (Lovable-generated frontend, kept on disk only)
+SeovistaFrontend/
+
+# Local CI tool output (GitHub uploads these as artifacts instead)
+.lighthouseci/
+
 # Generated release artifacts
 .release-artifacts/
 
