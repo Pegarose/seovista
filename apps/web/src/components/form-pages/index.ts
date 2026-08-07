@@ -6,3 +6,4 @@ export { FormErrorNote } from "./form-error-note";
 export { SubmitButton } from "./submit-button";
 export type { SubmitButtonProps } from "./submit-button";
 export { fieldClass, selectFieldClass } from "./field-class";
+export { fieldErrorProps } from "./error-props";

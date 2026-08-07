@@ -209,7 +209,7 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
           type="button"
           onClick={() => void copyShareLink()}
           aria-label="Bağlantıyı Kopyala"
-          className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-muted-ink focus:outline-none focus:ring-2 focus:ring-spectral/20 focus:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-mineral focus:outline-none focus:ring-2 focus:ring-spectral/20 focus:ring-offset-2"
         >
           {copyState === "copied" ? "Kopyalandı ✓" : "Bağlantıyı Kopyala"}
         </button>

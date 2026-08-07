@@ -92,7 +92,7 @@ vi.mock("@/lib/schema-truth-check/actions", () => ({
   startSchemaTruthCheckAction: mockStartSchemaTruthCheckAction,
 }));
 
-const RETIRED_TOKEN_RE = /slate-|gray-|indigo-|blue-|red-|green-|amber-|emerald-|sky-|rose-/;
+const RETIRED_TOKEN_RE = /slate-|gray-|indigo-|blue-|red-|green-|amber-|emerald-|sky-|rose-|shadow-/;
 
 const FAILURE_STATE: ActionState = {
   status: "error",

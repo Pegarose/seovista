@@ -9,17 +9,12 @@ import {
   SubmitButton,
   fieldClass,
   selectFieldClass,
+  fieldErrorProps,
 } from "../../../src/components/form-pages";
 
 const initialState: ActionState = {
   status: "idle",
 };
-
-// exactOptionalPropertyTypes: FormField's optional `error` can't receive an
-// explicit `undefined`, so spread the field error only when one is present.
-function errorProps(errors?: string[]): { error: string } | {} {
-  return errors?.length ? { error: errors.join(", ") } : {};
-}
 
 export default function GeoReadinessCheckerPage() {
   const [state, formAction, isPending] = useActionState(startGeoAuditAction, initialState);
@@ -34,7 +29,7 @@ export default function GeoReadinessCheckerPage() {
           <FormErrorNote message={state.errors.form.join(", ")} />
         )}
 
-        <FormField id="domain" label="Domain URL" {...errorProps(state.errors?.domain)}>
+        <FormField id="domain" label="Domain URL" {...fieldErrorProps(state.errors?.domain)}>
           <input
             id="domain"
             name="domain"
@@ -45,7 +40,7 @@ export default function GeoReadinessCheckerPage() {
           />
         </FormField>
 
-        <FormField id="brandName" label="Brand Name" {...errorProps(state.errors?.brandName)}>
+        <FormField id="brandName" label="Brand Name" {...fieldErrorProps(state.errors?.brandName)}>
           <input
             id="brandName"
             name="brandName"
@@ -56,7 +51,7 @@ export default function GeoReadinessCheckerPage() {
           />
         </FormField>
 
-        <FormField id="primaryMarket" label="Primary Market" {...errorProps(state.errors?.primaryMarket)}>
+        <FormField id="primaryMarket" label="Primary Market" {...fieldErrorProps(state.errors?.primaryMarket)}>
           <div className="relative">
             <select
               id="primaryMarket"

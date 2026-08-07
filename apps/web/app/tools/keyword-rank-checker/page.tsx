@@ -13,15 +13,10 @@ import {
   SubmitButton,
   fieldClass,
   selectFieldClass,
+  fieldErrorProps,
 } from "../../../src/components/form-pages";
 
 const initialState: KeywordRankActionState = { status: "idle" };
-
-// exactOptionalPropertyTypes: FormField's optional `error` can't receive an
-// explicit `undefined`, so spread the field error only when one is present.
-function errorProps(errors?: string[]): { error: string } | {} {
-  return errors?.length ? { error: errors.join(", ") } : {};
-}
 
 export default function KeywordRankCheckerPage() {
   const [state, formAction, isPending] = useActionState(startKeywordRankCheckAction, initialState);
@@ -33,7 +28,7 @@ export default function KeywordRankCheckerPage() {
     >
       <form action={formAction} className="mt-10 max-w-2xl space-y-8">
         {state.errors?.form && <FormErrorNote message={state.errors.form.join(", ")} />}
-        <FormField id="domain" label="Alan Adı" {...errorProps(state.errors?.domain)}>
+        <FormField id="domain" label="Alan Adı" {...fieldErrorProps(state.errors?.domain)}>
           <input
             id="domain"
             name="domain"
@@ -43,7 +38,7 @@ export default function KeywordRankCheckerPage() {
             className={fieldClass}
           />
         </FormField>
-        <FormField id="keyword" label="Anahtar Kelime" {...errorProps(state.errors?.keyword)}>
+        <FormField id="keyword" label="Anahtar Kelime" {...fieldErrorProps(state.errors?.keyword)}>
           <input
             id="keyword"
             name="keyword"
@@ -53,7 +48,7 @@ export default function KeywordRankCheckerPage() {
             className={fieldClass}
           />
         </FormField>
-        <FormField id="locale" label="Arama Bölgesi" {...errorProps(state.errors?.locale)}>
+        <FormField id="locale" label="Arama Bölgesi" {...fieldErrorProps(state.errors?.locale)}>
           <div className="relative">
             <select
               id="locale"

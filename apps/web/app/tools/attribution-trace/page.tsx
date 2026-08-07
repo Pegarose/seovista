@@ -11,15 +11,10 @@ import {
   FormErrorNote,
   SubmitButton,
   fieldClass,
+  fieldErrorProps,
 } from "../../../src/components/form-pages";
 
 const initialState: AttributionTraceActionState = { status: "idle" };
-
-// exactOptionalPropertyTypes: FormField's optional `error` can't receive an
-// explicit `undefined`, so spread the field error only when one is present.
-function errorProps(errors?: string[]): { error: string } | {} {
-  return errors?.length ? { error: errors.join(", ") } : {};
-}
 
 export default function AttributionTracePage() {
   const [state, formAction, isPending] = useActionState(startAttributionTraceAction, initialState);
@@ -31,7 +26,7 @@ export default function AttributionTracePage() {
     >
       <form action={formAction} className="mt-10 max-w-2xl space-y-8">
         {state.errors?.form && <FormErrorNote message={state.errors.form.join(", ")} />}
-        <FormField id="domain" label="Sitenizin alan adı" {...errorProps(state.errors?.domain)}>
+        <FormField id="domain" label="Sitenizin alan adı" {...fieldErrorProps(state.errors?.domain)}>
           <input
             id="domain"
             name="domain"
@@ -41,7 +36,7 @@ export default function AttributionTracePage() {
             className={fieldClass}
           />
         </FormField>
-        <FormField id="keyword" label="Anahtar kelime" {...errorProps(state.errors?.keyword)}>
+        <FormField id="keyword" label="Anahtar kelime" {...fieldErrorProps(state.errors?.keyword)}>
           <input
             id="keyword"
             name="keyword"
@@ -54,7 +49,7 @@ export default function AttributionTracePage() {
             içeriği ile karşılaştırılır.
           </p>
         </FormField>
-        <FormField id="answer" label="AI yanıtı" {...errorProps(state.errors?.answer)}>
+        <FormField id="answer" label="AI yanıtı" {...fieldErrorProps(state.errors?.answer)}>
           <textarea
             id="answer"
             name="answer"

@@ -8,17 +8,12 @@ import {
   FormErrorNote,
   SubmitButton,
   fieldClass,
+  fieldErrorProps,
 } from "../../../src/components/form-pages";
 
 const initialState: AiCrawlerActionState = {
   status: "idle",
 };
-
-// exactOptionalPropertyTypes: FormField's optional `error` can't receive an
-// explicit `undefined`, so spread the field error only when one is present.
-function errorProps(errors?: string[]): { error: string } | {} {
-  return errors?.length ? { error: errors.join(", ") } : {};
-}
 
 export default function AiCrawlerCheckerPage() {
   const [state, formAction, isPending] = useActionState(startAiCrawlerAuditAction, initialState);
@@ -33,7 +28,7 @@ export default function AiCrawlerCheckerPage() {
           <FormErrorNote message={state.errors.form.join(", ")} />
         )}
 
-        <FormField id="url" label="Site URL Adresi" {...errorProps(state.errors?.url)}>
+        <FormField id="url" label="Site URL Adresi" {...fieldErrorProps(state.errors?.url)}>
           <input
             id="url"
             name="url"

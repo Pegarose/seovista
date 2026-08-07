@@ -6,8 +6,9 @@ import { FormField } from "@/components/form-pages/form-field";
 import { FormErrorNote } from "@/components/form-pages/form-error-note";
 import { SubmitButton } from "@/components/form-pages/submit-button";
 import { fieldClass, selectFieldClass } from "@/components/form-pages/field-class";
+import { fieldErrorProps } from "@/components/form-pages";
 
-const RETIRED_TOKEN_RE = /slate-|gray-|indigo-|blue-|red-|green-|amber-|emerald-|sky-|rose-/;
+const RETIRED_TOKEN_RE = /slate-|gray-|indigo-|blue-|red-|green-|amber-|emerald-|sky-|rose-|shadow-/;
 
 function countTag(markup: string, tag: string): number {
   const re = new RegExp(`<${tag}[\\s>]`, "g");
@@ -108,5 +109,16 @@ describe("field classes", () => {
     expect(fieldClass).not.toMatch(RETIRED_TOKEN_RE);
     expect(selectFieldClass).not.toMatch(RETIRED_TOKEN_RE);
     expect(selectFieldClass).toContain("appearance-none");
+  });
+});
+
+describe("fieldErrorProps", () => {
+  it("returns an empty object when no errors are present", () => {
+    expect(fieldErrorProps(undefined)).toEqual({});
+    expect(fieldErrorProps([])).toEqual({});
+  });
+
+  it("joins present errors into a single error string", () => {
+    expect(fieldErrorProps(["a", "b"])).toEqual({ error: "a, b" });
   });
 });

@@ -11,15 +11,10 @@ import {
   FormErrorNote,
   SubmitButton,
   fieldClass,
+  fieldErrorProps,
 } from "../../../src/components/form-pages";
 
 const initialState: SchemaTruthActionState = { status: "idle" };
-
-// exactOptionalPropertyTypes: FormField's optional `error` can't receive an
-// explicit `undefined`, so spread the field error only when one is present.
-function errorProps(errors?: string[]): { error: string } | {} {
-  return errors?.length ? { error: errors.join(", ") } : {};
-}
 
 export default function SchemaTruthCheckPage() {
   const [state, formAction, isPending] = useActionState(startSchemaTruthCheckAction, initialState);
@@ -31,7 +26,7 @@ export default function SchemaTruthCheckPage() {
     >
       <form action={formAction} className="mt-10 max-w-2xl space-y-8">
         {state.errors?.form && <FormErrorNote message={state.errors.form.join(", ")} />}
-        <FormField id="url" label="Sayfa URL'si" {...errorProps(state.errors?.url)}>
+        <FormField id="url" label="Sayfa URL'si" {...fieldErrorProps(state.errors?.url)}>
           <input
             id="url"
             name="url"
