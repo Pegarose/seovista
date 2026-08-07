@@ -22,9 +22,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ActionState } from "@/lib/geo-checker/actions";
 import { type SchemaActionState } from "@/lib/schema-checker/actions";
 import { type AiCrawlerActionState } from "@/lib/ai-crawler-checker/actions";
+import { type KeywordRankActionState } from "@/lib/keyword-rank-checker/actions";
+import { type RenderParityActionState } from "@/lib/render-parity-diff/actions";
 import GeoReadinessCheckerPage from "../../app/tools/geo-readiness-checker/page";
 import SchemaCheckerPage from "../../app/tools/schema-checker/page";
 import AiCrawlerCheckerPage from "../../app/tools/ai-crawler-checker/page";
+import KeywordRankCheckerPage from "../../app/tools/keyword-rank-checker/page";
+import RenderParityDiffPage from "../../app/tools/render-parity-diff/page";
 
 const { mockStartGeoAuditAction } = vi.hoisted(() => ({
   mockStartGeoAuditAction: vi.fn<(prev: ActionState, formData: FormData) => Promise<ActionState>>(),
@@ -38,6 +42,14 @@ const { mockStartAiCrawlerAuditAction } = vi.hoisted(() => ({
   mockStartAiCrawlerAuditAction: vi.fn<(prev: AiCrawlerActionState, formData: FormData) => Promise<AiCrawlerActionState>>(),
 }));
 
+const { mockStartKeywordRankCheckAction } = vi.hoisted(() => ({
+  mockStartKeywordRankCheckAction: vi.fn<(prev: KeywordRankActionState, formData: FormData) => Promise<KeywordRankActionState>>(),
+}));
+
+const { mockStartRenderParityCheckAction } = vi.hoisted(() => ({
+  mockStartRenderParityCheckAction: vi.fn<(prev: RenderParityActionState, formData: FormData) => Promise<RenderParityActionState>>(),
+}));
+
 vi.mock("@/lib/geo-checker/actions", () => ({
   startGeoAuditAction: mockStartGeoAuditAction,
 }));
@@ -48,6 +60,14 @@ vi.mock("@/lib/schema-checker/actions", () => ({
 
 vi.mock("@/lib/ai-crawler-checker/actions", () => ({
   startAiCrawlerAuditAction: mockStartAiCrawlerAuditAction,
+}));
+
+vi.mock("@/lib/keyword-rank-checker/actions", () => ({
+  startKeywordRankCheckAction: mockStartKeywordRankCheckAction,
+}));
+
+vi.mock("@/lib/render-parity-diff/actions", () => ({
+  startRenderParityCheckAction: mockStartRenderParityCheckAction,
 }));
 
 const RETIRED_TOKEN_RE = /slate-|gray-|indigo-|blue-|red-|green-|amber-|emerald-|sky-|rose-/;
@@ -82,6 +102,10 @@ describe("Form pages", () => {
   beforeEach(() => {
     mockStartGeoAuditAction.mockReset();
     mockStartGeoAuditAction.mockResolvedValue({ status: "idle" });
+    mockStartKeywordRankCheckAction.mockReset();
+    mockStartKeywordRankCheckAction.mockResolvedValue({ status: "idle" });
+    mockStartRenderParityCheckAction.mockReset();
+    mockStartRenderParityCheckAction.mockResolvedValue({ status: "idle" });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -444,6 +468,258 @@ describe("Form pages", () => {
       expect(settledButton!.hasAttribute("disabled")).toBe(false);
       expect(settledButton!.textContent).toContain("AI Crawler Denetimini Başlat");
       expect(settledButton!.textContent).not.toContain("Denetim Başlatılıyor...");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+  });
+
+  describe("keyword-rank-checker", () => {
+    const idleState: KeywordRankActionState = { status: "idle" };
+    const failureState: KeywordRankActionState = {
+      status: "error",
+      errors: {
+        form: ["Saatlik audit limitine (10) ulaştınız. Lütfen daha sonra tekrar deneyiniz."],
+      },
+    };
+
+    beforeEach(() => {
+      mockStartKeywordRankCheckAction.mockReset();
+      mockStartKeywordRankCheckAction.mockResolvedValue(idleState);
+    });
+
+    async function renderKeywordRankPage(): Promise<string> {
+      let page!: React.ReactElement;
+      await act(async () => {
+        page = <KeywordRankCheckerPage />;
+      });
+      await act(async () => {
+        root.render(page);
+      });
+      return container.innerHTML;
+    }
+
+    it("renders one main + one h1 with domain/keyword/locale fields", async () => {
+      const markup = await renderKeywordRankPage();
+
+      expect(countTag(markup, "main")).toBe(1);
+      expect(countTag(markup, "h1")).toBe(1);
+      expect(markup).toContain(">Anahtar Kelime Sıralama Kontrolü</h1>");
+      expect(markup).toContain("Seovista / Instruments");
+
+      for (const controlId of ["domain", "keyword", "locale"]) {
+        expect(markup).toContain(`id="${controlId}"`);
+        expect(markup).toContain(`for="${controlId}"`);
+        const label = container.querySelector(`label[for="${controlId}"]`);
+        expect(label).not.toBeNull();
+        expect(label!.getAttribute("for")).toBe(controlId);
+        expect(container.querySelector(`#${controlId}`)).not.toBeNull();
+      }
+
+      // Idle submit button is enabled with the idle label.
+      expect(markup).toContain(">Sıralamayı Kontrol Et</button>");
+      const idleButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(idleButton).not.toBeNull();
+      expect(idleButton!.hasAttribute("disabled")).toBe(false);
+      expect(idleButton!.textContent).toContain("Sıralamayı Kontrol Et");
+      expect(idleButton!.textContent).not.toContain("Kontrol Ediliyor...");
+
+      expect(markup).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("surfaces the form error note when the action returns the failure branch", async () => {
+      mockStartKeywordRankCheckAction.mockResolvedValue(failureState);
+      await renderKeywordRankPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartKeywordRankCheckAction).toHaveBeenCalledTimes(1);
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert).not.toBeNull();
+      expect(alert!.textContent).toContain("limitine");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("renders no error note on the success branch", async () => {
+      mockStartKeywordRankCheckAction.mockResolvedValue(idleState);
+      await renderKeywordRankPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartKeywordRankCheckAction).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      const button = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+      expect(button!.hasAttribute("disabled")).toBe(false);
+      expect(button!.textContent).toContain("Sıralamayı Kontrol Et");
+      expect(container.innerHTML).toContain(">Sıralamayı Kontrol Et</button>");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("disables the submit button while pending, then returns to idle on resolution", async () => {
+      let deferredResolve!: (state: KeywordRankActionState) => void;
+      const deferredPromise = new Promise<KeywordRankActionState>((resolve) => {
+        deferredResolve = resolve;
+      });
+      mockStartKeywordRankCheckAction.mockImplementationOnce(() => deferredPromise);
+
+      await renderKeywordRankPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartKeywordRankCheckAction).toHaveBeenCalledTimes(1);
+
+      const pendingButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(pendingButton).not.toBeNull();
+      expect(pendingButton!.hasAttribute("disabled")).toBe(true);
+      expect(pendingButton!.textContent).toContain("Kontrol Ediliyor...");
+      expect(pendingButton!.textContent).not.toContain("Sıralamayı Kontrol Et");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+
+      await act(async () => {
+        deferredResolve(idleState);
+      });
+      await act(async () => {});
+
+      const settledButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(settledButton).not.toBeNull();
+      expect(settledButton!.hasAttribute("disabled")).toBe(false);
+      expect(settledButton!.textContent).toContain("Sıralamayı Kontrol Et");
+      expect(settledButton!.textContent).not.toContain("Kontrol Ediliyor...");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+  });
+
+  describe("render-parity-diff", () => {
+    const idleState: RenderParityActionState = { status: "idle" };
+    const failureState: RenderParityActionState = {
+      status: "error",
+      errors: {
+        form: ["Saatlik audit limitine (10) ulaştınız. Lütfen daha sonra tekrar deneyiniz."],
+      },
+    };
+
+    beforeEach(() => {
+      mockStartRenderParityCheckAction.mockReset();
+      mockStartRenderParityCheckAction.mockResolvedValue(idleState);
+    });
+
+    async function renderRenderParityPage(): Promise<string> {
+      let page!: React.ReactElement;
+      await act(async () => {
+        page = <RenderParityDiffPage />;
+      });
+      await act(async () => {
+        root.render(page);
+      });
+      return container.innerHTML;
+    }
+
+    it("renders one main + one h1 with the url field and the bot-typo fix", async () => {
+      const markup = await renderRenderParityPage();
+
+      expect(countTag(markup, "main")).toBe(1);
+      expect(countTag(markup, "h1")).toBe(1);
+      expect(markup).toContain(">Render Parity Karşılaştırması</h1>");
+      expect(markup).toContain("Seovista / Instruments");
+
+      expect(markup).toContain('id="url"');
+      expect(markup).toContain('for="url"');
+      const label = container.querySelector('label[for="url"]');
+      expect(label).not.toBeNull();
+      expect(label!.getAttribute("for")).toBe("url");
+      expect(container.querySelector("#url")).not.toBeNull();
+
+      // The helper carries the single bot User-Agent reference (typo fixed).
+      expect(markup).toContain("bir kez bir bot User-Agent'ı ile");
+      expect(markup).not.toContain("bir kez bir tarayıcı\nUser-Agent'ı ile");
+
+      // Idle submit button is enabled with the idle label.
+      expect(markup).toContain(">Karşılaştırmayı Başlat</button>");
+      const idleButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(idleButton).not.toBeNull();
+      expect(idleButton!.hasAttribute("disabled")).toBe(false);
+      expect(idleButton!.textContent).toContain("Karşılaştırmayı Başlat");
+      expect(idleButton!.textContent).not.toContain("Karşılaştırılıyor...");
+
+      expect(markup).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("surfaces the form error note when the action returns the failure branch", async () => {
+      mockStartRenderParityCheckAction.mockResolvedValue(failureState);
+      await renderRenderParityPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartRenderParityCheckAction).toHaveBeenCalledTimes(1);
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert).not.toBeNull();
+      expect(alert!.textContent).toContain("limitine");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("renders no error note on the success branch", async () => {
+      mockStartRenderParityCheckAction.mockResolvedValue(idleState);
+      await renderRenderParityPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartRenderParityCheckAction).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      const button = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+      expect(button!.hasAttribute("disabled")).toBe(false);
+      expect(button!.textContent).toContain("Karşılaştırmayı Başlat");
+      expect(container.innerHTML).toContain(">Karşılaştırmayı Başlat</button>");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("disables the submit button while pending, then returns to idle on resolution", async () => {
+      let deferredResolve!: (state: RenderParityActionState) => void;
+      const deferredPromise = new Promise<RenderParityActionState>((resolve) => {
+        deferredResolve = resolve;
+      });
+      mockStartRenderParityCheckAction.mockImplementationOnce(() => deferredPromise);
+
+      await renderRenderParityPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartRenderParityCheckAction).toHaveBeenCalledTimes(1);
+
+      const pendingButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(pendingButton).not.toBeNull();
+      expect(pendingButton!.hasAttribute("disabled")).toBe(true);
+      expect(pendingButton!.textContent).toContain("Karşılaştırılıyor...");
+      expect(pendingButton!.textContent).not.toContain("Karşılaştırmayı Başlat");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+
+      await act(async () => {
+        deferredResolve(idleState);
+      });
+      await act(async () => {});
+
+      const settledButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(settledButton).not.toBeNull();
+      expect(settledButton!.hasAttribute("disabled")).toBe(false);
+      expect(settledButton!.textContent).toContain("Karşılaştırmayı Başlat");
+      expect(settledButton!.textContent).not.toContain("Karşılaştırılıyor...");
       expect(container.querySelector('[role="alert"]')).toBeNull();
       expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
     });

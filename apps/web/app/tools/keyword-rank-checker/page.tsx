@@ -6,109 +6,81 @@ import {
   startKeywordRankCheckAction,
   type KeywordRankActionState,
 } from "../../../src/lib/keyword-rank-checker/actions";
+import {
+  FormShell,
+  FormField,
+  FormErrorNote,
+  SubmitButton,
+  fieldClass,
+  selectFieldClass,
+} from "../../../src/components/form-pages";
 
-const initialState: KeywordRankActionState = {
-  status: "idle",
-};
+const initialState: KeywordRankActionState = { status: "idle" };
+
+// exactOptionalPropertyTypes: FormField's optional `error` can't receive an
+// explicit `undefined`, so spread the field error only when one is present.
+function errorProps(errors?: string[]): { error: string } | {} {
+  return errors?.length ? { error: errors.join(", ") } : {};
+}
 
 export default function KeywordRankCheckerPage() {
   const [state, formAction, isPending] = useActionState(startKeywordRankCheckAction, initialState);
 
   return (
-    <main id="main" className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
-        <div className="p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-              Anahtar Kelime Sıralama Kontrolü
-            </h1>
-            <p className="mt-2 text-sm text-gray-500">
-              SearXNG üzerinden ilk 10 sonuçta alan adınızın konumunu kontrol edin. Sonuç, kontrol
-              anına ait dürüst bir anlık görüntüdür.
-            </p>
+    <FormShell
+      title="Anahtar Kelime Sıralama Kontrolü"
+      helper="SearXNG üzerinden ilk 10 sonuçta alan adınızın konumunu kontrol edin. Sonuç, kontrol anına ait dürüst bir anlık görüntüdür."
+    >
+      <form action={formAction} className="mt-10 max-w-2xl space-y-8">
+        {state.errors?.form && <FormErrorNote message={state.errors.form.join(", ")} />}
+        <FormField id="domain" label="Alan Adı" {...errorProps(state.errors?.domain)}>
+          <input
+            id="domain"
+            name="domain"
+            type="text"
+            required
+            placeholder="example.com"
+            className={fieldClass}
+          />
+        </FormField>
+        <FormField id="keyword" label="Anahtar Kelime" {...errorProps(state.errors?.keyword)}>
+          <input
+            id="keyword"
+            name="keyword"
+            type="text"
+            required
+            placeholder="örn. seo denetimi"
+            className={fieldClass}
+          />
+        </FormField>
+        <FormField id="locale" label="Arama Bölgesi" {...errorProps(state.errors?.locale)}>
+          <div className="relative">
+            <select
+              id="locale"
+              name="locale"
+              required
+              defaultValue="tr-TR"
+              className={selectFieldClass}
+            >
+              {Object.entries(SERP_LOCALES).map(([value, config]) => (
+                <option key={value} value={value}>
+                  {config.label}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted-ink">
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+              </svg>
+            </div>
           </div>
-
-          <form action={formAction} className="space-y-6">
-            {state.errors?.form && (
-              <div className="p-3 bg-red-50 text-red-700 text-sm rounded-md border border-red-200">
-                {state.errors.form.join(", ")}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="domain" className="block text-sm font-medium text-gray-700">
-                Alan Adı
-              </label>
-              <div className="mt-1">
-                <input
-                  id="domain"
-                  name="domain"
-                  type="text"
-                  required
-                  placeholder="example.com"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
-                />
-              </div>
-              {state.errors?.domain && (
-                <p className="mt-2 text-sm text-red-600">{state.errors.domain.join(", ")}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="keyword" className="block text-sm font-medium text-gray-700">
-                Anahtar Kelime
-              </label>
-              <div className="mt-1">
-                <input
-                  id="keyword"
-                  name="keyword"
-                  type="text"
-                  required
-                  placeholder="örn. seo denetimi"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
-                />
-              </div>
-              {state.errors?.keyword && (
-                <p className="mt-2 text-sm text-red-600">{state.errors.keyword.join(", ")}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="locale" className="block text-sm font-medium text-gray-700">
-                Arama Bölgesi
-              </label>
-              <div className="mt-1">
-                <select
-                  id="locale"
-                  name="locale"
-                  required
-                  defaultValue="tr-TR"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
-                >
-                  {Object.entries(SERP_LOCALES).map(([value, config]) => (
-                    <option key={value} value={value}>
-                      {config.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {state.errors?.locale && (
-                <p className="mt-2 text-sm text-red-600">{state.errors.locale.join(", ")}</p>
-              )}
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isPending}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {isPending ? "Kontrol Ediliyor..." : "Sıralamayı Kontrol Et"}
-              </button>
-            </div>
-          </form>
+        </FormField>
+        <div className="pt-2">
+          <SubmitButton pending={isPending} pendingLabel="Kontrol Ediliyor...">
+            Sıralamayı Kontrol Et
+          </SubmitButton>
         </div>
-      </div>
-    </main>
+      </form>
+    </FormShell>
   );
 }
