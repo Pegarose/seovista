@@ -99,6 +99,9 @@ jobs:
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
 
+      - name: Build workspace packages
+        run: corepack pnpm --filter "./packages/*" --if-present build
+
       - name: Lint
         run: corepack pnpm lint
 
@@ -247,11 +250,14 @@ jobs:
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
 
+      - name: Build workspace packages
+        run: corepack pnpm --filter "./packages/*" --if-present build
+
       - name: Build worker for E2E
         run: corepack pnpm --filter @seovista/worker build
 
       - name: Install Playwright browsers
-        run: corepack pnpm exec playwright install chromium --with-deps
+        run: corepack pnpm --filter @seovista/web exec playwright install chromium --with-deps
 
       - name: Run Playwright E2E tests
         run: corepack pnpm test:e2e
@@ -293,7 +299,10 @@ jobs:
         run: corepack pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: corepack pnpm exec playwright install chromium --with-deps
+        run: corepack pnpm --filter @seovista/web exec playwright install chromium --with-deps
+
+      - name: Build workspace packages
+        run: corepack pnpm --filter "./packages/*" --if-present build
 
       - name: Run axe accessibility tests
         run: corepack pnpm test:a11y
@@ -335,7 +344,10 @@ jobs:
         run: corepack pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: corepack pnpm exec playwright install chromium --with-deps
+        run: corepack pnpm --filter @seovista/web exec playwright install chromium --with-deps
+
+      - name: Build workspace packages
+        run: corepack pnpm --filter "./packages/*" --if-present build
 
       - name: Run SEO tests
         run: corepack pnpm test:seo
@@ -375,6 +387,17 @@ jobs:
 
       - name: Install dependencies (frozen)
         run: corepack pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: corepack pnpm --filter "./packages/*" --if-present build
+
+      - name: Install Playwright browsers
+        run: corepack pnpm --filter @seovista/web exec playwright install chromium --with-deps
+
+      - name: Point Lighthouse at the Playwright Chromium binary
+        run: |
+          CHROME_BIN="$(find "$HOME/.cache/ms-playwright" -type f -path '*chrome-linux/chrome' | head -n1)"
+          echo "CHROME_PATH=$CHROME_BIN" >> "$GITHUB_ENV"
 
       - name: Run Lighthouse CI
         run: corepack pnpm lighthouse
