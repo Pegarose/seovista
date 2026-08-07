@@ -20,25 +20,25 @@ export function CrawlerIssues({ conflicts, recommendations }: CrawlerIssuesProps
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {conflicts.length > 0 && (
-        <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 shadow-sm space-y-3">
-          <h2 className="text-lg font-bold text-amber-900 flex items-center gap-2">
-            <span role="img" aria-label="Uyarı">
+        <div className="bg-mineral/40 p-6 rounded-lg border border-ember/40 space-y-3">
+          <h2 className="font-serif text-2xl text-ink flex items-center gap-2">
+            <span role="img" aria-label="Warning">
               ⚠️
             </span>{" "}
-            Kural Çakışmaları
+            Rule conflicts
           </h2>
-          <p className="text-sm text-amber-700">
-            robots.txt dosyanızda birbiriyle çelişen veya bot bazlı politika farkları
-            oluşturan kurallar tespit edildi:
+          <p className="text-sm text-muted-ink">
+            Conflicting rules, or rules that create per-bot policy differences,
+            were detected in your robots.txt:
           </p>
-          <ul className="list-disc list-inside space-y-2 text-sm text-amber-800 font-medium">
+          <ul className="list-disc list-inside space-y-2 text-sm text-ink font-medium">
             {conflicts.map((conflict, idx) => (
               <li key={idx}>
                 {conflict.description}
                 {conflict.lines.length > 0 && (
-                  <span className="block pl-5 mt-0.5 text-xs font-mono font-normal text-amber-700">
+                  <span className="block pl-5 mt-0.5 text-xs font-mono font-normal text-muted-ink">
                     {conflict.lines.join(" · ")}
                   </span>
                 )}
@@ -49,9 +49,9 @@ export function CrawlerIssues({ conflicts, recommendations }: CrawlerIssuesProps
       )}
 
       {recommendations.length > 0 && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
-          <h2 className="text-lg font-bold text-slate-900">Öneriler</h2>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-slate-700">
+        <div className="bg-card p-6 rounded-lg border border-hairline space-y-3">
+          <h2 className="font-serif text-2xl text-ink">Recommendations</h2>
+          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-ink">
             {recommendations.map((recommendation, idx) => (
               <li key={idx}>{recommendation}</li>
             ))}

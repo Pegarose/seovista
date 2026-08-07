@@ -21,21 +21,21 @@ const CATEGORY_SECTIONS: ReadonlyArray<{
 }> = [
   {
     key: "ai-search",
-    heading: "AI Arama & Cevap Botları",
+    heading: "AI search & answer bots",
     description:
-      "ChatGPT, Perplexity ve benzeri AI cevap motorlarının sitenizi canlı arama sonuçlarında kullanmasını sağlayan botlar.",
+      "Bots that let ChatGPT, Perplexity and similar AI answer engines cite your site in live search results.",
   },
   {
     key: "ai-training",
-    heading: "AI Eğitim Botları",
+    heading: "AI training bots",
     description:
-      "Model eğitimi için içerik toplayan botlar. Bu botlara izin vermek veya onları engellemek site sahibinin kararıdır.",
+      "Bots that collect content for model training. Allowing or blocking them is the site owner's policy choice.",
   },
   {
     key: "search",
-    heading: "Geleneksel Arama Botları",
+    heading: "Traditional search bots",
     description:
-      "Google, Bing ve diğer klasik arama motorlarının dizinleme botları.",
+      "Indexing bots for Google, Bing and other classic search engines.",
   },
 ];
 
@@ -44,19 +44,19 @@ const STATUS_PRESENTATION: Record<
   { text: string; icon: string; badgeClass: string }
 > = {
   allowed: {
-    text: "İzinli",
+    text: "Allowed",
     icon: "✓",
-    badgeClass: "bg-green-50 text-green-700 border-green-200",
+    badgeClass: "text-signal border-signal/40",
   },
   partial: {
-    text: "Kısmi",
+    text: "Partial",
     icon: "◐",
-    badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+    badgeClass: "text-ember border-ember/40",
   },
   blocked: {
-    text: "Engelli",
+    text: "Blocked",
     icon: "✕",
-    badgeClass: "bg-red-50 text-red-700 border-red-200",
+    badgeClass: "text-ember border-ember/40 bg-mineral/60",
   },
 };
 
@@ -67,11 +67,11 @@ const STATUS_PRESENTATION: Record<
  */
 export function CrawlerAccessMatrix({ crawlers }: CrawlerAccessMatrixProps) {
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-8">
+    <div className="bg-card p-6 rounded-lg border border-hairline space-y-8">
       <div>
-        <h2 className="text-xl font-bold text-slate-900">Bot Erişim Matrisi</h2>
-        <p className="text-sm text-slate-500 mt-1">
-          robots.txt kurallarınıza göre her botun site geneli erişim durumu.
+        <h2 className="font-serif text-2xl text-ink">Bot access matrix</h2>
+        <p className="text-sm text-muted-ink mt-1">
+          Site-wide access status for each bot according to your robots.txt rules.
         </p>
       </div>
 
@@ -81,11 +81,11 @@ export function CrawlerAccessMatrix({ crawlers }: CrawlerAccessMatrixProps) {
         const headingId = `crawler-category-${section.key}`;
         return (
           <section key={section.key} aria-labelledby={headingId}>
-            <h3 id={headingId} className="text-base font-semibold text-slate-900">
+            <h3 id={headingId} className="font-serif text-lg text-ink">
               {section.heading}
             </h3>
-            <p className="text-xs text-slate-500 mt-1">{section.description}</p>
-            <ul role="list" className="mt-3 divide-y divide-slate-100 border-y border-slate-100">
+            <p className="text-xs text-muted-ink mt-1">{section.description}</p>
+            <ul role="list" className="mt-3 divide-y divide-hairline border-y border-hairline">
               {entries.map((crawler) => {
                 const status = STATUS_PRESENTATION[crawler.status];
                 const isNeutralPolicyChoice =
@@ -96,15 +96,15 @@ export function CrawlerAccessMatrix({ crawlers }: CrawlerAccessMatrixProps) {
                     className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
                   >
                     <div>
-                      <span className="block text-sm font-medium text-slate-900">
+                      <span className="block text-sm font-medium text-ink">
                         {crawler.label}
                       </span>
-                      <span className="block text-xs font-mono text-slate-500 mt-0.5">
+                      <span className="block text-xs font-mono text-muted-ink mt-0.5">
                         {crawler.userAgent}
                       </span>
                       {isNeutralPolicyChoice && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          Engelleme bir politika tercihidir — hata değildir
+                        <p className="mt-1 text-xs text-muted-ink">
+                          Blocking is a policy choice — not an error
                         </p>
                       )}
                     </div>
