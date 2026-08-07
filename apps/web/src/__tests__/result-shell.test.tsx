@@ -10,7 +10,7 @@
  * assertions run against the exact HTML the browser receives.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -24,12 +24,67 @@ import {
 } from "@/components/result-pages";
 
 // ---------------------------------------------------------------------------
+// Mock setup — vi.mock calls are hoisted above all imports. The two page
+// components below import AuditPoller (next/navigation + geo-checker/actions)
+// and getAdminDb, so the controlled doubles are declared up front and the
+// page modules are imported dynamically in beforeAll after these run.
+// ---------------------------------------------------------------------------
+
+const mockGetAdminDb = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/admin/db", () => ({
+  getAdminDb: mockGetAdminDb,
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+}));
+
+vi.mock("@/lib/geo-checker/actions", () => ({
+  checkJobStatusAction: vi.fn().mockResolvedValue({ success: true, data: { status: "queued" } }),
+}));
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function countTag(markup: string, tag: string): number {
   return (markup.match(new RegExp(`<${tag}[\\s>]`, "g")) ?? []).length;
 }
+
+/** Stable job id shared by the page-level structural suites below. */
+const JOB_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+
+/** Point getAdminDb at a fake client whose query resolves to one row. */
+function mockQueryRow(row: Record<string, unknown>) {
+  mockGetAdminDb.mockReturnValue({
+    query: vi.fn().mockResolvedValue({ rows: [row] }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Page components — imported after the mocks so the module graph resolves
+// with our controlled dependencies (same convention as the other result
+// state suites).
+// ---------------------------------------------------------------------------
+
+let SchemaTruthJobResultPage: (
+  props: { params: Promise<{ jobId: string }> },
+) => Promise<React.ReactElement>;
+let RenderParityJobResultPage: (
+  props: { params: Promise<{ jobId: string }> },
+) => Promise<React.ReactElement>;
+
+beforeAll(async () => {
+  const schemaTruth = await import(
+    "../../app/tools/schema-truth-check/result/[jobId]/page"
+  );
+  SchemaTruthJobResultPage = schemaTruth.default;
+  const renderParity = await import(
+    "../../app/tools/render-parity-diff/result/[jobId]/page"
+  );
+  RenderParityJobResultPage = renderParity.default;
+});
 
 // ---------------------------------------------------------------------------
 // UnknownJobStatusView — single main/h1 + Try again link
@@ -288,5 +343,248 @@ describe("IssueLedger", () => {
     );
 
     expect(markup).toContain("No issues found.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Schema Truth Result Page — Task 8 structural assertions
+// ---------------------------------------------------------------------------
+
+describe("Schema Truth Result Page", () => {
+  function buildSchemaTruthPayload(
+    overrides: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    return {
+      kind: "schema-truth",
+      score: 80,
+      totalClaims: 5,
+      verifiedClaims: 4,
+      notVerifiableClaims: 1,
+      findings: [
+        { field: "name", value: "SeoVista", status: "verified" },
+        { field: "offers.price", value: "29", status: "not_verifiable" },
+      ],
+      rawScriptCount: 2,
+      parseErrors: [],
+      ...overrides,
+    };
+  }
+
+  it("invalid UUID renders exactly one main + one h1 'Schema truth' with Report not found", async () => {
+    const el = await SchemaTruthJobResultPage({
+      params: Promise.resolve({ jobId: "not-a-uuid" }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(countTag(markup, "main")).toBe(1);
+    expect(countTag(markup, "h1")).toBe(1);
+    expect(markup).toContain("Schema truth");
+    expect(markup).toContain("Report not found");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("completed renders VerdictCard, score aria, ledger findings and CTA, no slate tokens", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildSchemaTruthPayload(),
+    });
+    const el = await SchemaTruthJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(countTag(markup, "main")).toBe(1);
+    expect(countTag(markup, "h1")).toBe(1);
+    expect(markup).toContain("Schema truth");
+    expect(markup).toContain("Truthfulness report");
+    expect(markup).toContain(
+      "Where your markup contradicts on-page facts, and what to fix first."
+    );
+    expect(markup).toContain('aria-label="Score: 80 out of 100"');
+    expect(markup).toContain("Evidence ledger");
+
+    // Ledger rows project every finding: verdict string + field + value.
+    expect(markup).toContain("Verified on page");
+    expect(markup).toContain("Not found on page");
+    expect(markup).toContain("name: SeoVista");
+    expect(markup).toContain("offers.price: 29");
+
+    // Page identity line + next-step CTA link.
+    expect(markup).toContain("Page:");
+    expect(markup).toContain("Compare with the Schema Checker for a full parse log");
+    expect(markup).toContain('href="/tools/schema-checker/"');
+
+    // Score footnote from the brief.
+    expect(markup).toContain(
+      "The score is the share of JSON-LD claims that appear on the page."
+    );
+
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("completed with zero claims renders the info verdict and no fabricated score", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildSchemaTruthPayload({
+        score: 100,
+        totalClaims: 0,
+        verifiedClaims: 0,
+        notVerifiableClaims: 0,
+        findings: [],
+      }),
+    });
+    const el = await SchemaTruthJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(markup).toContain("Info");
+    expect(markup).toContain("No claims to check on this page.");
+    expect(markup).not.toContain("out of 100");
+    expect(markup).not.toContain("/100");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("completed with parse errors renders the warn parse-error row group", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildSchemaTruthPayload({
+        parseErrors: ["Unexpected token in JSON at position 12"],
+      }),
+    });
+    const el = await SchemaTruthJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(markup).toContain("Parse errors");
+    expect(markup).toContain("Unexpected token in JSON at position 12");
+    expect(markup).toContain("Evidence ledger");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Render Parity Result Page — Task 8 structural assertions
+// ---------------------------------------------------------------------------
+
+describe("Render Parity Result Page", () => {
+  function buildRenderParityPayload(
+    overrides: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    const side = {
+      url: "https://example.com/",
+      status: 200,
+      title: "Example",
+      metaDescription: "A demo page",
+      canonical: "https://example.com/",
+      h1: ["Example H1"],
+      tokenCount: 42,
+    };
+    return {
+      kind: "render-parity",
+      score: 90,
+      renderedParityRatio: 0.96,
+      default: side,
+      crawler: { ...side, tokenCount: 40 },
+      h1OnlyInDefault: [],
+      h1OnlyInCrawler: [],
+      issues: [],
+      ...overrides,
+    };
+  }
+
+  it("invalid UUID renders exactly one main + one h1 'Render parity' with Report not found", async () => {
+    const el = await RenderParityJobResultPage({
+      params: Promise.resolve({ jobId: "not-a-uuid" }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(countTag(markup, "main")).toBe(1);
+    expect(countTag(markup, "h1")).toBe(1);
+    expect(markup).toContain("Render parity");
+    expect(markup).toContain("Report not found");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("completed renders VerdictCard with ratio-derived variant, ledger and side cards, no slate tokens", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildRenderParityPayload(),
+    });
+    const el = await RenderParityJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(countTag(markup, "main")).toBe(1);
+    expect(countTag(markup, "h1")).toBe(1);
+    expect(markup).toContain("Render parity");
+    expect(markup).toContain("Parity report");
+    expect(markup).toContain(
+      "Differences between raw HTML and the rendered page AI systems see."
+    );
+    expect(markup).toContain('aria-label="Score: 90 out of 100"');
+    // ratio 0.96 >= 0.95 -> pass pill
+    expect(markup).toContain(">Pass<");
+    expect(markup).toContain("Text similarity");
+    expect(markup).toContain("Evidence ledger");
+
+    // Side-by-side metadata cards keep final URL + token count.
+    expect(markup).toContain("Default (browser) request");
+    expect(markup).toContain("Crawler (bot) request");
+    expect(markup).toContain("Final URL");
+    expect(markup).toContain("Text token count");
+    expect(markup).toContain("https://example.com/");
+
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("renders issue rows with severity mapping and h1-only rows from the payload", async () => {
+    mockQueryRow({
+      id: JOB_ID,
+      target: "https://example.com",
+      status: "completed",
+      result_payload: buildRenderParityPayload({
+        score: 40,
+        renderedParityRatio: 0.5,
+        issues: [
+          {
+            field: "title",
+            severity: "warning",
+            description: "Titles differ between the two requests.",
+          },
+          {
+            field: "text",
+            severity: "error",
+            description: "No visible text found in the crawler side.",
+          },
+        ],
+        h1OnlyInDefault: ["Missing in crawler"],
+        h1OnlyInCrawler: [],
+      }),
+    });
+    const el = await RenderParityJobResultPage({
+      params: Promise.resolve({ jobId: JOB_ID }),
+    });
+    const markup = renderToStaticMarkup(el);
+
+    expect(markup).toContain("Warning");
+    expect(markup).toContain("Error");
+    expect(markup).toContain("Titles differ between the two requests.");
+    expect(markup).toContain("No visible text found in the crawler side.");
+    expect(markup).toContain("H1s only in the default request");
+    expect(markup).toContain("Missing in crawler");
+    // ratio 0.5 < 0.85 -> fail pill
+    expect(markup).toContain(">Fail<");
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
   });
 });

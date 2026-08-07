@@ -3,36 +3,81 @@ import { getAdminDb } from "../../../../../src/lib/admin/db";
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
 import { normalizeJobResultStatus } from "../../../../../src/lib/admin/job-result-guard";
-import { UnknownJobStatusView } from "../../../../../src/components/result-pages";
+import {
+  IssueLedger,
+  ReportErrorPanel,
+  ResultShell,
+  UnknownJobStatusView,
+  VerdictCard,
+  type IssueLedgerItem,
+  type VerdictVariant,
+} from "../../../../../src/components/result-pages";
 
 export const dynamic = "force-dynamic";
 
+/** UUID v4/v7 format guard. Rejects malformed IDs before any repository query. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Shared editorial shell identity for every rendered state of this page. */
+const REPORT_SHELL = {
+  eyebrow: "Seovista / Lab report",
+  title: "Schema truth",
+} as const;
 
 export async function generateMetadata() {
   return {
-    title: "Schema Doğruluk Sonucu - SeoVista",
+    title: "Schema truth - SeoVista",
     robots: { index: false, follow: false, nocache: true },
   };
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      {children}
-    </main>
-  );
+/**
+ * Map the verified/totalClaims ratio onto the editorial verdict variant:
+ * ≥90% pass, 70–89% warn, <70% fail. A page with zero extractable claims
+ * has nothing to be wrong about, so it renders the neutral info variant —
+ * and the numeric score is omitted (see the completed branch) because
+ * VerdictCard's "n/100" would otherwise imply a grade where no claim
+ * exists.
+ */
+function truthVariant(payload: SchemaTruthResultPayload): VerdictVariant {
+  if (payload.totalClaims === 0) return "info";
+  const ratio = payload.verifiedClaims / payload.totalClaims;
+  if (ratio >= 0.9) return "pass";
+  if (ratio >= 0.7) return "warn";
+  return "fail";
 }
 
-function ErrorState({ title, body }: { title: string; body: string }) {
-  return (
-    <Shell>
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-        <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">{title}</h1>
-        <p className="text-slate-700">{body}</p>
-      </div>
-    </Shell>
-  );
+const NO_CLAIMS_COPY =
+  "No claims to check on this page. Either the page has no JSON-LD, or it only uses unsupported @type values (supported: Organization, Person, Article/BlogPosting/NewsArticle, Product, Service).";
+
+/**
+ * Evidence ledger rows for the schema truth payload. One row per claim
+ * finding: the verdict string ("Verified on page" / "Not found on page") is
+ * the row title, the detail carries the claimed field path plus the value
+ * stated in the markup, and the severity follows the finding status
+ * (verified → pass, not verifiable → warn). JSON-LD parse failures surface
+ * as an additional warn row group when the payload carries them.
+ */
+function buildLedgerItems(payload: SchemaTruthResultPayload): IssueLedgerItem[] {
+  const items: IssueLedgerItem[] = payload.findings.map((finding, idx) => ({
+    id: `claim-${finding.field}-${idx}`,
+    severity: finding.status === "verified" ? "pass" : "warn",
+    title: finding.status === "verified" ? "Verified on page" : "Not found on page",
+    detail: `${finding.field}: ${finding.value}`,
+  }));
+
+  if (payload.parseErrors.length > 0) {
+    items.push({
+      id: "parse-errors",
+      severity: "warn",
+      title: "Parse errors",
+      detail: payload.parseErrors.join(" · "),
+      recommendation:
+        "Fix the malformed JSON-LD so each block parses into a valid object.",
+    });
+  }
+
+  return items;
 }
 
 export default async function SchemaTruthJobResultPage({
@@ -42,12 +87,16 @@ export default async function SchemaTruthJobResultPage({
 }) {
   const { jobId } = await params;
 
+  // Reject malformed non-UUID job IDs before any repository query so invalid
+  // input never reaches PostgreSQL and renders the documented not-found state.
   if (!UUID_RE.test(jobId)) {
     return (
-      <ErrorState
-        title="İşlem Bulunamadı"
-        body="İstenen schema doğruluk denetimi sonucu bulunamadı. Lütfen işlem kimliğini (Job ID) kontrol edip tekrar deneyin."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Report not found"
+          body="The requested report could not be found. Check the job id and try again."
+        />
+      </ResultShell>
     );
   }
 
@@ -56,10 +105,12 @@ export default async function SchemaTruthJobResultPage({
     db = getAdminDb();
   } catch {
     return (
-      <ErrorState
-        title="Hizmet Geçici Olarak Kullanılamıyor"
-        body="Schema doğruluk denetimi hizmeti şu anda kullanılamıyor. Lütfen kısa süre sonra tekrar deneyin."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Service temporarily unavailable"
+          body="The report service is temporarily unavailable. Please try again shortly."
+        />
+      </ResultShell>
     );
   }
 
@@ -81,25 +132,31 @@ export default async function SchemaTruthJobResultPage({
        WHERE j.id = $1 AND j.queue_name = 'schema_truth_audit'
        ORDER BY r.created_at DESC
        LIMIT 1`,
-      [jobId],
+      [jobId]
     );
     jobRow = res.rows[0];
   } catch (err) {
     console.error("Failed to query schema_truth_audit job record:", err);
     return (
-      <ErrorState
-        title="Hizmet Geçici Olarak Kullanılamıyor"
-        body="Schema doğruluk denetimi sonucu şu anda alınamıyor. Lütfen tekrar deneyin."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Service temporarily unavailable"
+          body="The report service is temporarily unavailable. Please try again shortly."
+        />
+      </ResultShell>
     );
   }
 
+  // Syntactically valid UUID with no matching job record renders the
+  // documented not-found state.
   if (!jobRow) {
     return (
-      <ErrorState
-        title="İşlem Bulunamadı"
-        body="İstenen denetim kaydı sistemde bulunamadı."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Report not found"
+          body="The requested report could not be found. Check the job id and try again."
+        />
+      </ResultShell>
     );
   }
 
@@ -108,30 +165,45 @@ export default async function SchemaTruthJobResultPage({
   // state instead of falling through to the completed-result payload path.
   const status = normalizeJobResultStatus(jobRow.status);
 
+  // -- In-flight states (queued / running / pending) --
   if (isAuditInFlightStatus(status)) {
     return (
-      <Shell>
-        <h1 className="text-3xl font-display font-semibold text-slate-900 text-center">
-          {status === "queued"
-            ? "Schema Doğruluk Denetimi Sırada"
-            : status === "running"
-            ? "Schema Doğruluk Denetimi Çalışıyor..."
-            : "Schema Doğruluk Denetimi Beklemede"}
-        </h1>
+      <ResultShell
+        eyebrow={REPORT_SHELL.eyebrow}
+        title={REPORT_SHELL.title}
+        status="checking"
+        meta={{ jobId, queueName: "schema_truth_audit", toolLabel: "Schema Truth" }}
+      >
+        <p className="text-sm text-muted-ink">
+          The audit is running. This page refreshes automatically.
+        </p>
         <AuditPoller jobId={jobId} initialStatus={status} />
-      </Shell>
+      </ResultShell>
     );
   }
 
-  if (status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure") {
+  // -- Terminal failed states --
+  if (
+    status === "failed" ||
+    status === "timeout" ||
+    status === "permanent" ||
+    status === "permanent_failure"
+  ) {
     return (
-      <ErrorState
-        title="Schema Doğruluk Denetimi Başarısız Oldu"
-        body="Denetim sırasında bir hata oluştu veya zaman aşımına uğrandı. Lütfen URL'yi kontrol edip tekrar deneyin."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report failed"
+          body="We could not finish this audit. Keep the reference id below when you ask for help."
+          correlationId={jobId}
+          retryHref="/tools/schema-truth-check/"
+        />
+      </ResultShell>
     );
   }
 
+  // -- Unknown persisted status: explicit unavailable state --
+  // Any status value not in the supported lifecycle vocabulary renders the
+  // shared explicit-unknown view rather than crashing on the result payload.
   if (status === "unknown") {
     return <UnknownJobStatusView />;
   }
@@ -154,126 +226,62 @@ export default async function SchemaTruthJobResultPage({
     }
   }
 
+  // -- Completed: degraded (no valid result payload) --
   if (status === "completed" && !payload) {
     return (
-      <ErrorState
-        title="Sonuç Verisi Kullanılamıyor"
-        body="Denetim tamamlandı ancak sonuç verisi okunamadı. Lütfen sayfayı yenileyiniz."
-      />
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report data is incomplete"
+          body="The audit finished, but the stored result is unreadable. Rerun the audit to regenerate it."
+          retryHref="/tools/schema-truth-check/"
+        />
+      </ResultShell>
     );
   }
 
+  // -- Completed: valid payload --
+  // (status === "completed" && payload !== null) — narrowed after the
+  // degraded early-return above.
   const safePayload = payload!;
-  const findings = safePayload.findings ?? [];
 
   return (
-    <main id="main" className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">
-            Schema Doğruluk Sonucu
-          </h1>
-          <p className="text-sm text-slate-600 mt-2">
-            Sayfa:{" "}
-            <span className="font-mono font-medium text-slate-800 break-all">
-              {jobRow.target ?? "—"}
-            </span>
-          </p>
-        </div>
+    <ResultShell
+      eyebrow={REPORT_SHELL.eyebrow}
+      title={REPORT_SHELL.title}
+      status="completed"
+      meta={{ jobId, queueName: "schema_truth_audit", toolLabel: "Schema Truth" }}
+    >
+      <div className="flex flex-col gap-6">
+        <p className="font-mono text-sm text-muted-ink">
+          Page: <span className="break-all text-ink">{jobRow.target ?? "—"}</span>
+        </p>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Doğruluk Skoru</h2>
-              <p className="text-sm text-slate-500 mt-1">
-                {safePayload.totalClaims === 0
-                  ? "Bu sayfa için denetlenecek bir iddia bulunamadı (JSON-LD yok ya da yalnızca bilinmeyen şema türleri mevcut)."
-                  : `${safePayload.totalClaims} iddianın ${safePayload.verifiedClaims} tanesi sayfa metninde yer alıyor.`}
-              </p>
-            </div>
-            <div
-              className="text-4xl font-extrabold text-slate-900"
-              aria-label={`Skor: ${safePayload.score}/100`}
-            >
-              {safePayload.totalClaims === 0 ? "—" : `${safePayload.score}`}
-            </div>
-          </div>
-          <p className="mt-3 text-xs text-slate-500">
-            Skor, JSON-LD iddialarının sayfa metninde bulunma oranıdır — SEO sıralaması, güven
-            veya zengin sonuç garantisi vermez.
-          </p>
-        </div>
+        <VerdictCard
+          variant={truthVariant(safePayload)}
+          title="Truthfulness report"
+          summary="Where your markup contradicts on-page facts, and what to fix first."
+          {...(safePayload.totalClaims === 0 ? {} : { score: safePayload.score })}
+          scoreLabel="Score"
+        />
 
-        {safePayload.parseErrors.length > 0 && (
-          <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-sm" role="status">
-            <p className="text-sm font-semibold text-amber-900 mb-2">Ayrıştırma hatası ({safePayload.parseErrors.length})</p>
-            <ul className="list-disc pl-5 text-sm text-amber-800 space-y-1">
-              {safePayload.parseErrors.map((err) => (
-                <li key={err} className="font-mono text-xs break-all">{err}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <IssueLedger
+          heading="Evidence ledger"
+          items={buildLedgerItems(safePayload)}
+          emptyLabel={NO_CLAIMS_COPY}
+        />
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-slate-900">İddia Dökümü</h2>
-          {findings.length === 0 ? (
-            <p className="text-sm text-slate-600">
-              Bu sayfada denetlenecek claim bulunamadı. JSON-LD blokları yok ya da sayfa sadece
-              desteklenmeyen <code className="font-mono text-xs">@type</code> değerleri içeriyor
-              (Organization, Person, Article/BlogPosting/NewsArticle, Product, Service
-              desteklenir).
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500">
-                    <th scope="col" className="py-2 pr-4 font-semibold">Alan</th>
-                    <th scope="col" className="py-2 pr-4 font-semibold">Şemadaki değer</th>
-                    <th scope="col" className="py-2 font-semibold">Durum</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {findings.map((finding, idx) => (
-                    <tr
-                      key={`${finding.field}-${idx}`}
-                      className={
-                        finding.status === "verified"
-                          ? "border-b border-slate-100"
-                          : "border-b border-amber-100 bg-amber-50"
-                      }
-                    >
-                      <td className="py-2 pr-4 font-mono text-xs text-slate-700">{finding.field}</td>
-                      <td className="py-2 pr-4 text-slate-900 break-all">{finding.value}</td>
-                      <td className="py-2">
-                        {finding.status === "verified" ? (
-                          <span className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
-                            Doğrulandı
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                            Sayfada yok
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <p className="text-xs text-muted-ink">
+          The score is the share of JSON-LD claims that appear on the page. It does not predict
+          rankings, trust, or rich results.
+        </p>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <a
-            href="/tools/schema-checker/"
-            className="block text-sm font-semibold text-slate-900 hover:text-slate-600 transition-colors"
-          >
-            Yapılandırılmış veri hatalarını detaylı görmek için Schema Checker aracını deneyin →
-          </a>
-        </div>
+        <a
+          href="/tools/schema-checker/"
+          className="block rounded-lg border border-hairline bg-card p-6 text-sm font-semibold text-ink transition-colors hover:bg-mineral"
+        >
+          Compare with the Schema Checker for a full parse log →
+        </a>
       </div>
-    </main>
+    </ResultShell>
   );
 }
