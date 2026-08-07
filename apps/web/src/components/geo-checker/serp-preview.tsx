@@ -51,17 +51,17 @@ export function SerpPreview({
 
   if (displayType === "ai") {
     return (
-      <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-5 shadow-xs transition-all">
+      <div className="rounded-xl border border-spectral/20 bg-spectral/10 p-5 transition-all">
         <div className="flex items-center gap-2 mb-3">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-600 text-white">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-spectral text-white">
             AI Overview Citation Preview
           </span>
-          <span className="text-xs text-slate-500 font-mono">{hostname}</span>
+          <span className="text-xs text-muted-ink font-mono">{hostname}</span>
         </div>
-        <p className="text-sm text-slate-800 leading-relaxed font-normal">
+        <p className="text-sm text-ink leading-relaxed font-normal">
           {snippet}
         </p>
-        <div className="mt-3 pt-3 border-t border-indigo-100 flex flex-col gap-1 text-xs text-indigo-700 font-medium">
+        <div className="mt-3 pt-3 border-t border-spectral/20 flex flex-col gap-1 text-xs text-spectral font-medium">
           <span>Source: {title}</span>
           <span>Provider: {provider} ({sourceMode})</span>
           <span>Fixture: {fixtureId}</span>
@@ -78,24 +78,24 @@ export function SerpPreview({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs font-sans">
+    <div className="rounded-xl border border-hairline bg-paper p-5 font-sans">
       <div className="flex items-center gap-2 mb-3">
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-700 text-white">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-mineral text-ink">
           SERP Preview
         </span>
-        <span className="text-xs text-slate-500 font-mono">{hostname}</span>
+        <span className="text-xs text-muted-ink font-mono">{hostname}</span>
       </div>
-      <div className="text-xs text-slate-600 mb-1 flex items-center gap-1.5 font-mono truncate">
-        <span className="w-4 h-4 rounded-full bg-slate-200 inline-block flex-shrink-0" />
+      <div className="text-xs text-muted-ink mb-1 flex items-center gap-1.5 font-mono truncate">
+        <span className="w-4 h-4 rounded-full bg-mineral inline-block flex-shrink-0" />
         <span>{url}</span>
       </div>
-      <h3 className="text-lg font-medium text-blue-700 hover:underline cursor-pointer truncate mb-1">
+      <h3 className="text-lg font-medium text-spectral hover:underline cursor-pointer truncate mb-1">
         {title}
       </h3>
-      <p className="text-sm text-slate-600 leading-normal line-clamp-2">
+      <p className="text-sm text-muted-ink leading-normal line-clamp-2">
         {snippet}
       </p>
-      <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-1 text-xs text-slate-500">
+      <div className="mt-3 pt-3 border-t border-hairline flex flex-col gap-1 text-xs text-muted-ink">
         <span>Provider: {provider} ({sourceMode})</span>
         <span>Fixture: {fixtureId}</span>
         <span>Request: {requestId}</span>

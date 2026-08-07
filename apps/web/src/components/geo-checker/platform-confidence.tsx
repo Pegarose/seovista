@@ -33,15 +33,15 @@ export function PlatformConfidenceView({
   return (
     <section
       aria-labelledby="platform-confidence-heading"
-      className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm w-full max-w-4xl mx-auto"
+      className="bg-paper p-6 rounded-xl border border-hairline w-full max-w-4xl mx-auto"
     >
       <h2
         id="platform-confidence-heading"
-        className="text-xl font-semibold text-slate-900 font-display mb-1"
+        className="text-xl font-semibold text-ink font-serif mb-1"
       >
         Platform Bazında AI Hazırlık
       </h2>
-      <p className="text-sm text-slate-500 mb-4">
+      <p className="text-sm text-muted-ink mb-4">
         Her platformun hazır olduğu güven bandı ile gösterilir. Sayısal skor
         ayrıntılarda bulunur.
       </p>
@@ -52,10 +52,10 @@ export function PlatformConfidenceView({
           return (
             <div
               key={p.platform}
-              className="rounded-lg border border-slate-200 bg-slate-50 p-4 flex flex-col gap-3"
+              className="rounded-lg border border-hairline bg-mineral p-4 flex flex-col gap-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <dt className="font-medium text-slate-900">{p.platform}</dt>
+                <dt className="font-medium text-ink">{p.platform}</dt>
                 <dd
                   className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${band.tone}`}
                   aria-label={`${p.platform} güven bandı: ${band.label}`}
@@ -65,10 +65,10 @@ export function PlatformConfidenceView({
                 </dd>
               </div>
 
-              <dd className="text-sm text-slate-600">
+              <dd className="text-sm text-muted-ink">
                 <details>
                   <summary
-                    className="cursor-pointer text-slate-700 hover:text-slate-900"
+                    className="cursor-pointer text-muted-ink hover:text-ink"
                     aria-label={`${p.platform} hazır olma skoru: ${p.score} / 100. Güven: ${Math.round(p.confidence * 100)}%. Ayrıntıları görüntülemek için genişletin.`}
                   >
                     Sayısal skor:{" "}
@@ -81,12 +81,12 @@ export function PlatformConfidenceView({
                     </span>
                   </summary>
                   {p.rationale ? (
-                    <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                    <p className="mt-2 text-xs text-muted-ink leading-relaxed">
                       {p.rationale}
                     </p>
                   ) : null}
                   {p.experimental ? (
-                    <p className="mt-2 text-xs text-amber-700">
+                    <p className="mt-2 text-xs text-ember">
                       Bu tahmin deneyseldir ve gerçek AI platform trafiği
                       ile doğrulanmamıştır.
                     </p>

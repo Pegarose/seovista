@@ -130,18 +130,18 @@ export function AuditPoller({ jobId, initialStatus }: AuditPollerProps) {
   const isUnavailable = status === "unavailable";
 
   return (
-    <div className="flex flex-col items-center justify-center p-12 bg-white rounded-lg shadow-sm border border-slate-200">
+    <div className="flex flex-col items-center justify-center p-12 bg-paper rounded-lg border border-hairline">
       {!timedOut && !isUnavailable && (
-        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
+        <div className="w-16 h-16 border-4 border-spectral/20 border-t-spectral rounded-full animate-spin mb-6"></div>
       )}
-      <h3 className="text-xl font-medium text-slate-800 mb-2">
+      <h3 className="text-xl font-medium text-ink mb-2">
         {timedOut
           ? "Audit polling timed out"
           : isUnavailable
             ? "Audit status unavailable"
             : statusLabel(status)}
       </h3>
-      <p className="text-slate-500 text-center max-w-sm">
+      <p className="text-muted-ink text-center max-w-sm">
         {timedOut
           ? `The audit did not finish within ${AUDIT_POLL_TIMEOUT_MS / 60000} minutes. Please refresh later.`
           : isUnavailable

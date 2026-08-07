@@ -77,34 +77,20 @@ function makeMockRepo(opts: {
   return repo;
 }
 
-/** Recursively search a React element tree for nodes matching a predicate. */
-function findNodes(
-  node: React.ReactElement | null | undefined,
-  predicate: (el: React.ReactElement) => boolean,
-): React.ReactElement[] {
-  if (!node) return [];
-  const results: React.ReactElement[] = [];
-  if (predicate(node)) results.push(node);
-  const props = node.props as Record<string, unknown>;
-  const children = props?.children;
-  if (!children) return results;
-  const childArray = Array.isArray(children) ? children : [children];
-  for (const child of childArray) {
-    if (React.isValidElement(child)) {
-      results.push(...findNodes(child, predicate));
-    }
-  }
-  return results;
+/**
+ * Count `<main>` landmarks in the fully-rendered page markup. The page root
+ * is a shared kit component (ResultShell), so the landmark is resolved by
+ * renderToStaticMarkup rather than by walking the element tree.
+ */
+function countMainNodes(root: React.ReactElement): number {
+  return (renderToString(root).match(/<main\b/g) ?? []).length;
 }
 
-/** Find all `<main>` elements in a React tree. */
-function findMainNodes(root: React.ReactElement): React.ReactElement[] {
-  return findNodes(root, (el) => el.type === "main");
-}
-
-/** Find all `<h1>` elements inside a specific node. */
-function findH1Nodes(root: React.ReactElement): React.ReactElement[] {
-  return findNodes(root, (el) => el.type === "h1");
+/** Extract the text content of every `<h1>` in the fully-rendered page markup. */
+function h1Texts(root: React.ReactElement): string[] {
+  const html = renderToString(root);
+  const h1Blocks = html.match(/<h1\b[\s\S]*?<\/h1>/g) ?? [];
+  return h1Blocks.map((block) => block.replace(/<[^>]*>/g, "").trim());
 }
 
 /** Serialize the actual server-component tree without directly invoking
@@ -225,22 +211,22 @@ describe("GEO Result Page State Contract", () => {
   // ------------------------------------------------------------------
 
   describe("VAL-CROSS-003: one main + one descriptive h1 per state", () => {
-    it("malformed non-UUID renders exactly one main with one h1 (Job not found)", async () => {
+    it("malformed non-UUID renders exactly one main with one h1 (Report not found)", async () => {
       const el = await JobResultPage({
         params: Promise.resolve({ jobId: "not-a-uuid" }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
 
-      const h1s = findH1Nodes(mains[0]!);
+      const h1s = h1Texts(el);
       expect(h1s).toHaveLength(1);
+      expect(h1s[0]!).toContain("Citation readiness");
 
-      const text = renderToString(h1s[0]!);
-      expect(text).toContain("Job not found");
+      const fullText = renderToString(el);
+      expect(fullText).toContain("Report not found");
     });
 
-    it("valid UUID with no matching row renders exactly one main with one h1 (Job not found)", async () => {
+    it("valid UUID with no matching row renders exactly one main with one h1 (Report not found)", async () => {
       const repo = makeMockRepo({ getJobRecord: undefined });
       mockCreateGeoAuditRepository.mockReturnValue(repo);
 
@@ -250,14 +236,14 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
 
-      const h1s = findH1Nodes(mains[0]!);
+      const h1s = h1Texts(el);
       expect(h1s).toHaveLength(1);
+      expect(h1s[0]!).toContain("Citation readiness");
 
-      const text = renderToString(h1s[0]!);
-      expect(text).toContain("Job not found");
+      const fullText = renderToString(el);
+      expect(fullText).toContain("Report not found");
     });
 
     it("valid UUID not-found is not conflated with dependency failure", async () => {
@@ -271,7 +257,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Job not found");
+      expect(text).toContain("Report not found");
       expect(text).not.toContain("temporarily unavailable");
     });
 
@@ -286,14 +272,14 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
 
-      const h1s = findH1Nodes(mains[0]!);
+      const h1s = h1Texts(el);
       expect(h1s).toHaveLength(1);
+      expect(h1s[0]!).toContain("Citation readiness");
 
-      const text = renderToString(h1s[0]!);
-      expect(text).toContain("Service temporarily unavailable");
+      const fullText = renderToString(el);
+      expect(fullText).toContain("Service temporarily unavailable");
     });
 
     it("job lookup failure renders exactly one main with one h1 (Service unavailable)", async () => {
@@ -308,14 +294,14 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
 
-      const h1s = findH1Nodes(mains[0]!);
+      const h1s = h1Texts(el);
       expect(h1s).toHaveLength(1);
+      expect(h1s[0]!).toContain("Citation readiness");
 
-      const text = renderToString(h1s[0]!);
-      expect(text).toContain("Service temporarily unavailable");
+      const fullText = renderToString(el);
+      expect(fullText).toContain("Service temporarily unavailable");
     });
 
     it("queued status renders exactly one main with one descriptive h1", async () => {
@@ -334,11 +320,8 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
     });
 
     it("running status renders exactly one main with one descriptive h1", async () => {
@@ -357,11 +340,8 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
     });
 
     it("pending status renders exactly one main with one descriptive h1", async () => {
@@ -380,11 +360,8 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
     });
 
     it("completed status renders exactly one main with one descriptive h1", async () => {
@@ -404,11 +381,8 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
     });
 
     it("failed status renders exactly one main with one descriptive h1", async () => {
@@ -427,11 +401,8 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
     });
 
     it("timeout status renders exactly one main with one descriptive h1", async () => {
@@ -450,11 +421,8 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
     });
 
     it("permanent status renders exactly one main with one descriptive h1", async () => {
@@ -473,11 +441,8 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
     });
 
     it("permanent_failure status renders exactly one main with one descriptive h1", async () => {
@@ -496,11 +461,8 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
     });
 
     it("unknown persisted status renders exactly one main with one descriptive h1, no error boundary", async () => {
@@ -519,13 +481,13 @@ describe("GEO Result Page State Contract", () => {
         }),
       });
 
-      const mains = findMainNodes(el);
-      expect(mains).toHaveLength(1);
-
-      const h1s = findH1Nodes(mains[0]!);
-      expect(h1s).toHaveLength(1);
+      expect(countMainNodes(el)).toBe(1);
+      expect(h1Texts(el)).toHaveLength(1);
 
       const text = renderToString(el);
+
+      // The shared UnknownJobStatusView renders the explicit unavailable view
+      expect(text).toContain("We can&#x27;t find this report");
 
       // Must NOT contain raw Next.js error details
       expect(text).not.toContain("digest");
@@ -652,7 +614,7 @@ describe("GEO Result Page State Contract", () => {
       expect(text).not.toContain("https://example.com");
 
       // Must render explicit degraded/unavailable state
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
 
       // Must NOT contain raw Next.js error output
       expect(text).not.toContain("digest");
@@ -710,7 +672,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
       expect(text).not.toContain("75/100");
       expect(text).not.toContain("Audited URL:");
     });
@@ -769,7 +731,7 @@ describe("GEO Result Page State Contract", () => {
 
       const text = renderToString(el);
 
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
       expect(text).not.toMatch(/\b75\/100\b/);
       expect(text).not.toContain("Modül Skor Dağılımı");
       expect(text).not.toContain("Önerilen Servisler");
@@ -909,8 +871,7 @@ describe("GEO Result Page State Contract", () => {
         expect(text, tc.name).not.toContain("Error:");
 
         // Still has proper page structure
-        const mains = findMainNodes(el);
-        expect(mains, tc.name).toHaveLength(1);
+        expect(countMainNodes(el), tc.name).toBe(1);
       }
     });
   });
@@ -946,7 +907,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
       expect(text).not.toMatch(/\b\d+\/100\b/);
     });
 
@@ -975,7 +936,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
     });
 
     it("non-finite overallScore (-Infinity) renders degraded state", async () => {
@@ -1001,7 +962,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
     });
 
     it("non-finite module score renders degraded state", async () => {
@@ -1029,7 +990,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
       expect(text).not.toContain("75/100");
     });
 
@@ -1058,7 +1019,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
     });
 
     it("non-finite pointLoss in issue renders degraded state", async () => {
@@ -1091,7 +1052,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
     });
 
     it("unknown module status renders degraded state, no 'good' coercion", async () => {
@@ -1119,7 +1080,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
       expect(text).not.toContain("75/100");
     });
 
@@ -1153,7 +1114,7 @@ describe("GEO Result Page State Contract", () => {
       });
 
       const text = renderToString(el);
-      expect(text).toContain("Result temporarily unavailable");
+      expect(text).toContain("Report data is incomplete");
     });
 
     it("valid platformReadiness entries survive; malformed entries are silently dropped", async () => {
@@ -1464,6 +1425,9 @@ describe("GEO Result Page State Contract", () => {
 
       // Truthful score rendered
       expect(text).toContain("75/100");
+
+      // VerdictCard exposes the score to assistive tech
+      expect(text).toContain("Score: 75 out of 100");
 
       // Truthful target rendered
       expect(text).toContain("https://example.com");

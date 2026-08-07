@@ -7,16 +7,66 @@ import { CrewReportSection } from "../../../../../src/components/crew-report/cre
 import { MatchedServicesView } from "../../../../../src/components/geo-checker/matched-services-view";
 import { SerpPreview } from "../../../../../src/components/geo-checker/serp-preview";
 import { createGeoAuditRepository, type DbClient } from "@seovista/worker";
-import { parseCompletedPayload } from "../../../../../src/lib/geo-checker/payload-parser";
+import type { ScoreBreakdown } from "@seovista/geo-engine";
+import {
+  parseCompletedPayload,
+  type ParsedScoreBreakdown,
+} from "../../../../../src/lib/geo-checker/payload-parser";
 import {
   isAuditInFlightStatus,
   normalizeAuditStatusRecord,
 } from "../../../../../src/lib/geo-checker/audit-status";
+import {
+  ReportErrorPanel,
+  ResultShell,
+  UnknownJobStatusView,
+  VerdictCard,
+  type VerdictVariant,
+} from "../../../../../src/components/result-pages";
 
 export const dynamic = "force-dynamic";
 
 /** UUID v4/v7 format guard. Rejects malformed IDs before any repository query. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Shared editorial shell identity for every rendered state of this page. */
+const REPORT_SHELL = {
+  eyebrow: "Seovista / Lab report",
+  title: "Citation readiness",
+} as const;
+
+/**
+ * Map the engine's persisted band onto the editorial verdict variant.
+ * Bands are the closed ScoreBreakdown union: excellent | good |
+ * needs_improvement | poor | critical.
+ */
+function bandToVariant(band: ScoreBreakdown["band"]): VerdictVariant {
+  switch (band) {
+    case "excellent":
+    case "good":
+      return "pass";
+    case "needs_improvement":
+      return "warn";
+    case "poor":
+    case "critical":
+      return "fail";
+    default:
+      return "info";
+  }
+}
+
+/**
+ * Verdict summary from the persisted breakdown. The current engine payload
+ * carries no `helperText` field, so this reads it defensively and falls back
+ * to the editorial default rather than inventing a per-run claim.
+ */
+function breakdownSummary(breakdown: ParsedScoreBreakdown): string {
+  const helperText = (breakdown as ParsedScoreBreakdown & { helperText?: unknown })
+    .helperText;
+  return typeof helperText === "string" && helperText.length > 0
+    ? helperText
+    : "Overall readiness of the page for AI answer systems.";
+}
 
 export async function generateMetadata() {
   return {
@@ -32,16 +82,12 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // input never reaches PostgreSQL and renders the documented not-found state.
   if (!UUID_RE.test(jobId)) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Job not found
-          </h1>
-          <p className="text-slate-700">
-            The requested audit result could not be found. Please check the job identifier and try again.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Report not found"
+          body="The requested report could not be found. Check the job id and try again."
+        />
+      </ResultShell>
     );
   }
 
@@ -52,16 +98,12 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
     repo = createGeoAuditRepository(db);
   } catch {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Service temporarily unavailable
-          </h1>
-          <p className="text-slate-700">
-            The audit result service is currently unavailable. Please try again shortly.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Service temporarily unavailable"
+          body="The report service is temporarily unavailable. Please try again shortly."
+        />
+      </ResultShell>
     );
   }
 
@@ -70,16 +112,12 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
     row = await repo.getJobRecord(jobId);
   } catch {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Service temporarily unavailable
-          </h1>
-          <p className="text-slate-700">
-            The audit result service is currently unavailable. Please try again shortly.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Service temporarily unavailable"
+          body="The report service is temporarily unavailable. Please try again shortly."
+        />
+      </ResultShell>
     );
   }
 
@@ -87,16 +125,12 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // documented not-found state.
   if (!row) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Job not found
-          </h1>
-          <p className="text-slate-700">
-            The requested audit result could not be found. Please check the job identifier and try again.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Report not found"
+          body="The requested report could not be found. Check the job id and try again."
+        />
+      </ResultShell>
     );
   }
 
@@ -130,24 +164,29 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // -- In-flight states (queued / running / pending) --
   if (isAuditInFlightStatus(status)) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
-        <h1 className="text-3xl font-display font-semibold text-slate-900 text-center">
-          {status === "queued" ? "Audit in queue" : status === "running" ? "Audit running…" : "Audit pending"}
-        </h1>
+      <ResultShell
+        eyebrow={REPORT_SHELL.eyebrow}
+        title={REPORT_SHELL.title}
+        status="checking"
+        meta={{ jobId, queueName: "geo_readiness_audit", toolLabel: "Geo Readiness" }}
+      >
+        <p className="text-sm text-muted-ink">Generating your report…</p>
         <AuditPoller jobId={jobId} initialStatus={status} />
-      </main>
+      </ResultShell>
     );
   }
 
   // -- Terminal failed states --
   if (status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure") {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Durum: Başarısız</h1>
-          <p className="text-slate-700">Analiz işlemi başarısız oldu veya zaman aşımına uğradı. Lütfen daha sonra tekrar deneyin.</p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report failed"
+          body="The audit did not finish. Keep the job id below if you contact support."
+          correlationId={jobId}
+          retryHref="/tools/geo-readiness-checker/"
+        />
+      </ResultShell>
     );
   }
 
@@ -157,36 +196,22 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // and no raw Next.js error boundary. The page never implicitly returns
   // undefined for an unrecognised status.
   if (status === "unknown") {
-    return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Audit status unavailable
-          </h1>
-          <p className="text-slate-700">
-            The audit result status could not be determined. Please refresh the page or try again later.
-          </p>
-        </div>
-      </main>
-    );
+    return <UnknownJobStatusView />;
   }
 
   // -- Completed: degraded (no valid result payload) --
   if (status === "completed" && !breakdown) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Result temporarily unavailable
-          </h1>
-          <p className="text-slate-700">
-            The audit completed but the detailed result data is not currently available. Please try refreshing the page shortly.
-          </p>
-        </div>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report data is incomplete"
+          body="The audit finished, but the stored result is unreadable. Rerun the audit to regenerate it."
+          retryHref="/tools/geo-readiness-checker/"
+        />
         {!hasEmail && row.lead_id ? (
           <GatedReportForm leadId={row.lead_id} jobId={jobId} />
         ) : null}
-      </main>
+      </ResultShell>
     );
   }
 
@@ -198,16 +223,13 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // if every required signal were available.
   if (status === "completed" && breakdown?.degraded === true) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Result temporarily unavailable
-          </h1>
-          <p className="text-slate-700">
-            The audit completed with incomplete scoring data. A complete readiness result is not available yet.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report data is incomplete"
+          body="The audit finished, but the stored result is unreadable. Rerun the audit to regenerate it."
+          retryHref="/tools/geo-readiness-checker/"
+        />
+      </ResultShell>
     );
   }
 
@@ -216,51 +238,51 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
   // Narrow breakdown after the degraded early-return above.
   const safeBreakdown = breakdown!;
   return (
-    <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full">
-        <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">Geo Readiness Analiz Sonucu</h1>
-        <div className="my-8 bg-slate-50 p-4 rounded-lg text-center border border-slate-100">
-          <div className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Anlama</div>
-          <div className="text-2xl font-bold text-blue-600">
-            {`${safeBreakdown.overallScore}/100`}
-          </div>
-        </div>
-        
-        {!hasEmail && (
+    <ResultShell
+      eyebrow={REPORT_SHELL.eyebrow}
+      title={REPORT_SHELL.title}
+      status="completed"
+      meta={{ jobId, queueName: "geo_readiness_audit", toolLabel: "Geo Readiness" }}
+    >
+      <div className="flex flex-col gap-6">
+        <VerdictCard
+          variant={bandToVariant(safeBreakdown.band)}
+          title="Citation readiness"
+          summary={breakdownSummary(safeBreakdown)}
+          score={safeBreakdown.overallScore}
+          scoreLabel="Score"
+        />
+
+        {!hasEmail && row.lead_id ? (
           <GatedReportForm leadId={row.lead_id} jobId={jobId} />
-        )}
-      </div>
-      
-      {scoreBand && <CrewCtaView scoreBand={scoreBand} />}
-      
-      {targetUrl && (
-        <div className="max-w-2xl mx-auto w-full">
-          <p className="text-sm text-slate-500">
+        ) : null}
+
+        {scoreBand && <CrewCtaView scoreBand={scoreBand} />}
+
+        {targetUrl && (
+          <p className="text-sm text-muted-ink">
             Audited URL:{" "}
-            <span className="font-mono text-slate-700 break-all">{targetUrl}</span>
+            <span className="font-mono text-muted-ink break-all">{targetUrl}</span>
           </p>
-        </div>
-      )}
-      
-      {hasAnyPreview && (
-        <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
-          <h2 className="text-xl font-semibold text-slate-900">SERP &amp; AI Answer Previews</h2>
-          {serpPreview && (
-            <SerpPreview {...serpPreview} />
-          )}
-          {aiPreview && (
-            <SerpPreview {...aiPreview} />
-          )}
-        </div>
-      )}
+        )}
 
-      <ScoreBreakdownView breakdown={safeBreakdown} />
-      {matchedServices !== undefined && <MatchedServicesView services={matchedServices} />}
+        {hasAnyPreview && (
+          <div className="flex flex-col gap-4">
+            <h2 className="font-serif text-xl text-ink">SERP &amp; AI Answer Previews</h2>
+            {serpPreview && (
+              <SerpPreview {...serpPreview} />
+            )}
+            {aiPreview && (
+              <SerpPreview {...aiPreview} />
+            )}
+          </div>
+        )}
 
-      <div className="max-w-2xl mx-auto w-full">
+        <ScoreBreakdownView breakdown={safeBreakdown} />
+        {matchedServices !== undefined && <MatchedServicesView services={matchedServices} />}
+
         <CrewReportSection sourceJobId={jobId} tool="geo-readiness" />
       </div>
-    </main>
+    </ResultShell>
   );
 }
-

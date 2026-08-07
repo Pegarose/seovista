@@ -17,7 +17,7 @@ function PointLossBadge({ pointLoss }: { pointLoss: number }): ReactElement | nu
   const formatted = `${pointLoss}`.replace("-", "−");
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200"
+      className="inline-flex items-center gap-1 rounded-full bg-mineral px-2 py-0.5 text-xs font-semibold text-muted-ink border border-hairline"
       aria-label={`Puan kaybı: ${pointLoss} puan`}
     >
       <span aria-hidden="true">▼</span>
@@ -58,58 +58,58 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
     <>
     <section
       aria-labelledby="score-breakdown-heading"
-      className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm w-full max-w-4xl mx-auto"
+      className="bg-paper p-6 rounded-xl border border-hairline w-full max-w-4xl mx-auto"
     >
       <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4">
         <h2
           id="score-breakdown-heading"
-          className="text-xl font-semibold text-slate-900 font-display"
+          className="text-xl font-semibold text-ink font-serif"
         >
           Modül Skor Dağılımı
         </h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-ink">
           Genel skor:{" "}
-          <span className="font-semibold text-slate-900">
+          <span className="font-semibold text-ink">
             {breakdown.overallScore}/100
           </span>{" "}
           · Durum:{" "}
-          <span className="font-semibold text-slate-900">
+          <span className="font-semibold text-ink">
             {MODULE_STATUS_LABEL[breakdown.band]}
           </span>
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200">
+      <div className="overflow-x-auto rounded-lg border border-hairline">
         <table className="w-full text-sm border-collapse">
           <caption className="sr-only">
             Her bir GEO hazırlık modülünün adı, kazandığı puan, azami puan ve
             durum etiketi. Klavye ile satır satır gezilebilir.
           </caption>
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-mineral text-muted-ink">
             <tr>
-              <th scope="col" className="text-left font-medium px-4 py-2 border-b border-slate-200">
+              <th scope="col" className="text-left font-medium px-4 py-2 border-b border-hairline">
                 Modül
               </th>
-              <th scope="col" className="text-right font-medium px-4 py-2 border-b border-slate-200">
+              <th scope="col" className="text-right font-medium px-4 py-2 border-b border-hairline">
                 Skor
               </th>
-              <th scope="col" className="text-left font-medium px-4 py-2 border-b border-slate-200">
+              <th scope="col" className="text-left font-medium px-4 py-2 border-b border-hairline">
                 Durum
               </th>
             </tr>
           </thead>
           <tbody>
             {breakdown.modules.map((mod) => (
-              <tr key={mod.key} className="border-b border-slate-100 last:border-b-0">
-                <th scope="row" className="text-left font-medium text-slate-900 px-4 py-3 align-top">
+              <tr key={mod.key} className="border-b border-hairline last:border-b-0">
+                <th scope="row" className="text-left font-medium text-ink px-4 py-3 align-top">
                   {mod.name}
                 </th>
-                <td className="text-right font-semibold text-slate-900 px-4 py-3 align-top tabular-nums whitespace-nowrap">
+                <td className="text-right font-semibold text-ink px-4 py-3 align-top tabular-nums whitespace-nowrap">
                   <span aria-label={`${mod.name} modülü skoru: ${mod.score} / ${mod.maxScore}`}>
                     {mod.score}/{mod.maxScore}
                   </span>
                 </td>
-                <td className="text-left text-slate-700 px-4 py-3 align-top">
+                <td className="text-left text-muted-ink px-4 py-3 align-top">
                   {MODULE_STATUS_LABEL[mod.status]}
                 </td>
               </tr>
@@ -127,7 +127,7 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
           >
             <h3
               id={`issues-${mod.key}-heading`}
-              className="text-base font-semibold text-slate-900 mb-3"
+              className="text-base font-semibold text-ink mb-3"
             >
               {mod.name} — tespit edilen sorunlar
             </h3>
@@ -135,16 +135,16 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
               {mod.issues.map((issue) => (
                 <li
                   key={`${mod.key}-${issue.code}`}
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                  className="rounded-lg border border-hairline bg-mineral p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-slate-900">
-                        <code className="font-mono text-xs bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded">
+                      <p className="font-medium text-ink">
+                        <code className="font-mono text-xs bg-mineral text-muted-ink px-1.5 py-0.5 rounded">
                           {issue.code}
                         </code>
                       </p>
-                      <p className="text-slate-700 mt-1">
+                      <p className="text-muted-ink mt-1">
                         {ISSUE_TRANSLATIONS[issue.code] || issue.message}
                       </p>
                     </div>
@@ -158,12 +158,12 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
       )}
 
       <footer
-        className="mt-6 pt-4 border-t border-slate-200 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2"
+        className="mt-6 pt-4 border-t border-hairline text-xs text-muted-ink flex flex-wrap items-center justify-between gap-2"
         aria-label="Skor sürümü"
       >
         <span>
           Skor sürümü:{" "}
-          <span className="font-mono font-semibold text-slate-700">
+          <span className="font-mono font-semibold text-muted-ink">
             {breakdown.scoreVersion}
           </span>
         </span>

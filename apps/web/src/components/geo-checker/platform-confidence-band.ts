@@ -42,7 +42,7 @@ export function getConfidenceBand(
       level: "low",
       label: "Düşük — deneysel",
       icon: "⚠️",
-      tone: "bg-amber-50 text-amber-800 border-amber-200",
+      tone: "bg-mineral text-ember border-ember/30",
     };
   }
   if (confidence < 0.75) {
@@ -50,13 +50,13 @@ export function getConfidenceBand(
       level: "medium",
       label: "Orta — tahmini",
       icon: "◐",
-      tone: "bg-sky-50 text-sky-800 border-sky-200",
+      tone: "bg-mineral text-spectral border-spectral/30",
     };
   }
   return {
     level: "high",
     label: "Yüksek — güvenilir",
     icon: "✓",
-    tone: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    tone: "bg-mineral text-signal border-signal/30",
   };
 }
