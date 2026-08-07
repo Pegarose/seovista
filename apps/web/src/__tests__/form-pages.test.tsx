@@ -20,14 +20,34 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type ActionState } from "@/lib/geo-checker/actions";
+import { type SchemaActionState } from "@/lib/schema-checker/actions";
+import { type AiCrawlerActionState } from "@/lib/ai-crawler-checker/actions";
 import GeoReadinessCheckerPage from "../../app/tools/geo-readiness-checker/page";
+import SchemaCheckerPage from "../../app/tools/schema-checker/page";
+import AiCrawlerCheckerPage from "../../app/tools/ai-crawler-checker/page";
 
 const { mockStartGeoAuditAction } = vi.hoisted(() => ({
   mockStartGeoAuditAction: vi.fn<(prev: ActionState, formData: FormData) => Promise<ActionState>>(),
 }));
 
+const { mockStartSchemaAuditAction } = vi.hoisted(() => ({
+  mockStartSchemaAuditAction: vi.fn<(prev: SchemaActionState, formData: FormData) => Promise<SchemaActionState>>(),
+}));
+
+const { mockStartAiCrawlerAuditAction } = vi.hoisted(() => ({
+  mockStartAiCrawlerAuditAction: vi.fn<(prev: AiCrawlerActionState, formData: FormData) => Promise<AiCrawlerActionState>>(),
+}));
+
 vi.mock("@/lib/geo-checker/actions", () => ({
   startGeoAuditAction: mockStartGeoAuditAction,
+}));
+
+vi.mock("@/lib/schema-checker/actions", () => ({
+  startSchemaAuditAction: mockStartSchemaAuditAction,
+}));
+
+vi.mock("@/lib/ai-crawler-checker/actions", () => ({
+  startAiCrawlerAuditAction: mockStartAiCrawlerAuditAction,
 }));
 
 const RETIRED_TOKEN_RE = /slate-|gray-|indigo-|blue-|red-|green-|amber-|emerald-|sky-|rose-/;
@@ -178,6 +198,252 @@ describe("Form pages", () => {
       expect(settledButton!.hasAttribute("disabled")).toBe(false);
       expect(settledButton!.textContent).toContain("Start Free Audit");
       expect(settledButton!.textContent).not.toContain("Starting Audit...");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+  });
+
+  describe("schema-checker", () => {
+    const idleState: SchemaActionState = { status: "idle" };
+    const failureState: SchemaActionState = {
+      status: "error",
+      errors: {
+        form: ["Saatlik audit limitine (10) ulaştınız. Lütfen daha sonra tekrar deneyiniz."],
+      },
+    };
+
+    beforeEach(() => {
+      mockStartSchemaAuditAction.mockReset();
+      mockStartSchemaAuditAction.mockResolvedValue(idleState);
+    });
+
+    async function renderSchemaPage(): Promise<string> {
+      let page!: React.ReactElement;
+      await act(async () => {
+        page = <SchemaCheckerPage />;
+      });
+      await act(async () => {
+        root.render(page);
+      });
+      return container.innerHTML;
+    }
+
+    it("renders one main + one h1 with the url field and no retired tokens", async () => {
+      const markup = await renderSchemaPage();
+
+      expect(countTag(markup, "main")).toBe(1);
+      expect(countTag(markup, "h1")).toBe(1);
+      expect(markup).toContain(">Schema &amp; Yapısal Veri Denetleyicisi</h1>");
+      expect(markup).toContain("Seovista / Instruments");
+
+      expect(markup).toContain('id="url"');
+      expect(markup).toContain('for="url"');
+      const label = container.querySelector('label[for="url"]');
+      expect(label).not.toBeNull();
+      expect(label!.getAttribute("for")).toBe("url");
+      expect(container.querySelector("#url")).not.toBeNull();
+
+      // Idle submit button is enabled with the idle label.
+      expect(markup).toContain(">Schema Denetimini Başlat</button>");
+      const idleButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(idleButton).not.toBeNull();
+      expect(idleButton!.hasAttribute("disabled")).toBe(false);
+      expect(idleButton!.textContent).toContain("Schema Denetimini Başlat");
+      expect(idleButton!.textContent).not.toContain("Denetim Başlatılıyor...");
+
+      expect(markup).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("surfaces the form error note when the action returns the failure branch", async () => {
+      mockStartSchemaAuditAction.mockResolvedValue(failureState);
+      await renderSchemaPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartSchemaAuditAction).toHaveBeenCalledTimes(1);
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert).not.toBeNull();
+      expect(alert!.textContent).toContain("limitine");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("renders no error note on the success branch", async () => {
+      mockStartSchemaAuditAction.mockResolvedValue(idleState);
+      await renderSchemaPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartSchemaAuditAction).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      const button = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+      expect(button!.hasAttribute("disabled")).toBe(false);
+      expect(button!.textContent).toContain("Schema Denetimini Başlat");
+      expect(container.innerHTML).toContain(">Schema Denetimini Başlat</button>");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("disables the submit button while pending, then returns to idle on resolution", async () => {
+      let deferredResolve!: (state: SchemaActionState) => void;
+      const deferredPromise = new Promise<SchemaActionState>((resolve) => {
+        deferredResolve = resolve;
+      });
+      mockStartSchemaAuditAction.mockImplementationOnce(() => deferredPromise);
+
+      await renderSchemaPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartSchemaAuditAction).toHaveBeenCalledTimes(1);
+
+      const pendingButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(pendingButton).not.toBeNull();
+      expect(pendingButton!.hasAttribute("disabled")).toBe(true);
+      expect(pendingButton!.textContent).toContain("Denetim Başlatılıyor...");
+      expect(pendingButton!.textContent).not.toContain("Schema Denetimini Başlat");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+
+      await act(async () => {
+        deferredResolve(idleState);
+      });
+      await act(async () => {});
+
+      const settledButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(settledButton).not.toBeNull();
+      expect(settledButton!.hasAttribute("disabled")).toBe(false);
+      expect(settledButton!.textContent).toContain("Schema Denetimini Başlat");
+      expect(settledButton!.textContent).not.toContain("Denetim Başlatılıyor...");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+  });
+
+  describe("ai-crawler-checker", () => {
+    const idleState: AiCrawlerActionState = { status: "idle" };
+    const failureState: AiCrawlerActionState = {
+      status: "error",
+      errors: {
+        form: ["Saatlik audit limitine (10) ulaştınız. Lütfen daha sonra tekrar deneyiniz."],
+      },
+    };
+
+    beforeEach(() => {
+      mockStartAiCrawlerAuditAction.mockReset();
+      mockStartAiCrawlerAuditAction.mockResolvedValue(idleState);
+    });
+
+    async function renderAiCrawlerPage(): Promise<string> {
+      let page!: React.ReactElement;
+      await act(async () => {
+        page = <AiCrawlerCheckerPage />;
+      });
+      await act(async () => {
+        root.render(page);
+      });
+      return container.innerHTML;
+    }
+
+    it("renders one main + one h1 with the url field and no retired tokens", async () => {
+      const markup = await renderAiCrawlerPage();
+
+      expect(countTag(markup, "main")).toBe(1);
+      expect(countTag(markup, "h1")).toBe(1);
+      expect(markup).toContain(">AI Crawler Checker</h1>");
+      expect(markup).toContain("Seovista / Instruments");
+
+      expect(markup).toContain('id="url"');
+      expect(markup).toContain('for="url"');
+      const label = container.querySelector('label[for="url"]');
+      expect(label).not.toBeNull();
+      expect(label!.getAttribute("for")).toBe("url");
+      expect(container.querySelector("#url")).not.toBeNull();
+
+      // Idle submit button is enabled with the idle label.
+      expect(markup).toContain(">AI Crawler Denetimini Başlat</button>");
+      const idleButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(idleButton).not.toBeNull();
+      expect(idleButton!.hasAttribute("disabled")).toBe(false);
+      expect(idleButton!.textContent).toContain("AI Crawler Denetimini Başlat");
+      expect(idleButton!.textContent).not.toContain("Denetim Başlatılıyor...");
+
+      expect(markup).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("surfaces the form error note when the action returns the failure branch", async () => {
+      mockStartAiCrawlerAuditAction.mockResolvedValue(failureState);
+      await renderAiCrawlerPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartAiCrawlerAuditAction).toHaveBeenCalledTimes(1);
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert).not.toBeNull();
+      expect(alert!.textContent).toContain("limitine");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("renders no error note on the success branch", async () => {
+      mockStartAiCrawlerAuditAction.mockResolvedValue(idleState);
+      await renderAiCrawlerPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartAiCrawlerAuditAction).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      const button = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+      expect(button!.hasAttribute("disabled")).toBe(false);
+      expect(button!.textContent).toContain("AI Crawler Denetimini Başlat");
+      expect(container.innerHTML).toContain(">AI Crawler Denetimini Başlat</button>");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("disables the submit button while pending, then returns to idle on resolution", async () => {
+      let deferredResolve!: (state: AiCrawlerActionState) => void;
+      const deferredPromise = new Promise<AiCrawlerActionState>((resolve) => {
+        deferredResolve = resolve;
+      });
+      mockStartAiCrawlerAuditAction.mockImplementationOnce(() => deferredPromise);
+
+      await renderAiCrawlerPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartAiCrawlerAuditAction).toHaveBeenCalledTimes(1);
+
+      const pendingButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(pendingButton).not.toBeNull();
+      expect(pendingButton!.hasAttribute("disabled")).toBe(true);
+      expect(pendingButton!.textContent).toContain("Denetim Başlatılıyor...");
+      expect(pendingButton!.textContent).not.toContain("AI Crawler Denetimini Başlat");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+
+      await act(async () => {
+        deferredResolve(idleState);
+      });
+      await act(async () => {});
+
+      const settledButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(settledButton).not.toBeNull();
+      expect(settledButton!.hasAttribute("disabled")).toBe(false);
+      expect(settledButton!.textContent).toContain("AI Crawler Denetimini Başlat");
+      expect(settledButton!.textContent).not.toContain("Denetim Başlatılıyor...");
       expect(container.querySelector('[role="alert"]')).toBeNull();
       expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
     });
