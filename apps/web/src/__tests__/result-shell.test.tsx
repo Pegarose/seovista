@@ -18,6 +18,8 @@ import {
   StatusPill,
   AuditMetaStrip,
   ReportErrorPanel,
+  VerdictCard,
+  IssueLedger,
 } from "@/components/result-pages";
 
 // ---------------------------------------------------------------------------
@@ -177,5 +179,96 @@ describe("ReportErrorPanel", () => {
     );
 
     expect(markup).toContain("Re-run");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VerdictCard — variant pill, score block, design-token classes only
+// ---------------------------------------------------------------------------
+
+describe("VerdictCard", () => {
+  const variants: Array<[string, string, string]> = [
+    ["pass", "Pass", "text-signal"],
+    ["warn", "Warning", "text-ember"],
+    ["fail", "Fail", "text-ember"],
+    ["info", "Info", "text-spectral"],
+  ];
+
+  it.each(variants)("renders %s pill with %s label and %s token, no slate-", (variant, label, tokenClass) => {
+    const markup = renderToStaticMarkup(
+      <VerdictCard variant={variant as "pass"} title="Title" summary="Summary." />,
+    );
+
+    expect(markup).toContain(label);
+    expect(markup).toContain(tokenClass);
+    // No slate/gray/indigo utilities anywhere in the rendered output.
+    expect(markup).not.toMatch(/slate-|gray-|indigo-/);
+  });
+
+  it("renders the score with the expected aria-label when score is set", () => {
+    const markup = renderToStaticMarkup(
+      <VerdictCard
+        variant="pass"
+        title="Title"
+        summary="Summary."
+        score={85}
+      />,
+    );
+
+    expect(markup).toContain('aria-label="Score: 85 out of 100"');
+    expect(markup).toContain("/100");
+  });
+
+  it("renders no score block when score is omitted", () => {
+    const markup = renderToStaticMarkup(
+      <VerdictCard variant="info" title="Title" summary="Summary." />,
+    );
+
+    expect(markup).not.toContain("out of 100");
+    expect(markup).not.toContain("/100");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// IssueLedger — heading, severity tone, source link, empty state
+// ---------------------------------------------------------------------------
+
+describe("IssueLedger", () => {
+  it("renders the heading, a severity-toned index, and the source href", () => {
+    const items: Array<{
+      id: string;
+      severity: "pass" | "warn" | "fail" | "info";
+      title: string;
+      detail: string;
+      source?: { label: string; url: string };
+    }> = [
+      { id: "a", severity: "fail", title: "Missing alt text", detail: "Three images lack alt." },
+      {
+        id: "b",
+        severity: "pass",
+        title: "Canonical present",
+        detail: "Canonical URL is set.",
+        source: { label: "example.com", url: "https://example.com/" },
+      },
+      { id: "c", severity: "info", title: "Duplicate meta", detail: "Two meta descriptions." },
+    ];
+
+    const markup = renderToStaticMarkup(
+      <IssueLedger heading="Evidence ledger" items={items} />,
+    );
+
+    expect(markup).toContain("<h2");
+    expect(markup).toContain("Evidence ledger");
+    expect(markup).toContain("text-ember"); // severity tone on a fail row index
+    expect(markup).toContain('href="https://example.com/"');
+    expect(markup).toContain("example.com");
+  });
+
+  it("renders the empty-state text when items is empty", () => {
+    const markup = renderToStaticMarkup(
+      <IssueLedger heading="Evidence ledger" items={[]} />,
+    );
+
+    expect(markup).toContain("No issues found.");
   });
 });

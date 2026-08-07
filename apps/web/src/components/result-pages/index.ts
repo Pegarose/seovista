@@ -16,3 +16,9 @@ export type { AuditMetaStripProps } from "./audit-meta-strip";
 
 export { ReportErrorPanel } from "./report-error-panel";
 export type { ReportErrorPanelProps } from "./report-error-panel";
+
+export { VerdictCard } from "./verdict-card";
+export type { VerdictCardProps, VerdictVariant } from "./verdict-card";
+
+export { IssueLedger } from "./issue-ledger";
+export type { IssueLedgerItem, IssueLedgerProps } from "./issue-ledger";
