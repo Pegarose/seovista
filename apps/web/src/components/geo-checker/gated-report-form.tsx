@@ -19,10 +19,10 @@ export function GatedReportForm({ leadId, jobId }: { leadId: string; jobId: stri
   );
 
   return (
-    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-8 max-w-2xl mx-auto my-8 mt-12">
+    <div className="bg-mineral border border-hairline rounded-xl p-8 max-w-2xl mx-auto my-8 mt-12">
       <div className="text-center mb-6">
-        <h3 className="text-2xl font-bold text-indigo-900 mb-2">Unlock Full Detailed Report</h3>
-        <p className="text-indigo-700">
+        <h3 className="text-2xl font-bold text-ink mb-2">Unlock Full Detailed Report</h3>
+        <p className="text-muted-ink">
           Enter your email to uncover our full keyword mapping, AI response scores, and actionable recommendations.
         </p>
       </div>
@@ -32,7 +32,7 @@ export function GatedReportForm({ leadId, jobId }: { leadId: string; jobId: stri
         <input type="hidden" name="jobId" value={jobId} />
         
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-indigo-900 mb-1">
+          <label htmlFor="email" className="block text-sm font-medium text-ink mb-1">
             Work Email
           </label>
           <input
@@ -40,7 +40,7 @@ export function GatedReportForm({ leadId, jobId }: { leadId: string; jobId: stri
             id="email"
             name="email"
             required
-            className="w-full px-4 py-3 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
+            className="w-full rounded-lg border border-hairline bg-paper px-4 py-3 text-ink placeholder:text-muted-ink/60 focus:border-spectral focus:outline-none focus:ring-2 focus:ring-spectral/20 transition-colors"
             placeholder="you@company.com"
           />
         </div>
@@ -51,15 +51,15 @@ export function GatedReportForm({ leadId, jobId }: { leadId: string; jobId: stri
             id="consent" 
             name="consent" 
             value="true"
-            className="mt-1 h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+            className="mt-1 h-4 w-4 text-spectral rounded border-hairline focus:ring-spectral"
           />
-          <label htmlFor="consent" className="text-sm text-indigo-800">
+          <label htmlFor="consent" className="text-sm text-ink">
             I agree to receive occasional updates about AI search strategies and SeoVista product news.
           </label>
         </div>
 
         {state?.error && (
-          <div className="text-red-600 text-sm p-3 bg-red-50 rounded-lg">
+          <div className="text-ember text-sm p-3 bg-mineral rounded-lg">
             {state.error}
           </div>
         )}
@@ -67,11 +67,11 @@ export function GatedReportForm({ leadId, jobId }: { leadId: string; jobId: stri
         <button
           type="submit"
           disabled={pending}
-          className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full mt-4 bg-ink text-paper font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 hover:bg-mineral"
         >
           {pending ? (
             <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-paper/40 border-t-paper rounded-full animate-spin"></div>
               Unlocking...
             </>
           ) : (
