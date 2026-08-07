@@ -8,26 +8,26 @@ export interface SchemaScoreOverviewProps {
   prohibitedClaimCount: number;
 }
 
-const BAND_PRESENTATION: Record<SchemaScoreBand, { statusText: string; statusBg: string }> = {
+const BAND_PRESENTATION: Record<SchemaScoreBand, { statusText: string; statusClass: string }> = {
   excellent: {
-    statusText: "Mükemmel",
-    statusBg: "bg-green-50 text-green-700 border-green-200",
+    statusText: "Excellent",
+    statusClass: "text-signal border-signal/40",
   },
   good: {
-    statusText: "İyi",
-    statusBg: "bg-green-50 text-green-700 border-green-200",
+    statusText: "Good",
+    statusClass: "text-signal border-signal/40",
   },
   needs_improvement: {
-    statusText: "İyileştirilebilir",
-    statusBg: "bg-amber-50 text-amber-700 border-amber-200",
+    statusText: "Needs improvement",
+    statusClass: "text-ember border-ember/40",
   },
   poor: {
-    statusText: "Zayıf",
-    statusBg: "bg-red-50 text-red-700 border-red-200",
+    statusText: "Poor",
+    statusClass: "text-ember border-ember/40 bg-mineral/60",
   },
   critical: {
-    statusText: "Kritik / Hatalı",
-    statusBg: "bg-red-50 text-red-700 border-red-200",
+    statusText: "Critical / Faulty",
+    statusClass: "text-ember border-ember/40 bg-mineral/60",
   },
 };
 
@@ -39,23 +39,23 @@ export function SchemaScoreOverview({
 }: SchemaScoreOverviewProps) {
   // Thresholds come from the shared score-band helper so this component and
   // the result page's Crew CTA band can never drift apart.
-  const { statusText, statusBg } = BAND_PRESENTATION[getSchemaScoreBand(score)];
+  const { statusText, statusClass } = BAND_PRESENTATION[getSchemaScoreBand(score)];
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-slate-100">
+    <div className="bg-card p-6 rounded-xl border border-hairline space-y-6">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-hairline">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Yapısal Veri Skoru</h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <h2 className="text-xl font-bold text-ink">Structured data score</h2>
+          <p className="text-sm text-muted-ink mt-1">
             Sayfanızdaki Schema.org verilerinin kalite ve uyumluluk özeti.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-4xl font-extrabold text-slate-900" aria-label={`Skor: ${score}`}>
+          <div className="text-4xl font-extrabold text-ink" aria-label={`Skor: ${score}`}>
             {score}
           </div>
           <span
-            className={`px-3 py-1 text-xs font-semibold rounded-full border ${statusBg}`}
+            className={`px-3 py-1 text-xs font-semibold rounded-full border ${statusClass}`}
             role="status"
           >
             {statusText}
@@ -64,35 +64,35 @@ export function SchemaScoreOverview({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-center">
-          <div className="text-2xl font-bold text-slate-900">{rawScriptCount}</div>
-          <div className="text-xs text-slate-500 mt-1 font-medium">
+        <div className="bg-paper p-4 rounded-lg border border-hairline text-center">
+          <div className="text-2xl font-bold text-ink">{rawScriptCount}</div>
+          <div className="text-xs text-muted-ink mt-1 font-medium">
             Tespit Edilen Schema Script
           </div>
         </div>
 
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-center">
+        <div className="bg-paper p-4 rounded-lg border border-hairline text-center">
           <div
             className={`text-2xl font-bold ${
-              parseErrorCount > 0 ? "text-red-600" : "text-slate-900"
+              parseErrorCount > 0 ? "text-ember" : "text-ink"
             }`}
           >
             {parseErrorCount}
           </div>
-          <div className="text-xs text-slate-500 mt-1 font-medium">
+          <div className="text-xs text-muted-ink mt-1 font-medium">
             Ayrıştırma Hatası
           </div>
         </div>
 
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-center">
+        <div className="bg-paper p-4 rounded-lg border border-hairline text-center">
           <div
             className={`text-2xl font-bold ${
-              prohibitedClaimCount > 0 ? "text-amber-600" : "text-slate-900"
+              prohibitedClaimCount > 0 ? "text-ember" : "text-ink"
             }`}
           >
             {prohibitedClaimCount}
           </div>
-          <div className="text-xs text-slate-500 mt-1 font-medium">
+          <div className="text-xs text-muted-ink mt-1 font-medium">
             Yasaklı/Hileli İddia
           </div>
         </div>

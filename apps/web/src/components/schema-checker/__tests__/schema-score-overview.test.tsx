@@ -15,8 +15,8 @@ describe("SchemaScoreOverview", () => {
     );
 
     expect(html).toContain("95");
-    expect(html).toContain("Yapısal Veri Skoru");
-    expect(html).toContain("Mükemmel");
+    expect(html).toContain("Structured data score");
+    expect(html).toContain("Excellent");
     expect(html).toContain("2");
     expect(html).toContain("Tespit Edilen Schema Script");
     expect(html).toContain("Ayrıştırma Hatası");
@@ -34,7 +34,7 @@ describe("SchemaScoreOverview", () => {
     );
 
     expect(html).toContain("85");
-    expect(html).toContain("İyi");
+    expect(html).toContain("Good");
   });
 
   it("renders warning status for the needs-improvement band", () => {
@@ -48,7 +48,7 @@ describe("SchemaScoreOverview", () => {
     );
 
     expect(html).toContain("60");
-    expect(html).toContain("İyileştirilebilir");
+    expect(html).toContain("Needs improvement");
   });
 
   it("renders danger status for the poor band", () => {
@@ -62,7 +62,7 @@ describe("SchemaScoreOverview", () => {
     );
 
     expect(html).toContain("45");
-    expect(html).toContain("Zayıf");
+    expect(html).toContain("Poor");
   });
 
   it("renders danger status for the critical band", () => {
@@ -76,6 +76,6 @@ describe("SchemaScoreOverview", () => {
     );
 
     expect(html).toContain("30");
-    expect(html).toContain("Kritik / Hatalı");
+    expect(html).toContain("Critical / Faulty");
   });
 });
