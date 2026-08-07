@@ -10,9 +10,10 @@ interface MatchedServicesViewProps {
  *
  * Requirements:
  * - Renders matchedServices in the SAME persisted order.
- * - Shows service name and description.
+ * - Shows service name and description (`service.name` / `service.description`
+ *   are payload data and render verbatim).
  * - Graceful empty-state when array is empty.
- * - All text is Turkish.
+ * - All copy is English.
  */
 export function MatchedServicesView({ services }: MatchedServicesViewProps): ReactElement | null {
   if (!services || services.length === 0) {
@@ -25,10 +26,10 @@ export function MatchedServicesView({ services }: MatchedServicesViewProps): Rea
           id="matched-services-heading"
           className="text-xl font-semibold text-ink font-serif mb-1"
         >
-          Önerilen Servisler
+          Recommended services
         </h2>
         <p className="text-sm text-muted-ink">
-          Bu analiz sonucunda öncelikli bir servis eşleşmesi bulunamadı.
+          No priority service match was found for this audit.
         </p>
       </section>
     );
@@ -43,7 +44,7 @@ export function MatchedServicesView({ services }: MatchedServicesViewProps): Rea
         id="matched-services-heading"
         className="text-xl font-semibold text-ink font-serif mb-4"
       >
-        Önerilen Servisler
+        Recommended services
       </h2>
       <ul className="space-y-4">
         {services.map((service) => (

@@ -17,15 +17,15 @@ export function TrackThisButton({ keyword, domain }: { keyword: string; domain: 
 
   if (state.status === "success" && state.token) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 p-4" role="status">
-        <p className="text-sm font-semibold text-green-800 mb-2">
-          Takibe alındı! Günlük olarak kontrol edilecek.
+      <div className="rounded-lg border border-signal/40 bg-mineral p-4" role="status">
+        <p className="text-sm font-semibold text-signal mb-2">
+          Tracking added. This keyword will be checked daily.
         </p>
         <a
           href={`/tracker/${state.token}`}
-          className="text-sm font-semibold text-green-700 underline hover:text-green-800"
+          className="text-sm font-semibold text-signal underline hover:text-signal/80"
         >
-          Takip panelinize gidin →
+          Go to your tracking dashboard →
         </a>
       </div>
     );
@@ -36,62 +36,62 @@ export function TrackThisButton({ keyword, domain }: { keyword: string; domain: 
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 font-semibold text-slate-900 hover:bg-slate-50 transition-colors"
+        className="w-full rounded-lg border border-hairline bg-paper px-4 py-2.5 font-semibold text-ink hover:bg-mineral transition-colors"
       >
-        Bu Anahtarı Takip Et
+        Track this keyword
       </button>
     );
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
-      <p className="text-sm font-semibold text-slate-900">
-        Bu anahtarı günlük takibe alın
+    <div className="space-y-3 rounded-lg border border-hairline bg-paper p-4">
+      <p className="text-sm font-semibold text-ink">
+        Track this keyword daily
       </p>
-      <p className="text-xs text-slate-600">
-        Anahtar kelime: <span className="font-medium">{keyword}</span> · Alan adı:{" "}
+      <p className="text-xs text-muted-ink">
+        Keyword: <span className="font-medium text-ink">{keyword}</span> · Domain:{" "}
         <span className="font-mono">{domain}</span>
       </p>
       <form action={formAction} className="space-y-3">
         <input type="hidden" name="keyword" value={keyword} />
         <input type="hidden" name="domain" value={domain} />
         <div>
-          <label htmlFor="track-email" className="block text-sm font-medium text-slate-700 mb-1">
-            E-posta
+          <label htmlFor="track-email" className="block text-sm font-medium text-muted-ink mb-1">
+            Email
           </label>
           <input
             id="track-email"
             name="email"
             type="email"
             required
-            placeholder="ornek@email.com"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none"
+            placeholder="you@example.com"
+            className="w-full rounded-lg border border-hairline px-3 py-2 text-ink focus:border-spectral focus:outline-none"
           />
           {state.errors?.email && (
-            <p className="mt-1 text-sm text-red-600" role="alert">{state.errors.email[0]}</p>
+            <p className="mt-1 text-sm text-ember" role="alert">{state.errors.email[0]}</p>
           )}
         </div>
         {state.errors?.form && (
-          <p className="text-sm text-red-600" role="alert">{state.errors.form[0]}</p>
+          <p className="text-sm text-ember" role="alert">{state.errors.form[0]}</p>
         )}
         <div>
-          <label className="flex items-start gap-2 text-sm text-slate-700">
+          <label className="flex items-start gap-2 text-sm text-muted-ink">
             <input
               type="checkbox"
               name="consent"
-              className="mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+              className="mt-0.5 rounded border-hairline text-spectral focus:ring-spectral"
             />
             <span>
-              Pozisyon değişikliklerinde e-posta ile bilgilendirilmek istiyorum. (İsteğe bağlı)
+              Email me when this keyword changes position. (Optional)
             </span>
           </label>
         </div>
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          className="w-full rounded-lg bg-ink px-4 py-2 font-semibold text-paper hover:bg-mineral disabled:opacity-50 transition-colors"
         >
-          {isPending ? "Ekleniyor..." : "Takibe Başla"}
+          {isPending ? "Adding..." : "Start tracking"}
         </button>
       </form>
     </div>

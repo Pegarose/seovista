@@ -7,7 +7,11 @@ import { CrewReportSection } from "../../../../../src/components/crew-report/cre
 import { MatchedServicesView } from "../../../../../src/components/geo-checker/matched-services-view";
 import { SerpPreview } from "../../../../../src/components/geo-checker/serp-preview";
 import { createGeoAuditRepository, type DbClient } from "@seovista/worker";
-import type { ScoreBreakdown } from "@seovista/geo-engine";
+import type {
+  ScoreBreakdown,
+  ScoreBreakdownIssue,
+  ScoreBreakdownModule,
+} from "@seovista/geo-engine";
 import {
   parseCompletedPayload,
   type ParsedScoreBreakdown,
@@ -17,10 +21,12 @@ import {
   normalizeAuditStatusRecord,
 } from "../../../../../src/lib/geo-checker/audit-status";
 import {
+  IssueLedger,
   ReportErrorPanel,
   ResultShell,
   UnknownJobStatusView,
   VerdictCard,
+  type IssueLedgerItem,
   type VerdictVariant,
 } from "../../../../../src/components/result-pages";
 
@@ -65,7 +71,85 @@ function breakdownSummary(breakdown: ParsedScoreBreakdown): string {
     .helperText;
   return typeof helperText === "string" && helperText.length > 0
     ? helperText
-    : "Overall readiness of the page for AI answer systems.";
+    : "How large language models describe your pages, and where citations drop off.";
+}
+
+/**
+ * Evidence ledger rows for the geo readiness payload — the spec's "ranked
+ * citation gaps". Preferred source is the per-platform AI readiness
+ * projection sorted by `score` ascending (worst first): each row is the
+ * platform name, a severity derived from its score band (experimental
+ * estimates never pass), and a detail carrying the rationale plus the
+ * confidence percentage. When the projection is missing or empty, the
+ * fallback enumerates every module issue sorted by `pointLoss` ascending
+ * (most negative first). No claim is invented — each row only describes
+ * the persisted breakdown values.
+ */
+function buildGeoLedgerItems(breakdown: ParsedScoreBreakdown): IssueLedgerItem[] {
+  const platforms = breakdown.platformReadiness;
+
+  if (platforms && platforms.length > 0) {
+    return [...platforms]
+      .sort((a, b) => a.score - b.score)
+      .map((p) => {
+        let severity: VerdictVariant;
+        if (p.experimental) {
+          severity = "warn";
+        } else if (p.score >= 80) {
+          severity = "pass";
+        } else if (p.score >= 60) {
+          severity = "warn";
+        } else {
+          severity = "fail";
+        }
+        const detailParts: string[] = [];
+        if (p.rationale) detailParts.push(p.rationale);
+        detailParts.push(`Confidence: ${Math.round(p.confidence * 100)}%`);
+        if (p.experimental) detailParts.push("Experimental estimate");
+        return {
+          id: `platform-${p.platform}`,
+          severity,
+          title: p.platform,
+          detail: detailParts.join(" "),
+        };
+      });
+  }
+
+  const issueEntries: Array<{ mod: ScoreBreakdownModule; issue: ScoreBreakdownIssue }> =
+    [];
+  for (const mod of breakdown.modules) {
+    for (const issue of mod.issues) {
+      issueEntries.push({ mod, issue });
+    }
+  }
+  issueEntries.sort((a, b) => a.issue.pointLoss - b.issue.pointLoss);
+
+  return issueEntries.map(({ mod, issue }) => {
+    // The engine's Severity union (critical/high/medium/low/info/experimental)
+    // drives the row tone: critical/high -> fail, medium/low/experimental ->
+    // warn, info -> info. The string comparison stays future-proof if the
+    // union ever grows error/warning members.
+    const severity = issue.severity as string;
+    const mappedSeverity =
+      severity === "critical" || severity === "high" || severity === "error"
+        ? "fail"
+        : severity === "medium" ||
+            severity === "low" ||
+            severity === "warning" ||
+            severity === "experimental"
+          ? "warn"
+          : "info";
+    return {
+      id: `${mod.key}-${issue.code}`,
+      severity: mappedSeverity,
+      title: issue.message,
+      detail: `${mod.name} · ${
+        issue.pointLoss < 0
+          ? "−" + Math.abs(issue.pointLoss) + " pts"
+          : "No point loss"
+      }`,
+    };
+  });
 }
 
 export async function generateMetadata() {
@@ -168,9 +252,16 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
         eyebrow={REPORT_SHELL.eyebrow}
         title={REPORT_SHELL.title}
         status="checking"
-        meta={{ jobId, queueName: "geo_readiness_audit", toolLabel: "Geo Readiness" }}
+        meta={{
+          jobId,
+          queueName: "geo_readiness_audit",
+          toolLabel: "Geo Readiness",
+          submittedAt: row.submitted_at,
+        }}
       >
-        <p className="text-sm text-muted-ink">Generating your report…</p>
+        <p className="text-sm text-muted-ink">
+          The audit is running. This page refreshes automatically.
+        </p>
         <AuditPoller jobId={jobId} initialStatus={status} />
       </ResultShell>
     );
@@ -182,7 +273,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
       <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
         <ReportErrorPanel
           title="Report failed"
-          body="The audit did not finish. Keep the job id below if you contact support."
+          body="We could not finish this audit. Keep the reference id below when you ask for help."
           correlationId={jobId}
           retryHref="/tools/geo-readiness-checker/"
         />
@@ -226,7 +317,7 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
       <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
         <ReportErrorPanel
           title="Report data is incomplete"
-          body="The audit finished, but the stored result is unreadable. Rerun the audit to regenerate it."
+          body="The audit finished, but one or more scoring modules failed. Rerun the audit to regenerate it."
           retryHref="/tools/geo-readiness-checker/"
         />
       </ResultShell>
@@ -242,7 +333,12 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
       eyebrow={REPORT_SHELL.eyebrow}
       title={REPORT_SHELL.title}
       status="completed"
-      meta={{ jobId, queueName: "geo_readiness_audit", toolLabel: "Geo Readiness" }}
+      meta={{
+        jobId,
+        queueName: "geo_readiness_audit",
+        toolLabel: "Geo Readiness",
+        submittedAt: row.submitted_at,
+      }}
     >
       <div className="flex flex-col gap-6">
         <VerdictCard
@@ -251,6 +347,12 @@ export default async function JobResultPage({ params }: { params: Promise<{ jobI
           summary={breakdownSummary(safeBreakdown)}
           score={safeBreakdown.overallScore}
           scoreLabel="Score"
+        />
+
+        <IssueLedger
+          heading="Evidence ledger"
+          items={buildGeoLedgerItems(safeBreakdown)}
+          emptyLabel="No issues found."
         />
 
         {!hasEmail && row.lead_id ? (

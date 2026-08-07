@@ -3,7 +3,7 @@ import { CODE_TO_TAGS } from "@seovista/geo-engine";
 import { ISSUE_TRANSLATIONS, MODULE_STATUS_LABEL } from "../issue-translations";
 
 describe("ISSUE_TRANSLATIONS parity with geo-engine", () => {
-  it("every CODE_TO_TAGS key has a non-empty Turkish translation", () => {
+  it("every CODE_TO_TAGS key has a non-empty English translation", () => {
     const engineCodes = Object.keys(CODE_TO_TAGS);
     const dictCodes = Object.keys(ISSUE_TRANSLATIONS);
     const missing = engineCodes.filter((code) => !dictCodes.includes(code));
@@ -19,7 +19,7 @@ describe("ISSUE_TRANSLATIONS parity with geo-engine", () => {
 });
 
 describe("MODULE_STATUS_LABEL", () => {
-  it("covers all status bands with non-empty Turkish labels", () => {
+  it("covers all status bands with non-empty English labels", () => {
     const bands = ["excellent", "good", "needs_improvement", "poor", "critical"] as const;
     for (const band of bands) {
       expect(MODULE_STATUS_LABEL[band].trim().length).toBeGreaterThan(0);

@@ -533,6 +533,7 @@ describe("Schema Result Page State Contract", () => {
         target: "https://example.com",
         status: "queued",
         result_payload: null,
+        submitted_at: "2026-08-01T00:00:00.000Z",
       });
 
       const el = await SchemaJobResultPage({
@@ -552,6 +553,10 @@ describe("Schema Result Page State Contract", () => {
       expect(text).toContain("schema_audit");
       expect(text).toContain("Schema Checker");
 
+      // Submitted timestamp flows from job_records.created_at
+      expect(text).toContain("Submitted");
+      expect(text).toContain("2026-08-01T00:00:00.000Z");
+
       // AuditPoller renders its queued label
       expect(text).toContain("Audit in queue");
     });
@@ -568,6 +573,7 @@ describe("Schema Result Page State Contract", () => {
         target: "https://example.com",
         status: "completed",
         result_payload: buildSchemaPayload(),
+        submitted_at: "2026-08-01T00:00:00.000Z",
       });
 
       const el = await SchemaJobResultPage({
@@ -587,6 +593,9 @@ describe("Schema Result Page State Contract", () => {
 
       // Truthful score rendered + VerdictCard exposes it to assistive tech
       expect(text).toContain("Score: 80 out of 100");
+
+      // Submitted timestamp flows from job_records.created_at in completed too
+      expect(text).toContain("2026-08-01T00:00:00.000Z");
 
       // Evidence ledger projects every metric the payload carries
       expect(text).toContain("Evidence ledger");

@@ -322,6 +322,11 @@ describe("GEO Result Page State Contract", () => {
 
       expect(countMainNodes(el)).toBe(1);
       expect(h1Texts(el)).toHaveLength(1);
+
+      // In-flight helper copy from the editorial lab spec.
+      expect(renderToString(el)).toContain(
+        "The audit is running. This page refreshes automatically."
+      );
     });
 
     it("running status renders exactly one main with one descriptive h1", async () => {
@@ -403,6 +408,13 @@ describe("GEO Result Page State Contract", () => {
 
       expect(countMainNodes(el)).toBe(1);
       expect(h1Texts(el)).toHaveLength(1);
+
+      // The terminal-failure panel uses the spec failed-body copy.
+      const text = renderToString(el);
+      expect(text).toContain("Report failed");
+      expect(text).toContain(
+        "We could not finish this audit. Keep the reference id below when you ask for help."
+      );
     });
 
     it("timeout status renders exactly one main with one descriptive h1", async () => {
@@ -497,7 +509,7 @@ describe("GEO Result Page State Contract", () => {
       expect(text).not.toMatch(/\b\d+\/100\b/);
       expect(text).not.toContain("SERP Preview");
       expect(text).not.toContain("AI Overview");
-      expect(text).not.toContain("Modül Skor");
+      expect(text).not.toContain("Module score");
       expect(text).not.toContain("Erişim");
       expect(text).not.toContain("Başarılı");
     });
@@ -701,8 +713,8 @@ describe("GEO Result Page State Contract", () => {
         });
 
         const text = renderToString(el);
-        expect(text).not.toContain("Önerilen Servisler");
-        expect(text).not.toContain("öncelikli bir servis eşleşmesi bulunamadı");
+        expect(text).not.toContain("Recommended services");
+        expect(text).not.toContain("No priority service match was found for this audit.");
       }
     });
 
@@ -732,11 +744,14 @@ describe("GEO Result Page State Contract", () => {
       const text = renderToString(el);
 
       expect(text).toContain("Report data is incomplete");
+      expect(text).toContain(
+        "The audit finished, but one or more scoring modules failed. Rerun the audit to regenerate it."
+      );
       expect(text).not.toMatch(/\b75\/100\b/);
-      expect(text).not.toContain("Modül Skor Dağılımı");
-      expect(text).not.toContain("Önerilen Servisler");
+      expect(text).not.toContain("Module score breakdown");
+      expect(text).not.toContain("Recommended services");
       expect(text).not.toContain("https://example.com");
-      expect(text).not.toContain("Performansınızı Artırın");
+      expect(text).not.toContain("Need a hand with the next step?");
       expect(text).not.toContain("SERP & AI Answer Previews");
     });
 
@@ -762,8 +777,8 @@ describe("GEO Result Page State Contract", () => {
       expect(text).not.toMatch(/\b\d+\/100\b/);
       expect(text).not.toContain("SERP Preview");
       expect(text).not.toContain("AI Overview");
-      expect(text).not.toContain("Modül Skor");
-      expect(text).not.toContain("Önerilen Servisler");
+      expect(text).not.toContain("Module score");
+      expect(text).not.toContain("Recommended services");
     });
 
     it("timeout status does not expose result data", async () => {
@@ -1453,8 +1468,142 @@ describe("GEO Result Page State Contract", () => {
 
       // Verify ScoreBreakdownView is rendered (has the breakdown)
       const text = renderToString(el);
-      expect(text).toContain("Modül Skor Dağılımı");
+      expect(text).toContain("Module score breakdown");
       expect(text).toContain("75/100");
+    });
+
+    it("completed-valid renders the Evidence ledger with the worst platform first", async () => {
+      const validPayload = buildValidPayload();
+      const repo = makeMockRepo({
+        getJobRecord: {
+          status: "completed",
+          lead_id: "lead-1",
+          work_email: null,
+          submitted_at: "2026-08-01T00:00:00.000Z",
+        },
+        getJobResultPayload: {
+          ...validPayload,
+          breakdown: {
+            ...(validPayload.breakdown as Record<string, unknown>),
+            platformReadiness: [
+              { platform: "google", score: 80, confidence: 0.9, rationale: "Strong SERP presence", experimental: false },
+              { platform: "chatgpt", score: 45, confidence: 0.5, rationale: "Heuristic estimate", experimental: true },
+            ],
+          },
+        },
+      });
+      mockCreateGeoAuditRepository.mockReturnValue(repo);
+
+      const el = await JobResultPage({
+        params: Promise.resolve({
+          jobId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        }),
+      });
+
+      const text = renderToString(el);
+
+      // Evidence ledger heading is rendered after the verdict.
+      expect(text).toContain("Evidence ledger");
+
+      // Platform rows are ranked worst-first: chatgpt (score 45) precedes
+      // google (score 80) in the ledger.
+      expect(text.indexOf("chatgpt")).toBeGreaterThan(-1);
+      expect(text.indexOf("google")).toBeGreaterThan(-1);
+      expect(text.indexOf("chatgpt")).toBeLessThan(text.indexOf("google"));
+
+      // Experimental estimates force the warn severity; the detail carries
+      // the rationale, confidence and the experimental note.
+      expect(text).toContain("Confidence: 50%");
+      expect(text).toContain("Experimental estimate");
+
+      // The submitted timestamp now flows from job_records.created_at.
+      expect(text).toContain("2026-08-01T00:00:00.000Z");
+    });
+
+    it("completed-valid falls back to module issues when platformReadiness is absent", async () => {
+      const validPayload = buildValidPayload();
+      const repo = makeMockRepo({
+        getJobRecord: {
+          status: "completed",
+          lead_id: "lead-1",
+          work_email: null,
+        },
+        getJobResultPayload: {
+          ...validPayload,
+          breakdown: {
+            ...(validPayload.breakdown as Record<string, unknown>),
+            platformReadiness: [],
+          },
+        },
+      });
+      mockCreateGeoAuditRepository.mockReturnValue(repo);
+
+      const el = await JobResultPage({
+        params: Promise.resolve({
+          jobId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        }),
+      });
+
+      const text = renderToString(el);
+
+      // Fallback ledger rows come from the module issues.
+      expect(text).toContain("Evidence ledger");
+      expect(text).toContain("Missing H1 tag");
+      expect(text).toContain("Content Quality &amp; Intent · −5 pts");
+    });
+
+    it("completed-valid fallback ledger maps engine severity to row tone", async () => {
+      const validPayload = buildValidPayload();
+      const repo = makeMockRepo({
+        getJobRecord: {
+          status: "completed",
+          lead_id: "lead-1",
+          work_email: null,
+        },
+        getJobResultPayload: {
+          ...validPayload,
+          breakdown: {
+            ...(validPayload.breakdown as Record<string, unknown>),
+            platformReadiness: [],
+            modules: canonicalModules({
+              content_quality_intent: {
+                score: 15,
+                status: "good",
+                issues: [
+                  {
+                    code: "C001",
+                    message: "Missing H1 tag",
+                    pointLoss: -5,
+                    severity: "critical",
+                    module: "content_quality_intent",
+                  },
+                  {
+                    code: "C002",
+                    message: "Meta description is present",
+                    pointLoss: 0,
+                    severity: "info",
+                    module: "content_quality_intent",
+                  },
+                ],
+              },
+            }),
+          },
+        },
+      });
+      mockCreateGeoAuditRepository.mockReturnValue(repo);
+
+      const el = await JobResultPage({
+        params: Promise.resolve({
+          jobId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        }),
+      });
+
+      const text = renderToString(el);
+
+      // critical -> fail tone (ember), info -> info tone (spectral); the
+      // severity signal must survive the fallback mapping.
+      expect(text).toContain("text-ember");
+      expect(text).toContain("text-spectral");
     });
   });
 });

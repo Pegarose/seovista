@@ -597,6 +597,10 @@ describe("AI Crawler Result Page State Contract", () => {
       // Score 90 -> excellent band -> pass verdict
       expect(text).toContain("Pass");
 
+      // Audited target line right after the verdict (restored sibling pattern)
+      expect(text).toContain("Page:");
+      expect(text).toContain("https://example.com");
+
       // Evidence ledger projects every signal the payload carries
       expect(text).toContain("Evidence ledger");
       expect(text).toContain("robots.txt");

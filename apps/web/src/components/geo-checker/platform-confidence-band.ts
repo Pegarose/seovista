@@ -13,7 +13,7 @@ export type ConfidenceBandLevel = "low" | "medium" | "high";
 
 export interface ConfidenceBand {
   level: ConfidenceBandLevel;
-  /** Turkish, human-readable label, e.g. "Düşük — deneysel". */
+  /** English, human-readable label, e.g. "Low — experimental". */
   label: string;
   /** Icon glyph (non-color-only signal) for colour-blind users. */
   icon: string;
@@ -24,10 +24,10 @@ export interface ConfidenceBand {
 /**
  * Map a per-platform readiness estimate to a confidence band.
  *
- * Rules (Turkish labels per master PRD §0.3 and the web-feature-worker skill):
- *  - `experimental === true`  OR `confidence < 0.5`  → `low`  · "Düşük — deneysel"  · ⚠️
- *  - `0.5 ≤ confidence < 0.75` AND not experimental   → `medium` · "Orta — tahmini"  · ◐
- *  - `confidence ≥ 0.75`       AND not experimental   → `high`  · "Yüksek — güvenilir" · ✓
+ * Rules:
+ *  - `experimental === true`  OR `confidence < 0.5`  → `low`  · "Low — experimental"  · ⚠️
+ *  - `0.5 ≤ confidence < 0.75` AND not experimental   → `medium` · "Medium — estimated"  · ◐
+ *  - `confidence ≥ 0.75`       AND not experimental   → `high`  · "High — reliable" · ✓
  *
  * The returned band is always paired with an icon glyph so the signal is
  * never colour-only (VAL-A-UI-CONF-002 / WCAG). Callers must still render
@@ -40,7 +40,7 @@ export function getConfidenceBand(
   if (experimental || confidence < 0.5) {
     return {
       level: "low",
-      label: "Düşük — deneysel",
+      label: "Low — experimental",
       icon: "⚠️",
       tone: "bg-mineral text-ember border-ember/30",
     };
@@ -48,14 +48,14 @@ export function getConfidenceBand(
   if (confidence < 0.75) {
     return {
       level: "medium",
-      label: "Orta — tahmini",
+      label: "Medium — estimated",
       icon: "◐",
       tone: "bg-mineral text-spectral border-spectral/30",
     };
   }
   return {
     level: "high",
-    label: "Yüksek — güvenilir",
+    label: "High — reliable",
     icon: "✓",
     tone: "bg-mineral text-signal border-signal/30",
   };

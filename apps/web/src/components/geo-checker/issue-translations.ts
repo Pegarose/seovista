@@ -1,87 +1,87 @@
 import type { ScoreBreakdownModule } from "@seovista/geo-engine";
 
 /**
- * Render-friendly Turkish status labels for a scoring module's `status` band.
+ * Render-friendly English status labels for a scoring module's `status` band.
  *
  * The numeric `score` / `maxScore` is always rendered alongside the label so
  * the band is never communicated by color or label alone — keyboard and
- * screen-reader users see the concrete numbers. Labels mirror the
- * confidence-labeling convention (Turkish-default per master PRD §0.3).
+ * screen-reader users see the concrete numbers.
  */
 export const MODULE_STATUS_LABEL: Record<ScoreBreakdownModule["status"], string> = {
-  excellent: "Mükemmel",
-  good: "İyi",
-  needs_improvement: "Geliştirilmeli",
-  poor: "Zayıf",
-  critical: "Kritik",
+  excellent: "Excellent",
+  good: "Good",
+  needs_improvement: "Needs improvement",
+  poor: "Poor",
+  critical: "Critical",
 };
 
 /**
- * Türkçe sorun açıklamaları sözlüğü.
+ * English issue description dictionary for the geo-engine issue codes.
  *
  * Coverage invariant: every issue `code` the geo-engine can emit (i.e. every
  * key of `CODE_TO_TAGS` in `packages/geo-engine/src/issue-tags.ts`) MUST have
  * an entry here. The companion test `issue-translations.test.ts` enforces this
- * so a future engine code never silently falls back to the English
- * `AuditIssue.title` in the Turkish UI.
+ * so a future engine code never silently falls back to the raw
+ * `AuditIssue.title` in the UI. The keys are the engine contract and stay
+ * unchanged; only the rendered descriptions are English.
  */
 export const ISSUE_TRANSLATIONS: Record<string, string> = {
-  ANSWER_BLOCK_OPPORTUNITY: "İçerikte net soru-cevap veya FAQ blokları eksik.",
-  CITATION_READINESS_WEAK: "Yetkili dış kaynaklara atıf ve bağlantı sayısı sınırlı.",
-  AI_PARSEABILITY_RISK: "Yapılandırılmış liste veya tablo biçimlendirmesi bulunamadı.",
-  ENTITY_CLARITY_WEAK: "Ana konu kavramları ve varlık tanımları açıkça belirtilmemiş.",
-  THIRD_PARTY_MENTION_DATA_UNAVAILABLE: "Üçüncü taraf marka anılma verisi henüz entegre edilmedi.",
-  PLATFORM_READINESS_LIMITED: "Yapay zeka platformlarında alıntılanma hazırığı sınırlı.",
-  LOW_STRUCTURE_QUALITY: "İçerik yapısı zayıf (Alt başlıklar eksik).",
-  NO_LIST_OR_TABLE_FOR_COMPLEX_TOPIC: "Karmaşık konular için liste veya tablo kullanımı bulunmuyor.",
-  THIN_CONTENT_RISK: "Yetersiz / sığ içerik tespiti.",
-  INTRO_MISSING_OR_WEAK: "Ana konu giriş paragrafında yer almıyor.",
-  KEYWORD_STUFFING_RISK: "Aşırı anahtar kelime kullanımı riski.",
-  CONTENT_INTENT_MISMATCH_RISK: "Arama amacı ve sayfa tipi uyumsuzluğu.",
-  HTTPS_MISSING: "Güvenli HTTPS bağlantısı eksik.",
-  HTML_SIZE_LARGE: "HTML dosya boyutu çok yüksek.",
-  DOM_SIZE_LARGE: "DOM düğüm sayısı yüksek.",
-  HTTP_5XX_DETECTED: "Sunucu hatası (HTTP 5xx) tespit edildi.",
-  HTTP_4XX_DETECTED: "Sayfa bulunamadı veya erişim hatası (HTTP 4xx).",
-  HTTP_STATUS_NOT_OK: "Sayfa 200 OK yerine beklenmeyen bir HTTP durum kodu döndürüyor.",
-  NOINDEX_DETECTED: "Sayfa noindex etiketi içeriyor.",
-  NOFOLLOW_DETECTED: "Sayfa nofollow etiketi içeriyor.",
-  CANONICAL_MISSING: "Canonical URL etiketi eksik.",
-  CANONICAL_DOMAIN_MISMATCH: "Canonical etiketinde alan adı uyumsuzluğu.",
-  CANONICAL_NON_SELF_REFERENCING: "Canonical etiketi kendini işaret etmiyor.",
-  CSR_RENDER_RISK: "İçerik yalnızca istemci tarafında (JS) oluşturuluyor.",
-  STATIC_HTML_CONTENT_MISSING: "Statik HTML içinde metin içeriği bulunamadı.",
-  MAIN_CONTENT_EMPTY: "Ana içerik alanı boş görünüyor.",
-  NO_INTERNAL_LINKS: "Sayfada iç bağlantı bulunmuyor.",
-  GENERIC_ANCHOR_TEXT: "Genel / belirsiz bağlantı metinleri kullanılmış.",
-  EMPTY_ANCHOR_TEXT: "Metinsiz boş bağlantılar tespit edildi.",
-  EXCESSIVE_EXTERNAL_LINKS: "Aşırı sayıda dış bağlantı mevcut.",
-  TARGET_KEYWORD_NOT_IN_TITLE: "Hedef konu title etiketinde yer almıyor.",
-  TARGET_KEYWORD_NOT_IN_H1: "Hedef konu H1 başlığında bulunmuyor.",
-  TARGET_KEYWORD_NOT_IN_INTRO: "Hedef konu ilk içerik paragrafında yer almıyor.",
-  LOW_SEMANTIC_COVERAGE: "Ana konunun içerikteki anlamsal kapsamı sınırlı.",
-  SEMANTIC_GAP_DETECTED: "Ana konu içerikte bulunamadı.",
-  HEADING_COVERAGE_WEAK: "Alt başlıklar ana konuyu yeterince yansıtmıyor.",
-  INFORMATION_GAIN_OPPORTUNITY: "İçerik ek alt konularla zenginleştirilebilir.",
-  PRIMARY_TOPIC_UNCLEAR: "Sayfanın ana konusu anlaşılamadı.",
-  TOPIC_INFERENCE_LOW_CONFIDENCE: "Ana konu düşük güvenle çıkarıldı.",
-  TARGET_KEYWORD_NOT_PROVIDED: "Hedef anahtar kelime girilmedi — anlamsal analiz genel konu bazlı çalıştırıldı.",
-  TITLE_MISSING: "Sayfa başlığı (Title tag) eksik.",
-  TITLE_TOO_SHORT: "Sayfa başlığı çok kısa.",
-  TITLE_TOO_LONG: "Sayfa başlığı çok uzun.",
-  META_DESCRIPTION_MISSING: "Meta açıklama (Meta description) eksik.",
-  META_DESCRIPTION_TOO_SHORT: "Meta açıklama çok kısa.",
-  META_DESCRIPTION_TOO_LONG: "Meta açıklama çok uzun.",
-  H1_MISSING: "H1 başlığı eksik.",
-  MULTIPLE_H1: "Birden fazla H1 başlığı kullanılmış.",
-  OPEN_GRAPH_INCOMPLETE: "Open Graph sosyal medya etiketleri eksik.",
-  TWITTER_CARD_INCOMPLETE: "Twitter Card etiketleri eksik.",
-  JSON_LD_INVALID: "Geçersiz JSON-LD yapısal verisi.",
-  BREADCRUMB_SCHEMA_MISSING: "Breadcrumb yapısal verisi eksik.",
-  JSON_LD_MISSING_RECOMMENDED_SCHEMA: "Önerilen schema yapısal verileri eksik.",
-  PAGESPEED_PROVIDER_FAILED: "Sayfa hızı verisi alınamadı (PageSpeed API hatası).",
-  PAGESPEED_SKIPPED: "Sayfa hızı (Core Web Vitals) bu analizde ölçülmedi.",
-  SEMANTIC_LSI_GAP: "İçerikte rakip sayfalarda bulunan anlamsal (LSI) terimler eksik.",
-  SEMANTIC_ENTITY_GAP: "İçerikte konuyla ilişkili önemli varlıklar (entity) eksik.",
-  SEMANTIC_ENRICHMENT_UNAVAILABLE: "Anlamsal zenginleştirme verisi bu analizde alınamadı; skor etkilenmedi.",
+  ANSWER_BLOCK_OPPORTUNITY: "Clear question-and-answer or FAQ blocks are missing from the content.",
+  CITATION_READINESS_WEAK: "Few citations and links to authoritative external sources.",
+  AI_PARSEABILITY_RISK: "No structured list or table formatting was found.",
+  ENTITY_CLARITY_WEAK: "Key topic concepts and entity definitions are not stated clearly.",
+  THIRD_PARTY_MENTION_DATA_UNAVAILABLE: "Third-party brand mention data is not integrated yet.",
+  PLATFORM_READINESS_LIMITED: "Limited readiness to be cited on AI platforms.",
+  LOW_STRUCTURE_QUALITY: "Weak content structure (subheadings missing).",
+  NO_LIST_OR_TABLE_FOR_COMPLEX_TOPIC: "No list or table is used for complex topics.",
+  THIN_CONTENT_RISK: "Thin or shallow content detected.",
+  INTRO_MISSING_OR_WEAK: "The main topic does not appear in the opening paragraph.",
+  KEYWORD_STUFFING_RISK: "Risk of excessive keyword usage.",
+  CONTENT_INTENT_MISMATCH_RISK: "Search intent and page type do not match.",
+  HTTPS_MISSING: "Secure HTTPS connection is missing.",
+  HTML_SIZE_LARGE: "The HTML file size is very large.",
+  DOM_SIZE_LARGE: "The number of DOM nodes is high.",
+  HTTP_5XX_DETECTED: "Server error (HTTP 5xx) detected.",
+  HTTP_4XX_DETECTED: "Page not found or access error (HTTP 4xx).",
+  HTTP_STATUS_NOT_OK: "The page returns an unexpected HTTP status code instead of 200 OK.",
+  NOINDEX_DETECTED: "The page contains a noindex tag.",
+  NOFOLLOW_DETECTED: "The page contains a nofollow tag.",
+  CANONICAL_MISSING: "Canonical URL tag is missing.",
+  CANONICAL_DOMAIN_MISMATCH: "The canonical tag has a domain mismatch.",
+  CANONICAL_NON_SELF_REFERENCING: "The canonical tag does not point to the page itself.",
+  CSR_RENDER_RISK: "Content is rendered only on the client side (JS).",
+  STATIC_HTML_CONTENT_MISSING: "No text content found in the static HTML.",
+  MAIN_CONTENT_EMPTY: "The main content area appears empty.",
+  NO_INTERNAL_LINKS: "No internal links found on the page.",
+  GENERIC_ANCHOR_TEXT: "Generic or vague anchor texts are used.",
+  EMPTY_ANCHOR_TEXT: "Empty links with no text were detected.",
+  EXCESSIVE_EXTERNAL_LINKS: "Excessive number of external links.",
+  TARGET_KEYWORD_NOT_IN_TITLE: "The target topic is not in the title tag.",
+  TARGET_KEYWORD_NOT_IN_H1: "The target topic is not in the H1 heading.",
+  TARGET_KEYWORD_NOT_IN_INTRO: "The target topic is not in the first content paragraph.",
+  LOW_SEMANTIC_COVERAGE: "Limited semantic coverage of the main topic in the content.",
+  SEMANTIC_GAP_DETECTED: "The main topic was not found in the content.",
+  HEADING_COVERAGE_WEAK: "Subheadings do not reflect the main topic well enough.",
+  INFORMATION_GAIN_OPPORTUNITY: "The content could be enriched with additional subtopics.",
+  PRIMARY_TOPIC_UNCLEAR: "The main topic of the page could not be understood.",
+  TOPIC_INFERENCE_LOW_CONFIDENCE: "The main topic was inferred with low confidence.",
+  TARGET_KEYWORD_NOT_PROVIDED: "No target keyword was provided — the semantic analysis ran on the general topic.",
+  TITLE_MISSING: "Page title (title tag) is missing.",
+  TITLE_TOO_SHORT: "The page title is too short.",
+  TITLE_TOO_LONG: "The page title is too long.",
+  META_DESCRIPTION_MISSING: "Meta description is missing.",
+  META_DESCRIPTION_TOO_SHORT: "The meta description is too short.",
+  META_DESCRIPTION_TOO_LONG: "The meta description is too long.",
+  H1_MISSING: "H1 heading is missing.",
+  MULTIPLE_H1: "More than one H1 heading is used.",
+  OPEN_GRAPH_INCOMPLETE: "Open Graph social media tags are incomplete.",
+  TWITTER_CARD_INCOMPLETE: "Twitter Card tags are incomplete.",
+  JSON_LD_INVALID: "Invalid JSON-LD structured data.",
+  BREADCRUMB_SCHEMA_MISSING: "Breadcrumb structured data is missing.",
+  JSON_LD_MISSING_RECOMMENDED_SCHEMA: "Recommended schema structured data is missing.",
+  PAGESPEED_PROVIDER_FAILED: "Page speed data could not be retrieved (PageSpeed API error).",
+  PAGESPEED_SKIPPED: "Page speed (Core Web Vitals) was not measured in this analysis.",
+  SEMANTIC_LSI_GAP: "Semantic (LSI) terms found on competitor pages are missing from the content.",
+  SEMANTIC_ENTITY_GAP: "Important entities related to the topic are missing from the content.",
+  SEMANTIC_ENRICHMENT_UNAVAILABLE: "Semantic enrichment data could not be retrieved in this analysis; the score is unaffected.",
 };

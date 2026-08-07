@@ -173,6 +173,7 @@ export default async function RenderParityJobResultPage({
     target: string | null;
     status: string;
     result_payload: unknown;
+    submitted_at: string;
   }
   let jobRow: RenderParityJobRow | undefined;
   try {
@@ -180,7 +181,7 @@ export default async function RenderParityJobResultPage({
     // same contract the other tool result pages use. The queue_name filter
     // scopes the lookup to render parity audits.
     const res = await db.query<RenderParityJobRow>(
-      `SELECT j.id, j.target, j.status, r.payload AS result_payload
+      `SELECT j.id, j.target, j.status, r.payload AS result_payload, j.created_at AS submitted_at
        FROM job_records j
        LEFT JOIN job_results r ON r.correlation_id = j.correlation_id
        WHERE j.id = $1 AND j.queue_name = 'render_parity_audit'
@@ -226,7 +227,12 @@ export default async function RenderParityJobResultPage({
         eyebrow={REPORT_SHELL.eyebrow}
         title={REPORT_SHELL.title}
         status="checking"
-        meta={{ jobId, queueName: "render_parity_audit", toolLabel: "Render Parity" }}
+        meta={{
+          jobId,
+          queueName: "render_parity_audit",
+          toolLabel: "Render Parity",
+          submittedAt: jobRow.submitted_at,
+        }}
       >
         <p className="text-sm text-muted-ink">
           The audit is running. This page refreshes automatically.
@@ -305,7 +311,12 @@ export default async function RenderParityJobResultPage({
       eyebrow={REPORT_SHELL.eyebrow}
       title={REPORT_SHELL.title}
       status="completed"
-      meta={{ jobId, queueName: "render_parity_audit", toolLabel: "Render Parity" }}
+      meta={{
+        jobId,
+        queueName: "render_parity_audit",
+        toolLabel: "Render Parity",
+        submittedAt: jobRow.submitted_at,
+      }}
     >
       <div className="flex flex-col gap-6">
         <p className="font-mono text-sm text-muted-ink">

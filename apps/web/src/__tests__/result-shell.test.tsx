@@ -344,6 +344,9 @@ describe("IssueLedger", () => {
     expect(markup).toContain("text-ember"); // severity tone on a fail row index
     expect(markup).toContain('href="https://example.com/"');
     expect(markup).toContain("example.com");
+    // External evidence links open in a new tab (P3-1).
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noopener noreferrer"');
   });
 
   it("renders the empty-state text when items is empty", () => {
@@ -669,7 +672,7 @@ describe("Attribution Trace Result Page", () => {
     expect(countTag(markup, "h1")).toBe(1);
     expect(markup).toContain("Citation trace");
     expect(markup).toContain(
-      "Which sources support your claims, and how strongly."
+      "Where each claim came from, and which sources carried the most weight."
     );
     // Score 82 -> info band, score aria via VerdictCard.
     expect(markup).toContain('aria-label="Score: 82 out of 100"');
@@ -879,10 +882,11 @@ describe("CitationGraph", () => {
   it("renders the figure as an image with 4 edges, 8 nodes and a similarity tooltip", () => {
     const markup = renderToStaticMarkup(<CitationGraph {...buildGraphFixture()} />);
 
-    // figure carries the image semantics + the graph label.
+    // The svg carries the image semantics + the graph label (P2-3); the
+    // figure stays a plain wrapper with the figcaption.
     expect(markup).toContain("<figure");
-    expect(markup).toContain('role="img"');
-    expect(markup).toContain('aria-label="Citation graph"');
+    expect(markup).toMatch(/<svg[^>]*role="img"/);
+    expect(markup).toMatch(/<svg[^>]*aria-label="Citation graph"/);
 
     // Fixed viewBox; one edge per verdict with the brief's stroke formula.
     expect(markup).toContain('viewBox="0 0 900 240"');

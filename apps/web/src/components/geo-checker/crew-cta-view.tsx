@@ -12,37 +12,37 @@ interface CrewCtaViewProps {
  * - Copy varies by score band (critical/poor -> strong, good/excellent/needs_improvement -> soft).
  * - Native <a> tag pointing to actual destination.
  * - Icon+text indication (accessibility requirement).
- * - Turkish copy.
+ * - English copy (editorial lab spec, Crew CTA heading).
  */
 export function CrewCtaView({ scoreBand }: CrewCtaViewProps): ReactElement {
   const isLowScore = scoreBand === "critical" || scoreBand === "poor";
   
   const ctaText = isLowScore 
-    ? "Uzman desteği al" 
-    : "İnce ayar";
+    ? "Get expert help" 
+    : "Fine-tune";
     
   const ctaDescription = isLowScore
-    ? "Kritik sorunları çözmek ve sitenizin sıralamasını yükseltmek için Ajansımızla iletişime geçin."
-    : "Mevcut başarılı durumunuzu bir sonraki seviyeye taşımak için optimizasyon ipuçları alın.";
+    ? "Contact our agency to fix critical issues and lift your site's visibility in AI search."
+    : "Get optimization tips to take your current standing to the next level.";
     
   const href = "/contact/";
 
   return (
     <section
       aria-labelledby="crew-cta-heading"
-      className="bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-sm w-full max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4"
+      className="bg-mineral p-6 rounded-xl border border-hairline w-full max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4"
     >
       <div className="flex-1">
-        <h3 id="crew-cta-heading" className="text-lg font-semibold text-slate-900 mb-1">
-          Performansınızı Artırın
+        <h3 id="crew-cta-heading" className="text-lg font-semibold text-ink mb-1">
+          Need a hand with the next step?
         </h3>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted-ink">
           {ctaDescription}
         </p>
       </div>
       <a
         href={href}
-        className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+        className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-paper hover:bg-mineral focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-spectral focus-visible:ring-2 focus-visible:ring-spectral focus-visible:ring-offset-2"
         aria-label={`${ctaText} - Crew Agency`}
       >
         <span aria-hidden="true" className="text-lg leading-none">

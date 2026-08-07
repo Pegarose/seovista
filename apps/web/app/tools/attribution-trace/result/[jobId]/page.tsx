@@ -118,8 +118,10 @@ type SerpSource = AttributionTraceResultPayload["serpSources"][number];
 /**
  * Resolve the best-source id into the IssueLedger source link. The "self"
  * id resolves to the audited domain; otherwise the SERP source document
- * supplies the label/url. Returns null when the source has no URL so the
- * ledger omits the link instead of rendering a dead anchor.
+ * supplies the label/url. Returns null when the source has no URL — or
+ * when the self-source target has no usable host — so the ledger omits the
+ * link instead of rendering a dead anchor or a fabricated "https:///" URL
+ * (P3-4).
  */
 function resolveSourceUrl(
   bestSourceId: string,
@@ -127,6 +129,13 @@ function resolveSourceUrl(
   target: string | null,
 ): { label: string; url: string } | null {
   if (bestSourceId === "self") {
+    const host = target
+      ? target
+          .replace(/^https?:\/\//, "")
+          .replace(/^www\./, "")
+          .split(/[/?#]/)[0]
+      : "";
+    if (!host) return null;
     const domain = target ?? "";
     return {
       label: target ?? "Your site",
@@ -238,6 +247,7 @@ export default async function AttributionTraceJobResultPage({
     target: string | null;
     status: string;
     result_payload: unknown;
+    submitted_at: string;
   }
   let jobRow: AttributionTraceJobRow | undefined;
   try {
@@ -245,7 +255,7 @@ export default async function AttributionTraceJobResultPage({
     // same contract the other tool result pages use. The queue_name filter
     // scopes the lookup to attribution trace audits.
     const res = await db.query<AttributionTraceJobRow>(
-      `SELECT j.id, j.target, j.status, r.payload AS result_payload
+      `SELECT j.id, j.target, j.status, r.payload AS result_payload, j.created_at AS submitted_at
        FROM job_records j
        LEFT JOIN job_results r ON r.correlation_id = j.correlation_id
        WHERE j.id = $1 AND j.queue_name = 'attribution_trace_audit'
@@ -291,7 +301,12 @@ export default async function AttributionTraceJobResultPage({
         eyebrow={REPORT_SHELL.eyebrow}
         title={REPORT_SHELL.title}
         status="checking"
-        meta={{ jobId, queueName: "attribution_trace_audit", toolLabel: "Attribution Trace" }}
+        meta={{
+          jobId,
+          queueName: "attribution_trace_audit",
+          toolLabel: "Attribution Trace",
+          submittedAt: jobRow.submitted_at,
+        }}
       >
         <p className="text-sm text-muted-ink">
           The audit is running. This page refreshes automatically.
@@ -371,13 +386,18 @@ export default async function AttributionTraceJobResultPage({
       eyebrow={REPORT_SHELL.eyebrow}
       title={REPORT_SHELL.title}
       status="completed"
-      meta={{ jobId, queueName: "attribution_trace_audit", toolLabel: "Attribution Trace" }}
+      meta={{
+        jobId,
+        queueName: "attribution_trace_audit",
+        toolLabel: "Attribution Trace",
+        submittedAt: jobRow.submitted_at,
+      }}
     >
       <div className="flex flex-col gap-6">
         <VerdictCard
           variant={attributionVariant(safePayload)}
           title="Citation trace"
-          summary="Which sources support your claims, and how strongly."
+          summary="Where each claim came from, and which sources carried the most weight."
           {...(hasScore ? { score: safePayload.score } : {})}
           scoreLabel="Traceability"
         />

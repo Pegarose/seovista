@@ -16,12 +16,13 @@ interface PlatformConfidenceViewProps {
  * Renders one row per AI platform (ChatGPT, Perplexity, Google AI Overviews,
  * Bing Copilot) inside a semantic `<dl>`. Each row shows the platform name
  * and a confidence-band label as the DEFAULT text (e.g.
- * "Düşük — deneysel"), prefixed with a non-colour-only icon (⚠️ / ◐ / ✓) so
+ * "Low — experimental"), prefixed with a non-colour-only icon (⚠️ / ◐ / ✓) so
  * colour-blind users can distinguish bands without relying on hue. The
  * numeric readiness `score` (0–100), `confidence`, and `rationale` are
  * preserved inside a `<details>` element so debug paths still see the
  * underlying values; the `<summary>` carries an `aria-label` exposing the
- * numeric score to assistive tech without expanding the panel.
+ * numeric score to assistive tech without expanding the panel. `rationale`
+ * is payload data and renders verbatim.
  *
  * This is a pure Server Component — no client-side JS is required.
  */
@@ -39,11 +40,11 @@ export function PlatformConfidenceView({
         id="platform-confidence-heading"
         className="text-xl font-semibold text-ink font-serif mb-1"
       >
-        Platform Bazında AI Hazırlık
+        AI readiness by platform
       </h2>
       <p className="text-sm text-muted-ink mb-4">
-        Her platformun hazır olduğu güven bandı ile gösterilir. Sayısal skor
-        ayrıntılarda bulunur.
+        Each platform is shown with the confidence band it is ready at. The
+        numeric score is in the details.
       </p>
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -58,7 +59,7 @@ export function PlatformConfidenceView({
                 <dt className="font-medium text-ink">{p.platform}</dt>
                 <dd
                   className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${band.tone}`}
-                  aria-label={`${p.platform} güven bandı: ${band.label}`}
+                  aria-label={`${p.platform} confidence band: ${band.label}`}
                 >
                   <span aria-hidden="true">{band.icon}</span>
                   <span>{band.label}</span>
@@ -69,13 +70,13 @@ export function PlatformConfidenceView({
                 <details>
                   <summary
                     className="cursor-pointer text-muted-ink hover:text-ink"
-                    aria-label={`${p.platform} hazır olma skoru: ${p.score} / 100. Güven: ${Math.round(p.confidence * 100)}%. Ayrıntıları görüntülemek için genişletin.`}
+                    aria-label={`${p.platform} readiness score: ${p.score} / 100. Confidence: ${Math.round(p.confidence * 100)}%. Expand for details.`}
                   >
-                    Sayısal skor:{" "}
+                    Score:{" "}
                     <span className="font-semibold tabular-nums">
                       {p.score}/100
                     </span>{" "}
-                    · Güven:{" "}
+                    · Confidence:{" "}
                     <span className="font-semibold tabular-nums">
                       {Math.round(p.confidence * 100)}%
                     </span>
@@ -87,8 +88,8 @@ export function PlatformConfidenceView({
                   ) : null}
                   {p.experimental ? (
                     <p className="mt-2 text-xs text-ember">
-                      Bu tahmin deneyseldir ve gerçek AI platform trafiği
-                      ile doğrulanmamıştır.
+                      This estimate is experimental and has not been validated
+                      against real AI platform traffic.
                     </p>
                   ) : null}
                 </details>

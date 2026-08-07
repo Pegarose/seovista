@@ -42,7 +42,7 @@ test('executes end-to-end GEO lead capture workflow', async ({ page }) => {
   
   // Assert the final metrics screen appears cleanly
   // Should wait for Crew CTA heading
-  await expect(page.getByRole('heading', { name: 'Performansınızı Artırın' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('heading', { name: 'Need a hand with the next step?' })).toBeVisible({ timeout: 10000 });
   
   // Also expect the mock strings are NOT visible anymore. They were removed.
   await expect(page.getByText('AI Model A')).not.toBeVisible();

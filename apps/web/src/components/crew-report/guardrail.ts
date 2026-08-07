@@ -2,21 +2,25 @@
  * Guardrail labels used by CrewAgency inside AI-generated strategy reports.
  *
  * The crew marks uncertain or decision-relevant statements with bracketed
- * Turkish labels such as `[SİMÜLASYON]` or `[VERİ EKSİK]`. These labels are
- * part of the honesty contract (spec §4): they must never be stripped, only
- * surfaced. `transformGuardrailLabels` rewrites the known labels — and only
- * the known ones — into a `**⟦G:ETIKET⟧**` strong marker that the report
- * view's `strong` renderer turns into a text + color badge chip.
+ * Turkish-uppercase labels such as `[SİMÜLASYON]` or `[VERİ EKSİK]`. These
+ * keys are part of the honesty contract (spec §4): they must never be
+ * stripped, only surfaced, and they must keep their Turkish-uppercase form
+ * because `transformGuardrailLabels` matches them with
+ * `toLocaleUpperCase("tr")`. The VALUES (badge text + description) are the
+ * English copy surfaced to users. `transformGuardrailLabels` rewrites the
+ * known labels — and only the known ones — into a `**⟦G:ETIKET⟧**` strong
+ * marker that the report view's `strong` renderer turns into a text + color
+ * badge chip.
  */
 
 export type GuardrailTone = "amber" | "blue" | "red" | "green" | "slate";
 
 export interface GuardrailLabelMeta {
-  /** Turkish badge text rendered inside the chip. */
+  /** Badge text rendered inside the chip. */
   label: string;
   /** Badge color tone (always paired with the label text — never color-only). */
   tone: GuardrailTone;
-  /** One-line Turkish explanation exposed via the badge's `title` attribute. */
+  /** One-line explanation exposed via the badge's `title` attribute. */
   description: string;
 }
 
@@ -26,29 +30,29 @@ export interface GuardrailLabelMeta {
  */
 export const GUARDRAIL_LABELS: Record<string, GuardrailLabelMeta> = {
   SİMÜLASYON: {
-    label: "Simülasyon",
+    label: "Simulation",
     tone: "amber",
-    description: "Bu ifade gerçek ölçüm değil, simüle edilmiş bir senaryodur.",
+    description: "This statement is a simulated scenario, not a real measurement.",
   },
   TAHMİN: {
-    label: "Tahmin",
+    label: "Forecast",
     tone: "blue",
-    description: "Bu ifade doğrulanmış veriye dayanmayan bir tahmindir.",
+    description: "This statement is a forecast that is not based on verified data.",
   },
   "VERİ EKSİK": {
-    label: "Veri Eksik",
+    label: "Missing Data",
     tone: "red",
-    description: "Bu konuda yeterli veri bulunamadı; eksik bilgi olabilir.",
+    description: "Not enough data was found on this topic; information may be incomplete.",
   },
   "KARAR GEREKLİ": {
-    label: "Karar Gerekli",
+    label: "Decision Needed",
     tone: "slate",
-    description: "Bu adımın uygulanması için sizin kararınız gerekiyor.",
+    description: "Your decision is required to act on this step.",
   },
   HESAPLANAN: {
-    label: "Hesaplanan",
+    label: "Calculated",
     tone: "green",
-    description: "Bu değer mevcut denetim verilerinden hesaplanmıştır.",
+    description: "This value was calculated from the current audit data.",
   },
 };
 

@@ -1,6 +1,6 @@
 /**
  * TrackThisButton contract test — verifies the component renders the
- * "Bu anahtarı takip et" CTA in its initial (collapsed) state.
+ * "Track this keyword" CTA in its initial (collapsed) state.
  * The expanded form with email input is tested via e2e (B1 minimal).
  */
 import { describe, it, expect, vi } from "vitest";
@@ -12,12 +12,12 @@ vi.mock("@/lib/tracker/actions", () => ({
 }));
 
 describe("TrackThisButton", () => {
-  it("renders the track-this CTA with Turkish text in collapsed state", async () => {
+  it("renders the track-this CTA with English text in collapsed state", async () => {
     const { TrackThisButton } = await import("../components/tracker/track-this-button");
     const markup = renderToStaticMarkup(
       React.createElement(TrackThisButton, { keyword: "seo denetimi", domain: "example.com" }),
     );
-    expect(markup).toContain("Bu Anahtarı Takip Et");
+    expect(markup).toContain("Track this keyword");
   });
 });
 

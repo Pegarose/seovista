@@ -119,6 +119,7 @@ export default async function SchemaTruthJobResultPage({
     target: string | null;
     status: string;
     result_payload: unknown;
+    submitted_at: string;
   }
   let jobRow: SchemaTruthJobRow | undefined;
   try {
@@ -126,7 +127,7 @@ export default async function SchemaTruthJobResultPage({
     // same contract the other tool result pages use. The queue_name filter
     // scopes the lookup to schema truth audits.
     const res = await db.query<SchemaTruthJobRow>(
-      `SELECT j.id, j.target, j.status, r.payload AS result_payload
+      `SELECT j.id, j.target, j.status, r.payload AS result_payload, j.created_at AS submitted_at
        FROM job_records j
        LEFT JOIN job_results r ON r.correlation_id = j.correlation_id
        WHERE j.id = $1 AND j.queue_name = 'schema_truth_audit'
@@ -172,7 +173,12 @@ export default async function SchemaTruthJobResultPage({
         eyebrow={REPORT_SHELL.eyebrow}
         title={REPORT_SHELL.title}
         status="checking"
-        meta={{ jobId, queueName: "schema_truth_audit", toolLabel: "Schema Truth" }}
+        meta={{
+          jobId,
+          queueName: "schema_truth_audit",
+          toolLabel: "Schema Truth",
+          submittedAt: jobRow.submitted_at,
+        }}
       >
         <p className="text-sm text-muted-ink">
           The audit is running. This page refreshes automatically.
@@ -249,7 +255,12 @@ export default async function SchemaTruthJobResultPage({
       eyebrow={REPORT_SHELL.eyebrow}
       title={REPORT_SHELL.title}
       status="completed"
-      meta={{ jobId, queueName: "schema_truth_audit", toolLabel: "Schema Truth" }}
+      meta={{
+        jobId,
+        queueName: "schema_truth_audit",
+        toolLabel: "Schema Truth",
+        submittedAt: jobRow.submitted_at,
+      }}
     >
       <div className="flex flex-col gap-6">
         <p className="font-mono text-sm text-muted-ink">

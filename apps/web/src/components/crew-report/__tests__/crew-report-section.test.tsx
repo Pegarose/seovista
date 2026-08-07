@@ -94,7 +94,7 @@ describe("CrewReportSection", () => {
       "geo-readiness"
     );
     expect(container.querySelector('button[type="submit"]')).not.toBeNull();
-    expect(container.textContent).toContain("AI Strateji Raporu");
+    expect(container.textContent).toContain("AI Strategy Report");
     // One-<h1>-per-page rule: the section must not introduce its own h1.
     expect(container.querySelectorAll("h1")).toHaveLength(0);
     expect(container.querySelectorAll("h2").length).toBeGreaterThan(0);
@@ -118,7 +118,7 @@ describe("CrewReportSection", () => {
 
     // The gate form is replaced by the in-flight status.
     expect(container.querySelector("form")).toBeNull();
-    expect(container.textContent).toContain("oluşturuluyor");
+    expect(container.textContent).toContain("Your AI strategy report is being generated");
     expect(mockCheck).toHaveBeenCalledWith(CREW_JOB_ID);
 
     // Keeps polling on the 3s interval while the job stays in flight.
@@ -152,7 +152,7 @@ describe("CrewReportSection", () => {
   });
 
   it.each(["failed", "timeout"] as const)(
-    "renders the Turkish error and a retry button when the job ends as %s",
+    "renders the error and a retry button when the job ends as %s",
     async (status) => {
       mockStart.mockResolvedValue({ status: "started", crewJobId: CREW_JOB_ID });
       mockCheck.mockResolvedValue({ success: true, data: { status } });
@@ -163,9 +163,9 @@ describe("CrewReportSection", () => {
         await flushMicrotasks();
       });
 
-      expect(container.textContent).toContain("Rapor oluşturulamadı");
+      expect(container.textContent).toContain("The report failed or timed out. Please try again.");
       const retryButton = Array.from(container.querySelectorAll("button")).find((button) =>
-        button.textContent?.includes("Tekrar Dene")
+        button.textContent?.includes("Try again")
       );
       expect(retryButton).toBeDefined();
 

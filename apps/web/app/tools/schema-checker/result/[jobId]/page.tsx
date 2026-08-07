@@ -166,6 +166,7 @@ export default async function SchemaJobResultPage({
     target: string | null;
     status: string;
     result_payload: unknown;
+    submitted_at: string;
   }
   let jobRow: SchemaJobRow | undefined;
   try {
@@ -173,7 +174,7 @@ export default async function SchemaJobResultPage({
     // same contract the geo repository's getJobResultPayload uses. The
     // queue_name filter scopes the lookup to schema audits.
     const res = await db.query<SchemaJobRow>(
-      `SELECT j.id, j.target, j.status, r.payload AS result_payload
+      `SELECT j.id, j.target, j.status, r.payload AS result_payload, j.created_at AS submitted_at
        FROM job_records j
        LEFT JOIN job_results r ON r.correlation_id = j.correlation_id
        WHERE j.id = $1 AND j.queue_name = 'schema_audit'
@@ -219,7 +220,12 @@ export default async function SchemaJobResultPage({
         eyebrow={REPORT_SHELL.eyebrow}
         title={REPORT_SHELL.title}
         status="checking"
-        meta={{ jobId, queueName: "schema_audit", toolLabel: "Schema Checker" }}
+        meta={{
+          jobId,
+          queueName: "schema_audit",
+          toolLabel: "Schema Checker",
+          submittedAt: jobRow.submitted_at,
+        }}
       >
         <p className="text-sm text-muted-ink">
           The audit is running. This page refreshes automatically.
@@ -290,7 +296,12 @@ export default async function SchemaJobResultPage({
       eyebrow={REPORT_SHELL.eyebrow}
       title={REPORT_SHELL.title}
       status="completed"
-      meta={{ jobId, queueName: "schema_audit", toolLabel: "Schema Checker" }}
+      meta={{
+        jobId,
+        queueName: "schema_audit",
+        toolLabel: "Schema Checker",
+        submittedAt: jobRow.submitted_at,
+      }}
     >
       <div className="flex flex-col gap-6">
         <VerdictCard

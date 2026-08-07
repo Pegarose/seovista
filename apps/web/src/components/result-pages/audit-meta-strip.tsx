@@ -2,8 +2,10 @@
  * Shared audit metadata strip for result pages.
  *
  * Renders the persisted job identity (raw job_records.id + queue name) as a
- * mono <dl>, plus an optional server-provided submitted timestamp. The
- * toolLabel sits at the end of the strip as a human-friendly discriminator.
+ * mono <dl>, plus an optional submitted timestamp fed from
+ * `job_records.created_at` (submission time — the pages select it as
+ * `submitted_at`). The toolLabel sits at the end of the strip as a
+ * human-friendly discriminator.
  */
 
 export interface AuditMetaStripProps {
@@ -11,7 +13,7 @@ export interface AuditMetaStripProps {
   jobId: string;
   /** Queue-name discriminator — one per tool, e.g. "ai_crawler_audit". */
   queueName: string;
-  /** ISO timestamp from job_records.updated_at (server-provided). */
+  /** ISO timestamp from job_records.created_at (server-provided). */
   submittedAt?: string;
   /** Human label rendered at the end of the strip — e.g. "AI Crawler". */
   toolLabel: string;

@@ -200,6 +200,7 @@ export default async function AiCrawlerJobResultPage({
     target: string | null;
     status: string;
     result_payload: unknown;
+    submitted_at: string;
   }
   let jobRow: AiCrawlerJobRow | undefined;
   try {
@@ -207,7 +208,7 @@ export default async function AiCrawlerJobResultPage({
     // same contract the geo repository's getJobResultPayload uses. The
     // queue_name filter scopes the lookup to AI crawler audits.
     const res = await db.query<AiCrawlerJobRow>(
-      `SELECT j.id, j.target, j.status, r.payload AS result_payload
+      `SELECT j.id, j.target, j.status, r.payload AS result_payload, j.created_at AS submitted_at
        FROM job_records j
        LEFT JOIN job_results r ON r.correlation_id = j.correlation_id
        WHERE j.id = $1 AND j.queue_name = 'ai_crawler_audit'
@@ -253,7 +254,12 @@ export default async function AiCrawlerJobResultPage({
         eyebrow={REPORT_SHELL.eyebrow}
         title={REPORT_SHELL.title}
         status="checking"
-        meta={{ jobId, queueName: "ai_crawler_audit", toolLabel: "AI Crawler" }}
+        meta={{
+          jobId,
+          queueName: "ai_crawler_audit",
+          toolLabel: "AI Crawler",
+          submittedAt: jobRow.submitted_at,
+        }}
       >
         <p className="text-sm text-muted-ink">
           The audit is running. This page refreshes automatically.
@@ -325,7 +331,12 @@ export default async function AiCrawlerJobResultPage({
       eyebrow={REPORT_SHELL.eyebrow}
       title={REPORT_SHELL.title}
       status="completed"
-      meta={{ jobId, queueName: "ai_crawler_audit", toolLabel: "AI Crawler" }}
+      meta={{
+        jobId,
+        queueName: "ai_crawler_audit",
+        toolLabel: "AI Crawler",
+        submittedAt: jobRow.submitted_at,
+      }}
     >
       <div className="flex flex-col gap-6">
         <VerdictCard
@@ -335,6 +346,10 @@ export default async function AiCrawlerJobResultPage({
           score={safePayload.score}
           scoreLabel="Score"
         />
+
+        <p className="text-sm text-muted-ink">
+          Page: <span className="font-mono text-muted-ink break-all">{jobRow.target ?? "—"}</span>
+        </p>
 
         <IssueLedger heading="Evidence ledger" items={buildLedgerItems(safePayload)} />
 

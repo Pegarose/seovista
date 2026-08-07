@@ -71,6 +71,8 @@ export function IssueLedger(props: IssueLedgerProps): React.ReactElement {
                 {item.source && (
                   <a
                     href={item.source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="font-mono text-xs text-muted-ink underline"
                   >
                     {item.source.label}

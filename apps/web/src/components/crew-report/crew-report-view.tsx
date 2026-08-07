@@ -16,19 +16,21 @@ import {
  * - Known guardrail labels (`[SİMÜLASYON]` etc.) are pre-transformed by
  *   `transformGuardrailLabels` into `**⟦G:…⟧**` and rendered by the custom
  *   `strong` renderer as text + color badge chips (WCAG 2.1 AA — the badge
- *   always carries its Turkish label text and a `title` description, never
- *   color alone).
+ *   always carries its English label text and a `title` description, never
+ *   color alone). The guardrail KEYS stay Turkish-uppercase because the crew
+ *   emits the bracket markers in that form; only the rendered label text is
+ *   English.
  * - Heading levels are capped at h2/h3: the report lives inside the result
  *   page (which owns the only h1) and below the section's own h2.
  */
 
 /** Tailwind classes per guardrail tone (badge = text + color, never color-only). */
 const TONE_CLASSES: Record<GuardrailTone, string> = {
-  amber: "border-amber-300 bg-amber-100 text-amber-800",
-  blue: "border-blue-300 bg-blue-100 text-blue-800",
-  red: "border-red-300 bg-red-100 text-red-800",
-  green: "border-green-300 bg-green-100 text-green-800",
-  slate: "border-slate-300 bg-slate-100 text-slate-700",
+  amber: "border-ember/40 bg-mineral text-ember",
+  blue: "border-spectral/40 bg-mineral text-spectral",
+  red: "border-ember/40 bg-mineral text-ember",
+  green: "border-signal/40 bg-mineral text-signal",
+  slate: "border-hairline bg-mineral text-muted-ink",
 };
 
 /** Matches the strong marker produced by `transformGuardrailLabels`. */
@@ -63,55 +65,55 @@ const components: Components = {
   // Heading levels are demoted so the view never emits an <h1> and stays
   // below the section's <h2> in the document outline.
   h1: ({ children }) => (
-    <h2 className="font-display text-xl font-bold text-slate-900 mt-6">{children}</h2>
+    <h2 className="font-serif text-xl font-bold text-ink mt-6">{children}</h2>
   ),
   h2: ({ children }) => (
-    <h2 className="font-display text-xl font-bold text-slate-900 mt-6">{children}</h2>
+    <h2 className="font-serif text-xl font-bold text-ink mt-6">{children}</h2>
   ),
   h3: ({ children }) => (
-    <h3 className="text-base font-semibold text-slate-900 mt-4">{children}</h3>
+    <h3 className="text-base font-semibold text-ink mt-4">{children}</h3>
   ),
   h4: ({ children }) => (
-    <h4 className="text-sm font-semibold text-slate-900 mt-3">{children}</h4>
+    <h4 className="text-sm font-semibold text-ink mt-3">{children}</h4>
   ),
-  p: ({ children }) => <p className="text-sm text-slate-700 leading-relaxed">{children}</p>,
+  p: ({ children }) => <p className="text-sm text-muted-ink leading-relaxed">{children}</p>,
   ul: ({ children }) => (
-    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700 marker:text-slate-400">
+    <ul className="list-disc pl-5 space-y-1 text-sm text-muted-ink marker:text-muted-ink">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal pl-5 space-y-1 text-sm text-slate-700 marker:text-slate-400">
+    <ol className="list-decimal pl-5 space-y-1 text-sm text-muted-ink marker:text-muted-ink">
       {children}
     </ol>
   ),
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   table: ({ children }) => (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">{children}</table>
+    <div className="overflow-x-auto rounded-lg border border-hairline bg-paper">
+      <table className="min-w-full divide-y divide-hairline text-sm">{children}</table>
     </div>
   ),
-  thead: ({ children }) => <thead className="bg-slate-50">{children}</thead>,
+  thead: ({ children }) => <thead className="bg-mineral">{children}</thead>,
   th: ({ children }) => (
-    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-900">{children}</th>
+    <th className="px-3 py-2 text-left text-xs font-semibold text-ink">{children}</th>
   ),
   td: ({ children }) => (
-    <td className="px-3 py-2 align-top text-sm text-slate-700 border-t border-slate-100">
+    <td className="px-3 py-2 align-top text-sm text-muted-ink border-t border-hairline">
       {children}
     </td>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-amber-400 bg-amber-50 px-4 py-2 text-sm text-amber-900 rounded-r-lg">
+    <blockquote className="border-l-4 border-ember/50 bg-mineral px-4 py-2 text-sm text-ember rounded-r-lg">
       {children}
     </blockquote>
   ),
   pre: ({ children }) => (
-    <pre className="overflow-x-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-100 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-slate-100">
+    <pre className="overflow-x-auto rounded-lg bg-ink p-4 text-xs text-paper [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-paper">
       {children}
     </pre>
   ),
   code: ({ children }) => (
-    <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs text-slate-800">
+    <code className="rounded bg-mineral px-1 py-0.5 font-mono text-xs text-ink">
       {children}
     </code>
   ),
@@ -122,7 +124,7 @@ const components: Components = {
       href={href}
       rel="nofollow noopener"
       target="_blank"
-      className="text-indigo-600 underline break-all hover:text-indigo-700"
+      className="text-spectral underline break-all hover:text-spectral/80"
     >
       {children}
     </a>
@@ -133,7 +135,7 @@ const components: Components = {
     if (name && Object.prototype.hasOwnProperty.call(GUARDRAIL_LABELS, name)) {
       return <GuardrailBadge name={name} />;
     }
-    return <strong className="font-semibold text-slate-900">{children}</strong>;
+    return <strong className="font-semibold text-ink">{children}</strong>;
   },
 };
 
@@ -152,14 +154,14 @@ export function CrewReportView({ report }: CrewReportViewProps) {
 
   return (
     <div className="crew-report-view">
-      <header className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <p className="text-xs font-medium text-slate-600">
-          CrewAgency multi-agent sistemi · üretim: {report.generatedAt}
+      <header className="mb-4 rounded-lg border border-hairline bg-mineral p-4">
+        <p className="text-xs font-medium text-muted-ink">
+          CrewAgency multi-agent system · generated: {report.generatedAt}
         </p>
-        <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-          Bu rapor yapay zeka tarafından üretilmiştir. Simülasyon, Tahmin, Veri Eksik, Karar
-          Gerekli ve Hesaplanan etiketleri ilgili ifadelerin güven düzeyini gösterir; karar
-          vermeden önce etiketli bölümleri gözden geçiriniz.
+        <p className="mt-1 text-xs text-muted-ink leading-relaxed">
+          This report was generated by AI. The Simulation, Forecast, Missing Data, Decision
+          Needed, and Calculated labels indicate the confidence level of the statements they
+          mark; review labeled sections before making decisions.
         </p>
       </header>
       <div className="space-y-3">

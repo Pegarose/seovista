@@ -130,8 +130,13 @@ export function CitationGraph(props: CitationGraphProps): React.ReactElement {
   });
 
   return (
-    <figure role="img" aria-label="Citation graph">
-      <svg viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} className="w-full">
+    <figure>
+      <svg
+        role="img"
+        aria-label="Citation graph"
+        viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
+        className="w-full"
+      >
         {/* Column headers — muted, orientation only. */}
         <text x={CLAIM_X} y={10} fontSize={11} fill="var(--color-muted-ink)">
           Claims

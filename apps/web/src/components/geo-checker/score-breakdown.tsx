@@ -18,10 +18,10 @@ function PointLossBadge({ pointLoss }: { pointLoss: number }): ReactElement | nu
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full bg-mineral px-2 py-0.5 text-xs font-semibold text-muted-ink border border-hairline"
-      aria-label={`Puan kaybı: ${pointLoss} puan`}
+      aria-label={`Point loss: ${pointLoss} points`}
     >
       <span aria-hidden="true">▼</span>
-      <span>{formatted} puan</span>
+      <span>{formatted} pts</span>
     </span>
   );
 }
@@ -42,14 +42,14 @@ interface ScoreBreakdownProps {
  * navigable, each cell reachable via Tab) with `module.name`, `module.score`,
  * and `module.maxScore` visible as `score/maxScore`. Below the table, each
  * module's issues are listed with their `code`, `message`, and an inline
- * `pointLoss` badge (e.g. `−2 puan`). The `score_version` formula identity is
+ * `pointLoss` badge (e.g. `−2 pts`). The `score_version` formula identity is
  * rendered in a footer metadata strip so users and ops can compare across
  * refactors. No client-side JS is required — this is a pure Server Component.
  *
  * Accessibility:
  *  - `<table>` with `<th scope="col">` headers provides native keyboard
  *    navigation and screen-reader semantics.
- *  - Status is rendered as a text label (Turkish) alongside the numeric
+ *  - Status is rendered as a text label (English) alongside the numeric
  *    score — never color-only.
  *  - The point-loss badge uses an icon (▼) + text + aria-label.
  */
@@ -65,14 +65,14 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
           id="score-breakdown-heading"
           className="text-xl font-semibold text-ink font-serif"
         >
-          Modül Skor Dağılımı
+          Module score breakdown
         </h2>
         <p className="text-sm text-muted-ink">
-          Genel skor:{" "}
+          Overall score:{" "}
           <span className="font-semibold text-ink">
             {breakdown.overallScore}/100
           </span>{" "}
-          · Durum:{" "}
+          · Status:{" "}
           <span className="font-semibold text-ink">
             {MODULE_STATUS_LABEL[breakdown.band]}
           </span>
@@ -82,19 +82,19 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
       <div className="overflow-x-auto rounded-lg border border-hairline">
         <table className="w-full text-sm border-collapse">
           <caption className="sr-only">
-            Her bir GEO hazırlık modülünün adı, kazandığı puan, azami puan ve
-            durum etiketi. Klavye ile satır satır gezilebilir.
+            Name, score, maximum score, and status label of each GEO readiness
+            module. Navigable row by row with the keyboard.
           </caption>
           <thead className="bg-mineral text-muted-ink">
             <tr>
               <th scope="col" className="text-left font-medium px-4 py-2 border-b border-hairline">
-                Modül
+                Module
               </th>
               <th scope="col" className="text-right font-medium px-4 py-2 border-b border-hairline">
-                Skor
+                Score
               </th>
               <th scope="col" className="text-left font-medium px-4 py-2 border-b border-hairline">
-                Durum
+                Status
               </th>
             </tr>
           </thead>
@@ -105,7 +105,7 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
                   {mod.name}
                 </th>
                 <td className="text-right font-semibold text-ink px-4 py-3 align-top tabular-nums whitespace-nowrap">
-                  <span aria-label={`${mod.name} modülü skoru: ${mod.score} / ${mod.maxScore}`}>
+                  <span aria-label={`${mod.name} module score: ${mod.score} / ${mod.maxScore}`}>
                     {mod.score}/{mod.maxScore}
                   </span>
                 </td>
@@ -129,7 +129,7 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
               id={`issues-${mod.key}-heading`}
               className="text-base font-semibold text-ink mb-3"
             >
-              {mod.name} — tespit edilen sorunlar
+              {mod.name} — issues found
             </h3>
             <ul className="space-y-3">
               {mod.issues.map((issue) => (
@@ -159,17 +159,17 @@ export function ScoreBreakdownView({ breakdown }: ScoreBreakdownProps): ReactEle
 
       <footer
         className="mt-6 pt-4 border-t border-hairline text-xs text-muted-ink flex flex-wrap items-center justify-between gap-2"
-        aria-label="Skor sürümü"
+        aria-label="Score version"
       >
         <span>
-          Skor sürümü:{" "}
+          Score version:{" "}
           <span className="font-mono font-semibold text-muted-ink">
             {breakdown.scoreVersion}
           </span>
         </span>
         <span className="sr-only">
-          Bu skor sürümü, hesaplama formülünün kimliğidir ve refactor'ler
-          arasında karşılaştırma için kullanılır.
+          This score version identifies the calculation formula and is used
+          to compare runs across refactors.
         </span>
       </footer>
     </section>

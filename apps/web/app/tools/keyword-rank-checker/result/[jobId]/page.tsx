@@ -71,6 +71,7 @@ export default async function KeywordRankJobResultPage({
     target: string | null;
     status: string;
     result_payload: unknown;
+    submitted_at: string;
   }
   let jobRow: KeywordRankJobRow | undefined;
   try {
@@ -78,7 +79,7 @@ export default async function KeywordRankJobResultPage({
     // same contract the other tool result pages use. The queue_name filter
     // scopes the lookup to keyword rank audits.
     const res = await db.query<KeywordRankJobRow>(
-      `SELECT j.id, j.target, j.status, r.payload AS result_payload
+      `SELECT j.id, j.target, j.status, r.payload AS result_payload, j.created_at AS submitted_at
        FROM job_records j
        LEFT JOIN job_results r ON r.correlation_id = j.correlation_id
        WHERE j.id = $1 AND j.queue_name = 'keyword_rank_audit'
@@ -124,7 +125,12 @@ export default async function KeywordRankJobResultPage({
         eyebrow={REPORT_SHELL.eyebrow}
         title={REPORT_SHELL.title}
         status="checking"
-        meta={{ jobId, queueName: "keyword_rank_audit", toolLabel: "Keyword Rank" }}
+        meta={{
+          jobId,
+          queueName: "keyword_rank_audit",
+          toolLabel: "Keyword Rank",
+          submittedAt: jobRow.submitted_at,
+        }}
       >
         <p className="text-sm text-muted-ink">
           The audit is running. This page refreshes automatically.
@@ -204,7 +210,12 @@ export default async function KeywordRankJobResultPage({
       eyebrow={REPORT_SHELL.eyebrow}
       title={REPORT_SHELL.title}
       status="completed"
-      meta={{ jobId, queueName: "keyword_rank_audit", toolLabel: "Keyword Rank" }}
+      meta={{
+        jobId,
+        queueName: "keyword_rank_audit",
+        toolLabel: "Keyword Rank",
+        submittedAt: jobRow.submitted_at,
+      }}
     >
       <div className="flex flex-col gap-6">
         {/* This tool reports an observed position snapshot — there is NO

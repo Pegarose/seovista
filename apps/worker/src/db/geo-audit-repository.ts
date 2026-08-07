@@ -26,6 +26,8 @@ export interface GeoAuditJobRecord {
   status: JobStatus;
   lead_id: string;
   work_email: string | null;
+  /** ISO timestamp of the job_records row creation (submission time). */
+  submitted_at: string;
 }
 
 export function createGeoAuditRepository(client: DbClient) {
@@ -140,7 +142,7 @@ export function createGeoAuditRepository(client: DbClient) {
     },
     async getJobRecord(id: string): Promise<GeoAuditJobRecord | undefined> {
       const res = await client.query<GeoAuditJobRecord>(
-        `SELECT j.status, j.lead_id, l.work_email 
+        `SELECT j.status, j.lead_id, l.work_email, j.created_at AS submitted_at 
          FROM job_records j
          LEFT JOIN geo_audit_leads l ON j.lead_id = l.id
          WHERE j.id = $1`,
