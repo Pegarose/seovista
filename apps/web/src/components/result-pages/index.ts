@@ -22,3 +22,5 @@ export type { VerdictCardProps, VerdictVariant } from "./verdict-card";
 
 export { IssueLedger } from "./issue-ledger";
 export type { IssueLedgerItem, IssueLedgerProps } from "./issue-ledger";
+
+export { UnknownJobStatusView } from "./unknown-job-status-view";

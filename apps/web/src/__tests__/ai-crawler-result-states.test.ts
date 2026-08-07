@@ -91,7 +91,8 @@ describe("AI Crawler Result Page unknown status guard (B4)", () => {
     expect(countTag(text, "h1")).toBe(1);
 
     // Explicit unknown-status state, not a result render.
-    expect(text).toContain("Denetim Durumu Belirlenemedi");
+    expect(text).toContain("We can&#x27;t find this report");
+    expect(text).toContain("Start a new audit to get a fresh link");
     expect(text).not.toContain("AI Crawler Erişim Denetim Sonucu");
 
     // No raw Next.js error details leaked.

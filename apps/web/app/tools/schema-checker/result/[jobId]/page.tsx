@@ -5,10 +5,8 @@ import { AuditPoller } from "../../../../../src/components/geo-checker/audit-pol
 import { CrewCtaView } from "../../../../../src/components/geo-checker/crew-cta-view";
 import { CrewReportSection } from "../../../../../src/components/crew-report/crew-report-section";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
-import {
-  normalizeJobResultStatus,
-  UnknownJobStatusView,
-} from "../../../../../src/lib/admin/job-result-guard";
+import { normalizeJobResultStatus } from "../../../../../src/lib/admin/job-result-guard";
+import { UnknownJobStatusView } from "../../../../../src/components/result-pages";
 import { getSchemaScoreBand } from "../../../../../src/lib/score-band";
 
 export const dynamic = "force-dynamic";

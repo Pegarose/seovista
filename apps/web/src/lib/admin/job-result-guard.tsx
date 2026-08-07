@@ -22,24 +22,7 @@ export function normalizeJobResultStatus(rawStatus: unknown): AuditStatus {
   return normalizeAuditStatus(rawStatus);
 }
 
-/**
- * Explicit unknown-status view for tool result pages: exactly one <main>
- * landmark with one descriptive <h1>, no result components, no raw error
- * details. Rendered for any persisted status outside the supported
- * lifecycle vocabulary so the page never implicitly falls through to the
- * completed-result payload path.
- */
-export function UnknownJobStatusView() {
-  return (
-    <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-        <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-          Denetim Durumu Belirlenemedi
-        </h1>
-        <p className="text-slate-700">
-          Denetim sonucunun durumu belirlenemedi. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.
-        </p>
-      </div>
-    </main>
-  );
-}
+// Back-compat re-export: the shared unknown-status view now lives in the
+// result-pages kit. result-pages components do not import from this guard,
+// so no circular dependency is introduced.
+export { UnknownJobStatusView } from "../../components/result-pages";

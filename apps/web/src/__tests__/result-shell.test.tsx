@@ -20,6 +20,7 @@ import {
   ReportErrorPanel,
   VerdictCard,
   IssueLedger,
+  UnknownJobStatusView,
 } from "@/components/result-pages";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,23 @@ import {
 function countTag(markup: string, tag: string): number {
   return (markup.match(new RegExp(`<${tag}[\\s>]`, "g")) ?? []).length;
 }
+
+// ---------------------------------------------------------------------------
+// UnknownJobStatusView — single main/h1 + Try again link
+// ---------------------------------------------------------------------------
+
+describe("UnknownJobStatusView", () => {
+  it("renders exactly one <main>, one <h1> with the English copy, and a Try again link to /tools/", () => {
+    const markup = renderToStaticMarkup(<UnknownJobStatusView />);
+
+    expect(countTag(markup, "main")).toBe(1);
+    expect(countTag(markup, "h1")).toBe(1);
+    expect(markup).toContain("We can&#x27;t find this report");
+    expect(markup).toContain("Start a new audit to get a fresh link");
+    expect(markup).toContain('href="/tools/"');
+    expect(markup).toContain("Try again");
+  });
+});
 
 // ---------------------------------------------------------------------------
 // ResultShell — landmark contract

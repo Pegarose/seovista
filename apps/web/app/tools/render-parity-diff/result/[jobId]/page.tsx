@@ -2,10 +2,8 @@ import type { RenderParityResultPayload } from "@seovista/worker";
 import { getAdminDb } from "../../../../../src/lib/admin/db";
 import { AuditPoller } from "../../../../../src/components/geo-checker/audit-poller";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
-import {
-  normalizeJobResultStatus,
-  UnknownJobStatusView,
-} from "../../../../../src/lib/admin/job-result-guard";
+import { normalizeJobResultStatus } from "../../../../../src/lib/admin/job-result-guard";
+import { UnknownJobStatusView } from "../../../../../src/components/result-pages";
 
 export const dynamic = "force-dynamic";
 
