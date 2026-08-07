@@ -46,5 +46,39 @@ Thumbs.db
 # pnpm
 .pnpm-store/
 
-# SDD and other internal development artefacts .superpowers/sdd/
-# Large binary files you don’t want in version control *.zip *.rar *.mp4
+# Agent tooling (superpowers/Droid workflows, skills, scratch) — never tracked
+.factory/
+.agents/
+.superpowers/
+.claude/
+.cursor/
+.windsurf/
+.continue/
+
+# Generated release artifacts
+.release-artifacts/
+
+# Large binary files you don't want in version control (typically >100MB)
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.tgz
+*.bz2
+*.xz
+*.iso
+*.dmg
+*.pdb
+*.dll
+*.exe
+*.bin
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.wav
+*.flac
+*.psd
+*.tif
+*.tiff
