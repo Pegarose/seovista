@@ -26,7 +26,7 @@ function GuidanceChip({ count, min, max, state }: { count: number; min: number; 
   return (
     <p
       className={`mt-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs ${
-        isOk ? "border-green-300 text-green-800" : "border-amber-300 text-amber-800"
+        isOk ? "border-signal/40 text-signal" : "border-ember/40 text-ember"
       }`}
     >
       <span aria-hidden="true">{isOk ? "✓" : "⚠"}</span>
@@ -42,25 +42,25 @@ function PixelMeter({ label, metrics }: { label: string; metrics: SerpVariantMet
   const ratio = metrics.maxPixelWidth > 0 ? Math.min(100, (metrics.pixelWidth / metrics.maxPixelWidth) * 100) : 0;
   return (
     <div className="mt-3">
-      <div className="flex items-baseline justify-between text-xs text-gray-600">
+      <div className="flex items-baseline justify-between text-xs text-muted-ink">
         <span>{label}</span>
         <span className="tabular-nums">
           {roundedWidth} / {metrics.maxPixelWidth}px (tahmini)
         </span>
       </div>
       <div
-        className="relative mt-1 h-2 rounded-full bg-gray-200"
+        className="relative mt-1 h-2 rounded-full bg-mineral"
         role="img"
         aria-label={`${label}: ${roundedWidth} / ${metrics.maxPixelWidth}px (tahmini)`}
       >
         <div
-          className={`h-2 rounded-full ${metrics.truncated ? "bg-red-500" : ratio > 90 ? "bg-amber-500" : "bg-green-500"}`}
+          className={`h-2 rounded-full ${metrics.truncated ? "bg-ember" : ratio > 90 ? "bg-ember" : "bg-signal"}`}
           style={{ width: `${ratio}%` }}
         />
-        <span aria-hidden="true" className="absolute right-0 -top-0.5 h-3 w-px bg-gray-500" />
+        <span aria-hidden="true" className="absolute right-0 -top-0.5 h-3 w-px bg-muted-ink" />
       </div>
       {metrics.truncated ? (
-        <p className="mt-1 text-xs font-medium text-red-700">
+        <p className="mt-1 text-xs font-medium text-ember">
           ⚠ Google bu alanı kısaltacak — önizleme kısaltılmış hâliyle gösteriliyor.
         </p>
       ) : null}
@@ -117,10 +117,10 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
   }
 
   return (
-    <section className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section className="mt-8 rounded-xl border border-hairline bg-paper p-6">
       <div className="grid gap-4">
         <div>
-          <label htmlFor="serp-title" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="serp-title" className="block text-sm font-medium text-muted-ink">
             Sayfa Başlığı
           </label>
           <input
@@ -129,7 +129,7 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Örn: SeoVista — GEO ve SEO görünürlük rehberi"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+            className="mt-1 block w-full rounded-md border border-hairline px-3 py-2 text-sm text-ink placeholder:text-muted-ink/60 focus:border-spectral focus:outline-none focus:ring-2 focus:ring-spectral/20"
           />
           <GuidanceChip
             count={title.length}
@@ -139,7 +139,7 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
           />
         </div>
         <div>
-          <label htmlFor="serp-description" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="serp-description" className="block text-sm font-medium text-muted-ink">
             Meta Açıklama
           </label>
           <textarea
@@ -148,7 +148,7 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Örn: Sayfanızın arama sonuçlarında görünecek kısa özeti."
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+            className="mt-1 block w-full rounded-md border border-hairline px-3 py-2 text-sm text-ink placeholder:text-muted-ink/60 focus:border-spectral focus:outline-none focus:ring-2 focus:ring-spectral/20"
           />
           <GuidanceChip
             count={description.length}
@@ -158,7 +158,7 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
           />
         </div>
         <div>
-          <label htmlFor="serp-url" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="serp-url" className="block text-sm font-medium text-muted-ink">
             Görüntülenecek URL
           </label>
           <input
@@ -167,13 +167,13 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
             value={siteUrl}
             onChange={(event) => setSiteUrl(event.target.value)}
             placeholder="https://example.com/sayfa"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+            className="mt-1 block w-full rounded-md border border-hairline px-3 py-2 text-sm text-ink placeholder:text-muted-ink/60 focus:border-spectral focus:outline-none focus:ring-2 focus:ring-spectral/20"
           />
         </div>
       </div>
 
       <div className="mt-8">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Masaüstü Önizleme</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-ink">Masaüstü Önizleme</h2>
         <div className="mt-3">
           <SerpSnippetCard
             variant="desktop"
@@ -187,7 +187,7 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
       </div>
 
       <div className="mt-8">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Mobil Önizleme</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-ink">Mobil Önizleme</h2>
         <div className="mt-3">
           <SerpSnippetCard
             variant="mobile"
@@ -200,7 +200,7 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
         <PixelMeter label="Açıklama genişliği" metrics={analysis.mobile.description} />
       </div>
 
-      <p className="mt-6 text-xs text-gray-500">
+      <p className="mt-6 text-xs text-muted-ink">
         Pixel ölçümleri tahminidir; Google'ın gerçek render'ı cihaza göre değişebilir.
       </p>
 
@@ -209,12 +209,12 @@ export function SerpPreviewTool({ initialTitle, initialDescription, initialUrl }
           type="button"
           onClick={() => void copyShareLink()}
           aria-label="Bağlantıyı Kopyala"
-          className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-muted-ink focus:outline-none focus:ring-2 focus:ring-spectral/20 focus:ring-offset-2"
         >
           {copyState === "copied" ? "Kopyalandı ✓" : "Bağlantıyı Kopyala"}
         </button>
         {copyState === "error" ? (
-          <p role="alert" className="mt-2 text-sm text-red-700">
+          <p role="alert" className="mt-2 text-sm text-ember">
             Kopyalama başarısız — metni seçip kopyalayın
           </p>
         ) : null}

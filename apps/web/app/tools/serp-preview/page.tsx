@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FormShell } from "../../../src/components/form-pages";
 import { SerpPreviewTool } from "../../../src/components/serp-preview/serp-preview-tool";
 
 export const metadata: Metadata = {
@@ -17,20 +18,15 @@ export default async function SerpPreviewPage({
 }) {
   const params = await searchParams;
   return (
-    <main id="main" className="min-h-screen bg-gray-50 flex items-start justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-3xl">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight text-center">
-          SERP Preview
-        </h1>
-        <p className="mt-2 text-sm text-gray-500 text-center">
-          Başlık ve meta açıklamanızın Google'da nasıl görüneceğini tahmini pixel ölçümüyle test edin.
-        </p>
-        <SerpPreviewTool
-          initialTitle={firstValue(params.title)}
-          initialDescription={firstValue(params.desc)}
-          initialUrl={firstValue(params.url)}
-        />
-      </div>
-    </main>
+    <FormShell
+      title="SERP Preview"
+      helper="Başlık ve meta açıklamanızın Google'da nasıl görüneceğini tahmini pixel ölçümüyle test edin."
+    >
+      <SerpPreviewTool
+        initialTitle={firstValue(params.title)}
+        initialDescription={firstValue(params.desc)}
+        initialUrl={firstValue(params.url)}
+      />
+    </FormShell>
   );
 }

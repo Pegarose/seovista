@@ -17,6 +17,7 @@
 
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type ActionState } from "@/lib/geo-checker/actions";
@@ -33,6 +34,7 @@ import KeywordRankCheckerPage from "../../app/tools/keyword-rank-checker/page";
 import RenderParityDiffPage from "../../app/tools/render-parity-diff/page";
 import AttributionTracePage from "../../app/tools/attribution-trace/page";
 import SchemaTruthCheckPage from "../../app/tools/schema-truth-check/page";
+import SerpPreviewPage from "../../app/tools/serp-preview/page";
 
 const { mockStartGeoAuditAction } = vi.hoisted(() => ({
   mockStartGeoAuditAction: vi.fn<(prev: ActionState, formData: FormData) => Promise<ActionState>>(),
@@ -994,6 +996,18 @@ describe("Form pages", () => {
       expect(settledButton!.textContent).not.toContain("Denetleniyor...");
       expect(container.querySelector('[role="alert"]')).toBeNull();
       expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+  });
+
+  describe("serp-preview", () => {
+    it("renders one main + one h1 in the FormShell frame", async () => {
+      const el = await SerpPreviewPage({ searchParams: Promise.resolve({}) });
+      const markup = renderToStaticMarkup(el);
+      expect(countTag(markup, "main")).toBe(1);
+      expect(countTag(markup, "h1")).toBe(1);
+      expect(markup).toContain(">SERP Preview</h1>");
+      expect(markup).toContain("Seovista / Instruments");
+      expect(markup).not.toMatch(RETIRED_TOKEN_RE);
     });
   });
 });
