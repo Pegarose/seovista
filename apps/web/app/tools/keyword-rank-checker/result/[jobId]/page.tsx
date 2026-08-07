@@ -6,15 +6,28 @@ import { CrewReportSection } from "../../../../../src/components/crew-report/cre
 import { TrackThisButton } from "../../../../../src/components/tracker/track-this-button";
 import { isAuditInFlightStatus } from "../../../../../src/lib/geo-checker/audit-status";
 import { normalizeJobResultStatus } from "../../../../../src/lib/admin/job-result-guard";
-import { UnknownJobStatusView } from "../../../../../src/components/result-pages";
+import {
+  ReportErrorPanel,
+  ResultShell,
+  StatusPill,
+  UnknownJobStatusView,
+  VerdictCard,
+} from "../../../../../src/components/result-pages";
 
 export const dynamic = "force-dynamic";
 
+/** UUID v4/v7 format guard. Rejects malformed IDs before any repository query. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Shared editorial shell identity for every rendered state of this page. */
+const REPORT_SHELL = {
+  eyebrow: "Seovista / Lab report",
+  title: "Rank snapshot",
+} as const;
 
 export async function generateMetadata() {
   return {
-    title: "Sıralama Kontrol Sonucu - SeoVista",
+    title: "Rank snapshot - SeoVista",
     robots: { index: false, follow: false, nocache: true },
   };
 }
@@ -26,18 +39,16 @@ export default async function KeywordRankJobResultPage({
 }) {
   const { jobId } = await params;
 
+  // Reject malformed non-UUID job IDs before any repository query so invalid
+  // input never reaches PostgreSQL and renders the documented not-found state.
   if (!UUID_RE.test(jobId)) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            İşlem Bulunamadı
-          </h1>
-          <p className="text-slate-700">
-            İstenen sıralama kontrolü sonucu bulunamadı. Lütfen işlem kimliğini (Job ID) kontrol edip tekrar deneyin.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Report not found"
+          body="The requested report could not be found. Check the job id and try again."
+        />
+      </ResultShell>
     );
   }
 
@@ -46,16 +57,12 @@ export default async function KeywordRankJobResultPage({
     db = getAdminDb();
   } catch {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Hizmet Geçici Olarak Kullanılamıyor
-          </h1>
-          <p className="text-slate-700">
-            Sıralama kontrolü hizmeti şu anda kullanılamıyor. Lütfen kısa süre sonra tekrar deneyin.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Service temporarily unavailable"
+          body="The report service is temporarily unavailable. Please try again shortly."
+        />
+      </ResultShell>
     );
   }
 
@@ -83,31 +90,25 @@ export default async function KeywordRankJobResultPage({
   } catch (err) {
     console.error("Failed to query keyword_rank_audit job record:", err);
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Hizmet Geçici Olarak Kullanılamıyor
-          </h1>
-          <p className="text-slate-700">
-            Sıralama kontrolü sonucu şu anda alınamıyor. Lütfen tekrar deneyin.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Service temporarily unavailable"
+          body="The report service is temporarily unavailable. Please try again shortly."
+        />
+      </ResultShell>
     );
   }
 
+  // Syntactically valid UUID with no matching job record renders the
+  // documented not-found state.
   if (!jobRow) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            İşlem Bulunamadı
-          </h1>
-          <p className="text-slate-700">
-            İstenen denetim kaydı sistemde bulunamadı.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="unknown">
+        <ReportErrorPanel
+          title="Report not found"
+          body="The requested report could not be found. Check the job id and try again."
+        />
+      </ResultShell>
     );
   }
 
@@ -116,33 +117,39 @@ export default async function KeywordRankJobResultPage({
   // state instead of falling through to the completed-result payload path.
   const status = normalizeJobResultStatus(jobRow.status);
 
+  // -- In-flight states (queued / running / pending) --
   if (isAuditInFlightStatus(status)) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 gap-8">
-        <h1 className="text-3xl font-display font-semibold text-slate-900 text-center">
-          {status === "queued"
-            ? "Sıralama Kontrolü Sırada"
-            : status === "running"
-            ? "Sıralama Kontrolü Çalışıyor..."
-            : "Sıralama Kontrolü Beklemede"}
-        </h1>
+      <ResultShell
+        eyebrow={REPORT_SHELL.eyebrow}
+        title={REPORT_SHELL.title}
+        status="checking"
+        meta={{ jobId, queueName: "keyword_rank_audit", toolLabel: "Keyword Rank" }}
+      >
+        <p className="text-sm text-muted-ink">
+          The audit is running. This page refreshes automatically.
+        </p>
         <AuditPoller jobId={jobId} initialStatus={status} />
-      </main>
+      </ResultShell>
     );
   }
 
-  if (status === "failed" || status === "timeout" || status === "permanent" || status === "permanent_failure") {
+  // -- Terminal failed states --
+  if (
+    status === "failed" ||
+    status === "timeout" ||
+    status === "permanent" ||
+    status === "permanent_failure"
+  ) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Sıralama Kontrolü Başarısız Oldu
-          </h1>
-          <p className="text-slate-700">
-            Sıralama kontrolü sırasında bir hata oluştu veya zaman aşımına uğrandı. Lütfen alan adını ve anahtar kelimeyi kontrol edip tekrar deneyin.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report failed"
+          body="We could not finish this audit. Keep the reference id below when you ask for help."
+          correlationId={jobId}
+          retryHref="/tools/keyword-rank-checker/"
+        />
+      </ResultShell>
     );
   }
 
@@ -171,98 +178,106 @@ export default async function KeywordRankJobResultPage({
     }
   }
 
+  // -- Completed: degraded (no valid result payload) --
   if (status === "completed" && !payload) {
     return (
-      <main id="main" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-2xl mx-auto w-full text-center">
-          <h1 className="text-3xl font-display font-semibold mb-4 text-slate-900">
-            Sonuç Verisi Kullanılamıyor
-          </h1>
-          <p className="text-slate-700">
-            Kontrol tamamlandı ancak sonuç verisi okunamadı. Lütfen sayfayı yenileyiniz.
-          </p>
-        </div>
-      </main>
+      <ResultShell eyebrow={REPORT_SHELL.eyebrow} title={REPORT_SHELL.title} status="failed">
+        <ReportErrorPanel
+          title="Report data is incomplete"
+          body="The audit finished, but the stored result is unreadable. Rerun the audit to regenerate it."
+          retryHref="/tools/keyword-rank-checker/"
+        />
+      </ResultShell>
     );
   }
 
+  // -- Completed: valid payload --
+  // (status === "completed" && payload !== null) — narrowed after the
+  // degraded early-return above.
   const safePayload = payload!;
   const top10 = safePayload.top10 ?? [];
   const localeMeta = (SERP_LOCALES as Record<string, { label: string }>)[safePayload.locale];
   const localeLabel = localeMeta?.label ?? safePayload.locale;
 
   return (
-    <main id="main" className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">
-            Sıralama Kontrol Sonucu
-          </h1>
-          <p className="text-sm text-slate-600 mt-2">
-            Alan Adı:{" "}
-            <span className="font-mono font-medium text-slate-800 break-all">
-              {safePayload.domain}
-            </span>{" "}
-            · Anahtar Kelime:{" "}
-            <span className="font-medium text-slate-800">{safePayload.keyword}</span> · Bölge:{" "}
-            <span className="font-medium text-slate-800">{localeLabel}</span>
-          </p>
-        </div>
+    <ResultShell
+      eyebrow={REPORT_SHELL.eyebrow}
+      title={REPORT_SHELL.title}
+      status="completed"
+      meta={{ jobId, queueName: "keyword_rank_audit", toolLabel: "Keyword Rank" }}
+    >
+      <div className="flex flex-col gap-6">
+        {/* This tool reports an observed position snapshot — there is NO
+            numeric score, so the score prop is intentionally omitted and the
+            verdict is about presence in the top 10. */}
+        <VerdictCard
+          variant={safePayload.position !== null ? "pass" : "fail"}
+          title="Rank snapshot"
+          summary="Current positions for your tracked keywords in live search."
+        />
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Gözlemlenen Sıralama</h2>
-              <p className="text-sm text-slate-500 mt-1">
+        <section className="rounded-lg border border-hairline bg-card p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1">
+              <h2 className="font-serif text-2xl text-ink">Observed position</h2>
+              <p className="text-sm text-muted-ink">
                 {safePayload.position !== null
-                  ? `Hedef alan adı, "${safePayload.keyword}" sorgusunda ilk 10 sonuç içinde listelendi.`
-                  : "Hedef alan adı ilk 10 sonuçta bulunamadı."}
+                  ? `The target domain appeared in the top 10 results for "${safePayload.keyword}".`
+                  : "The target domain did not appear in the top 10 results."}
               </p>
             </div>
-            <div
-              className="text-4xl font-extrabold text-slate-900"
-              aria-label={
-                safePayload.position !== null
-                  ? `Sıralama: ${safePayload.position}`
-                  : "Sıralama: İlk 10'da yok"
-              }
-            >
-              {safePayload.position !== null ? `#${safePayload.position}` : "İlk 10'da yok"}
+            <div className="shrink-0">
+              {safePayload.position !== null ? (
+                <span
+                  aria-label={`Position: ${safePayload.position}`}
+                  className="font-serif text-5xl text-ink"
+                >
+                  #{safePayload.position}
+                </span>
+              ) : (
+                <StatusPill variant="warning" ariaLabel="Outside top 10" />
+              )}
             </div>
           </div>
-        </div>
+        </section>
+
+        <p className="font-mono text-sm text-muted-ink">
+          Domain: <span className="break-all text-ink">{safePayload.domain}</span> · Keyword:{" "}
+          <span className="text-ink">{safePayload.keyword}</span> · Locale:{" "}
+          <span className="text-ink">{localeLabel}</span>
+        </p>
 
         {safePayload.dataSource === "mock" ? (
-          <div
-            className="bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-sm"
-            role="status"
-          >
-            <p className="text-sm text-amber-800">
-              <span className="font-semibold">Örnek veri</span> — SearXNG yapılandırılmamış;
-              sonuçlar deterministik örnek veridir.
+          <div role="status" className="rounded-lg border border-ember/40 bg-mineral/40 px-5 py-4">
+            <p className="text-sm text-ember">
+              <span className="font-semibold">Sample data</span> — SearXNG is not configured;
+              results are deterministic sample data.
             </p>
           </div>
         ) : (
-          <div
-            className="bg-slate-100 p-4 rounded-xl border border-slate-200 shadow-sm"
-            role="status"
-          >
-            <p className="text-sm text-slate-700">
-              Veri kaynağı: SearXNG · Kontrol zamanı:{" "}
+          <div role="status" className="rounded-lg border border-hairline bg-mineral/40 px-5 py-4">
+            <p className="text-sm text-muted-ink">
+              Data source: SearXNG · Checked at:{" "}
               <span className="font-mono">{safePayload.checkedAt}</span>
             </p>
           </div>
         )}
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-slate-900">İlk 10 Sonuç</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+        <section className="rounded-lg border border-hairline bg-card p-6">
+          <h2 className="font-serif text-2xl text-ink">Top 10 results</h2>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
-                  <th scope="col" className="py-2 pr-4 font-semibold">Sıra</th>
-                  <th scope="col" className="py-2 pr-4 font-semibold">Başlık</th>
-                  <th scope="col" className="py-2 font-semibold">URL</th>
+                <tr className="border-b border-hairline text-muted-ink">
+                  <th scope="col" className="py-2 pr-4 font-semibold">
+                    #
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-semibold">
+                    Title
+                  </th>
+                  <th scope="col" className="py-2 font-semibold">
+                    URL
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -271,43 +286,45 @@ export default async function KeywordRankJobResultPage({
                     key={entry.position}
                     className={
                       entry.isTarget
-                        ? "bg-amber-50 border-b border-amber-100"
-                        : "border-b border-slate-100"
+                        ? "border-l-4 border-l-signal bg-mineral"
+                        : "border-b border-hairline"
                     }
                   >
-                    <td className="py-2 pr-4 tabular-nums text-slate-700">{entry.position}</td>
-                    <td className="py-2 pr-4 text-slate-900">
+                    <td className="py-2 pr-4 font-mono tabular-nums text-muted-ink">
+                      {entry.position}
+                    </td>
+                    <td className="py-2 pr-4 text-ink">
                       {entry.title}
                       {entry.isTarget && (
-                        <span className="ml-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                          Sizin siteniz
+                        <span className="ml-2 inline-flex items-center rounded-full border border-signal/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-signal">
+                          Your site
                         </span>
                       )}
                     </td>
-                    <td className="py-2 font-mono text-xs text-slate-600 break-all">{entry.url}</td>
+                    <td className="break-all py-2 font-mono text-xs text-muted-ink">
+                      {entry.url}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">Günlük Takip</h2>
+        <section className="rounded-lg border border-hairline bg-card p-6">
+          <h2 className="mb-4 font-serif text-2xl text-ink">Daily tracking</h2>
           <TrackThisButton keyword={safePayload.keyword} domain={safePayload.domain} />
-        </div>
+        </section>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <a
-            href="/tools/geo-readiness-checker/"
-            className="block text-sm font-semibold text-slate-900 hover:text-slate-600 transition-colors"
-          >
-            GEO Hazırlık Denetimi ile sitenizi AI aramaya hazırlayın →
-          </a>
-        </div>
+        <a
+          href="/tools/geo-readiness-checker/"
+          className="block rounded-lg border border-hairline bg-card p-6 text-sm font-semibold text-ink transition-colors hover:bg-mineral"
+        >
+          Check your AI-citation readiness with the GEO Readiness Checker →
+        </a>
 
         <CrewReportSection sourceJobId={jobId} tool="keyword-rank" />
       </div>
-    </main>
+    </ResultShell>
   );
 }
