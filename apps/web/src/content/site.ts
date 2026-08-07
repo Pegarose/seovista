@@ -155,8 +155,8 @@ export const toolsPage = page(
   "tools",
   "/tools/",
   "Free Tools — SeoVista",
-  "A growing library of free tools for GEO and SEO readiness. The GEO Readiness Checker, Schema Checker, AI Crawler Checker, SERP Preview, and Keyword Rank Checker are linked as previews.",
-  "SeoVista is building a set of free tools to help teams audit their readiness for generative and search visibility. The GEO Readiness Checker, Schema Checker, AI Crawler Checker, SERP Preview, and Keyword Rank Checker are available as previews. Additional tools are planned for later phases."
+  "A growing library of free tools for GEO and SEO readiness. Eight instruments are live as previews: GEO Readiness Checker, Schema Checker, AI Crawler Checker, SERP Preview, Keyword Rank Checker, Attribution Trace, Render Parity Diff, and Schema Truth Check.",
+  "SeoVista builds free tools that audit generative and search visibility. Eight instruments are live as previews — GEO Readiness Checker, Schema Checker, AI Crawler Checker, SERP Preview, Keyword Rank Checker, Attribution Trace, Render Parity Diff, and Schema Truth Check — and every release ships with a published brief."
 );
 
 export const geoReadinessChecker: Tool = {
