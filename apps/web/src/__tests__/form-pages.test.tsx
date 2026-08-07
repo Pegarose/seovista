@@ -24,11 +24,15 @@ import { type SchemaActionState } from "@/lib/schema-checker/actions";
 import { type AiCrawlerActionState } from "@/lib/ai-crawler-checker/actions";
 import { type KeywordRankActionState } from "@/lib/keyword-rank-checker/actions";
 import { type RenderParityActionState } from "@/lib/render-parity-diff/actions";
+import { type AttributionTraceActionState } from "@/lib/attribution-trace/actions";
+import { type SchemaTruthActionState } from "@/lib/schema-truth-check/actions";
 import GeoReadinessCheckerPage from "../../app/tools/geo-readiness-checker/page";
 import SchemaCheckerPage from "../../app/tools/schema-checker/page";
 import AiCrawlerCheckerPage from "../../app/tools/ai-crawler-checker/page";
 import KeywordRankCheckerPage from "../../app/tools/keyword-rank-checker/page";
 import RenderParityDiffPage from "../../app/tools/render-parity-diff/page";
+import AttributionTracePage from "../../app/tools/attribution-trace/page";
+import SchemaTruthCheckPage from "../../app/tools/schema-truth-check/page";
 
 const { mockStartGeoAuditAction } = vi.hoisted(() => ({
   mockStartGeoAuditAction: vi.fn<(prev: ActionState, formData: FormData) => Promise<ActionState>>(),
@@ -50,6 +54,14 @@ const { mockStartRenderParityCheckAction } = vi.hoisted(() => ({
   mockStartRenderParityCheckAction: vi.fn<(prev: RenderParityActionState, formData: FormData) => Promise<RenderParityActionState>>(),
 }));
 
+const { mockStartAttributionTraceAction } = vi.hoisted(() => ({
+  mockStartAttributionTraceAction: vi.fn<(prev: AttributionTraceActionState, formData: FormData) => Promise<AttributionTraceActionState>>(),
+}));
+
+const { mockStartSchemaTruthCheckAction } = vi.hoisted(() => ({
+  mockStartSchemaTruthCheckAction: vi.fn<(prev: SchemaTruthActionState, formData: FormData) => Promise<SchemaTruthActionState>>(),
+}));
+
 vi.mock("@/lib/geo-checker/actions", () => ({
   startGeoAuditAction: mockStartGeoAuditAction,
 }));
@@ -68,6 +80,14 @@ vi.mock("@/lib/keyword-rank-checker/actions", () => ({
 
 vi.mock("@/lib/render-parity-diff/actions", () => ({
   startRenderParityCheckAction: mockStartRenderParityCheckAction,
+}));
+
+vi.mock("@/lib/attribution-trace/actions", () => ({
+  startAttributionTraceAction: mockStartAttributionTraceAction,
+}));
+
+vi.mock("@/lib/schema-truth-check/actions", () => ({
+  startSchemaTruthCheckAction: mockStartSchemaTruthCheckAction,
 }));
 
 const RETIRED_TOKEN_RE = /slate-|gray-|indigo-|blue-|red-|green-|amber-|emerald-|sky-|rose-/;
@@ -106,6 +126,10 @@ describe("Form pages", () => {
     mockStartKeywordRankCheckAction.mockResolvedValue({ status: "idle" });
     mockStartRenderParityCheckAction.mockReset();
     mockStartRenderParityCheckAction.mockResolvedValue({ status: "idle" });
+    mockStartAttributionTraceAction.mockReset();
+    mockStartAttributionTraceAction.mockResolvedValue({ status: "idle" });
+    mockStartSchemaTruthCheckAction.mockReset();
+    mockStartSchemaTruthCheckAction.mockResolvedValue({ status: "idle" });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -720,6 +744,254 @@ describe("Form pages", () => {
       expect(settledButton!.hasAttribute("disabled")).toBe(false);
       expect(settledButton!.textContent).toContain("Karşılaştırmayı Başlat");
       expect(settledButton!.textContent).not.toContain("Karşılaştırılıyor...");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+  });
+
+  describe("attribution-trace", () => {
+    const idleState: AttributionTraceActionState = { status: "idle" };
+    const failureState: AttributionTraceActionState = {
+      status: "error",
+      errors: {
+        form: ["Saatlik audit limitine (10) ulaştınız. Lütfen daha sonra tekrar deneyiniz."],
+      },
+    };
+
+    beforeEach(() => {
+      mockStartAttributionTraceAction.mockReset();
+      mockStartAttributionTraceAction.mockResolvedValue(idleState);
+    });
+
+    async function renderAttributionTracePage(): Promise<string> {
+      let page!: React.ReactElement;
+      await act(async () => {
+        page = <AttributionTracePage />;
+      });
+      await act(async () => {
+        root.render(page);
+      });
+      return container.innerHTML;
+    }
+
+    it("renders one main + one h1 with domain/keyword/answer fields and no retired tokens", async () => {
+      const markup = await renderAttributionTracePage();
+
+      expect(countTag(markup, "main")).toBe(1);
+      expect(countTag(markup, "h1")).toBe(1);
+      expect(markup).toContain(">Attribution Trace</h1>");
+      expect(markup).toContain("Seovista / Instruments");
+
+      for (const controlId of ["domain", "keyword", "answer"]) {
+        expect(markup).toContain(`id="${controlId}"`);
+        expect(markup).toContain(`for="${controlId}"`);
+        const label = container.querySelector(`label[for="${controlId}"]`);
+        expect(label).not.toBeNull();
+        expect(label!.getAttribute("for")).toBe(controlId);
+        expect(container.querySelector(`#${controlId}`)).not.toBeNull();
+      }
+
+      // Idle submit button is enabled with the idle label.
+      expect(markup).toContain(">Attribution Trace Başlat</button>");
+      const idleButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(idleButton).not.toBeNull();
+      expect(idleButton!.hasAttribute("disabled")).toBe(false);
+      expect(idleButton!.textContent).toContain("Attribution Trace Başlat");
+      expect(idleButton!.textContent).not.toContain("İzleniyor...");
+
+      expect(markup).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("surfaces the form error note when the action returns the failure branch", async () => {
+      mockStartAttributionTraceAction.mockResolvedValue(failureState);
+      await renderAttributionTracePage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartAttributionTraceAction).toHaveBeenCalledTimes(1);
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert).not.toBeNull();
+      expect(alert!.textContent).toContain("limitine");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("renders no error note on the success branch", async () => {
+      mockStartAttributionTraceAction.mockResolvedValue(idleState);
+      await renderAttributionTracePage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartAttributionTraceAction).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      const button = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+      expect(button!.hasAttribute("disabled")).toBe(false);
+      expect(button!.textContent).toContain("Attribution Trace Başlat");
+      expect(container.innerHTML).toContain(">Attribution Trace Başlat</button>");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("disables the submit button while pending, then returns to idle on resolution", async () => {
+      let deferredResolve!: (state: AttributionTraceActionState) => void;
+      const deferredPromise = new Promise<AttributionTraceActionState>((resolve) => {
+        deferredResolve = resolve;
+      });
+      mockStartAttributionTraceAction.mockImplementationOnce(() => deferredPromise);
+
+      await renderAttributionTracePage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartAttributionTraceAction).toHaveBeenCalledTimes(1);
+
+      const pendingButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(pendingButton).not.toBeNull();
+      expect(pendingButton!.hasAttribute("disabled")).toBe(true);
+      expect(pendingButton!.textContent).toContain("İzleniyor...");
+      expect(pendingButton!.textContent).not.toContain("Attribution Trace Başlat");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+
+      await act(async () => {
+        deferredResolve(idleState);
+      });
+      await act(async () => {});
+
+      const settledButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(settledButton).not.toBeNull();
+      expect(settledButton!.hasAttribute("disabled")).toBe(false);
+      expect(settledButton!.textContent).toContain("Attribution Trace Başlat");
+      expect(settledButton!.textContent).not.toContain("İzleniyor...");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+  });
+
+  describe("schema-truth-check", () => {
+    const idleState: SchemaTruthActionState = { status: "idle" };
+    const failureState: SchemaTruthActionState = {
+      status: "error",
+      errors: {
+        form: ["Saatlik audit limitine (10) ulaştınız. Lütfen daha sonra tekrar deneyiniz."],
+      },
+    };
+
+    beforeEach(() => {
+      mockStartSchemaTruthCheckAction.mockReset();
+      mockStartSchemaTruthCheckAction.mockResolvedValue(idleState);
+    });
+
+    async function renderSchemaTruthCheckPage(): Promise<string> {
+      let page!: React.ReactElement;
+      await act(async () => {
+        page = <SchemaTruthCheckPage />;
+      });
+      await act(async () => {
+        root.render(page);
+      });
+      return container.innerHTML;
+    }
+
+    it("renders one main + one h1 with the url field and no retired tokens", async () => {
+      const markup = await renderSchemaTruthCheckPage();
+
+      expect(countTag(markup, "main")).toBe(1);
+      expect(countTag(markup, "h1")).toBe(1);
+      expect(markup).toContain(">Schema Doğruluk Denetimi</h1>");
+      expect(markup).toContain("Seovista / Instruments");
+
+      expect(markup).toContain('id="url"');
+      expect(markup).toContain('for="url"');
+      const label = container.querySelector('label[for="url"]');
+      expect(label).not.toBeNull();
+      expect(label!.getAttribute("for")).toBe("url");
+      expect(container.querySelector("#url")).not.toBeNull();
+
+      // Idle submit button is enabled with the idle label.
+      expect(markup).toContain(">Denetimi Başlat</button>");
+      const idleButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(idleButton).not.toBeNull();
+      expect(idleButton!.hasAttribute("disabled")).toBe(false);
+      expect(idleButton!.textContent).toContain("Denetimi Başlat");
+      expect(idleButton!.textContent).not.toContain("Denetleniyor...");
+
+      expect(markup).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("surfaces the form error note when the action returns the failure branch", async () => {
+      mockStartSchemaTruthCheckAction.mockResolvedValue(failureState);
+      await renderSchemaTruthCheckPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartSchemaTruthCheckAction).toHaveBeenCalledTimes(1);
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert).not.toBeNull();
+      expect(alert!.textContent).toContain("limitine");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("renders no error note on the success branch", async () => {
+      mockStartSchemaTruthCheckAction.mockResolvedValue(idleState);
+      await renderSchemaTruthCheckPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartSchemaTruthCheckAction).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      const button = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+      expect(button!.hasAttribute("disabled")).toBe(false);
+      expect(button!.textContent).toContain("Denetimi Başlat");
+      expect(container.innerHTML).toContain(">Denetimi Başlat</button>");
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+    });
+
+    it("disables the submit button while pending, then returns to idle on resolution", async () => {
+      let deferredResolve!: (state: SchemaTruthActionState) => void;
+      const deferredPromise = new Promise<SchemaTruthActionState>((resolve) => {
+        deferredResolve = resolve;
+      });
+      mockStartSchemaTruthCheckAction.mockImplementationOnce(() => deferredPromise);
+
+      await renderSchemaTruthCheckPage();
+      const form = container.querySelector("form");
+      expect(form).not.toBeNull();
+
+      await act(async () => {
+        form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(mockStartSchemaTruthCheckAction).toHaveBeenCalledTimes(1);
+
+      const pendingButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(pendingButton).not.toBeNull();
+      expect(pendingButton!.hasAttribute("disabled")).toBe(true);
+      expect(pendingButton!.textContent).toContain("Denetleniyor...");
+      expect(pendingButton!.textContent).not.toContain("Denetimi Başlat");
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
+
+      await act(async () => {
+        deferredResolve(idleState);
+      });
+      await act(async () => {});
+
+      const settledButton = container.querySelector("button[type='submit']") as HTMLButtonElement | null;
+      expect(settledButton).not.toBeNull();
+      expect(settledButton!.hasAttribute("disabled")).toBe(false);
+      expect(settledButton!.textContent).toContain("Denetimi Başlat");
+      expect(settledButton!.textContent).not.toContain("Denetleniyor...");
       expect(container.querySelector('[role="alert"]')).toBeNull();
       expect(container.innerHTML).not.toMatch(RETIRED_TOKEN_RE);
     });
