@@ -40,6 +40,14 @@ export interface GeoWorkerOptions {
    */
   queueName?: string;
   /**
+   * Override the BullMQ crew notification queue name. Defaults to
+   * "crew-notifications". Tests pass a unique name so parallel workers /
+   * orphaned processes listening on the default queue cannot consume (and
+   * skip, or retry) the test's crew notifications before the in-process
+   * crew worker does.
+   */
+  crewQueueName?: string;
+  /**
    * Override BullMQ concurrency limit. Defaults to GEO_WORKER_CONCURRENCY env or 3.
    */
   concurrency?: number;
@@ -127,8 +135,8 @@ export function startGeoWorker(options?: GeoWorkerOptions) {
   const db = createDbClient({ connectionString: process.env.DATABASE_URL, max: 2 });
   const engine = new ScoringEngine();
 
-  const crewQueue = createCrewQueue(connection);
-  const crewWorker = createCrewWorker(connection);
+  const crewQueue = createCrewQueue(connection, options?.crewQueueName);
+  const crewWorker = createCrewWorker(connection, options?.crewQueueName);
 
   const worker = new Worker(
     options?.queueName ?? "geo_readiness_jobs",

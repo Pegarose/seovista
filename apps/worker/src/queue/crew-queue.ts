@@ -115,8 +115,11 @@ export async function processCrewNotification(
 
 export const CREW_QUEUE_NAME = "crew-notifications";
 
-export function createCrewQueue(connection: ConnectionOptions): Queue<CrewAgencyPayload> {
-  return new Queue<CrewAgencyPayload>(CREW_QUEUE_NAME, {
+export function createCrewQueue(
+  connection: ConnectionOptions,
+  queueName: string = CREW_QUEUE_NAME,
+): Queue<CrewAgencyPayload> {
+  return new Queue<CrewAgencyPayload>(queueName, {
     connection,
     defaultJobOptions: {
       attempts: 3,
@@ -130,9 +133,12 @@ export function createCrewQueue(connection: ConnectionOptions): Queue<CrewAgency
   });
 }
 
-export function createCrewWorker(connection: ConnectionOptions): Worker<CrewAgencyPayload> {
+export function createCrewWorker(
+  connection: ConnectionOptions,
+  queueName: string = CREW_QUEUE_NAME,
+): Worker<CrewAgencyPayload> {
   return new Worker<CrewAgencyPayload>(
-    CREW_QUEUE_NAME,
+    queueName,
     async (job: Job<CrewAgencyPayload>) => {
       await processCrewNotification(job.data);
     },

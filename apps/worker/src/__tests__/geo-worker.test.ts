@@ -34,6 +34,10 @@ describe("geo-worker", () => {
   // production worker (and any orphaned workers on the default "bull" prefix)
   // cannot compete for this test's jobs on the shared "geo_readiness_jobs" queue.
   let queueName: string;
+  // Same isolation for the crew notification queue: the spawned production
+  // worker listens on the default "crew-notifications" queue and would consume
+  // (and skip, lacking CREW_AGENCY_API_KEY) the crew jobs this file enqueues.
+  let crewQueueName: string;
 
   beforeEach(async () => {
     env = await setupTestEnvironment();
@@ -46,6 +50,7 @@ describe("geo-worker", () => {
     delete process.env.NEURONWRITER_API_KEY;
     delete process.env.CREW_AGENCY_API_KEY;
     queueName = `geo_readiness_jobs_${env.projectId}`;
+    crewQueueName = `crew-notifications_${env.projectId}`;
 
     queue = new Queue(queueName, {
       connection: { url: env.redisUrl },
@@ -91,7 +96,7 @@ describe("geo-worker", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
 
-    worker = startGeoWorker({ queueName });
+    worker = startGeoWorker({ queueName, crewQueueName });
 
     const res = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
@@ -138,7 +143,7 @@ describe("geo-worker", () => {
       headers: { forEach: () => undefined },
     }));
 
-    worker = startGeoWorker({ queueName });
+    worker = startGeoWorker({ queueName, crewQueueName });
     const res = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id)
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
@@ -185,7 +190,7 @@ describe("geo-worker", () => {
       headers: { forEach: () => undefined },
     }));
 
-    worker = startGeoWorker({ queueName });
+    worker = startGeoWorker({ queueName, crewQueueName });
 
     const res = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id)
@@ -233,7 +238,7 @@ describe("geo-worker", () => {
       return { ...output, finalScore: undefined as never };
     });
 
-    worker = startGeoWorker({ queueName });
+    worker = startGeoWorker({ queueName, crewQueueName });
 
     const res = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id)
@@ -263,7 +268,7 @@ describe("geo-worker", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    worker = startGeoWorker({ queueName });
+    worker = startGeoWorker({ queueName, crewQueueName });
     
     const res = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
@@ -322,7 +327,7 @@ describe("geo-worker", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    worker = startGeoWorker({ queueName });
+    worker = startGeoWorker({ queueName, crewQueueName });
 
     const res = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
@@ -428,7 +433,7 @@ describe("geo-worker", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    worker = startGeoWorker({ queueName });
+    worker = startGeoWorker({ queueName, crewQueueName });
 
     // Test 503
     const res1 = await env.db.query(
@@ -510,7 +515,7 @@ describe("geo-worker", () => {
     // so we drive the abort through the real, configurable production timeout.
     process.env.CREW_WEBHOOK_TIMEOUT_MS = "300";
 
-    worker = startGeoWorker({ queueName });
+    worker = startGeoWorker({ queueName, crewQueueName });
 
     const res = await env.db.query(
       `INSERT INTO job_records (job_identity, queue_name, status, target, correlation_id) 
