@@ -369,18 +369,29 @@ describe("isolated lifecycle scenarios", () => {
     it.skipIf(process.platform === "win32")(
       `cleans run-labeled resources on ${signal} interruption`,
       async () => {
-        const child = spawn("node", [lifecycleScript, "start", `seovista-lc-${signal.toLowerCase()}`], {
+        const runId = `seovista-lc-${signal.toLowerCase()}`;
+        const child = spawn("node", [lifecycleScript, "start", runId], {
           cwd: root,
           stdio: "pipe",
           windowsHide: true,
         });
-        let output = "";
-        child.stdout.on("data", (data) => {
-          output += data.toString();
-        });
-        for (let attempt = 0; attempt < 120 && !output.includes("context.json"); attempt++) await waitFor(250);
-        const contextPath = output.trim().split(/\r?\n/).at(-1)!;
+
+        // Signal the CLI mid-start. The context file is written before docker
+        // compose begins (activeRun is set first), so polling the evidence
+        // directory is the deterministic interrupt point — stdout only carries
+        // the context path after start fully completes, at which point the
+        // CLI may already have exited (its lifecycle ends when start returns).
+        let contextPath = "";
+        for (let attempt = 0; attempt < 120 && !contextPath; attempt++) {
+          const candidates = readdirSync(evidenceDirectory)
+            .filter((name) => name.startsWith(`${runId}-`) && name.endsWith("-context.json"))
+            .map((name) => resolve(evidenceDirectory, name));
+          if (candidates.length > 0) contextPath = candidates[0]!;
+          else await waitFor(250);
+        }
+        expect(contextPath).not.toBe("");
         const context = JSON.parse(readFileSync(contextPath, "utf8")).context as RunContext;
+
         child.kill(signal);
         await new Promise<void>((resolveClose) => child.once("close", () => resolveClose()));
         expect(isOwnedContainerRunning(context)).toBe(false);
