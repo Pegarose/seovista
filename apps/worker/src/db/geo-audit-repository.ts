@@ -148,7 +148,16 @@ export function createGeoAuditRepository(client: DbClient) {
          WHERE j.id = $1`,
         [id]
       );
-      return res.rows[0];
+      const row = res.rows[0];
+      if (!row) return undefined;
+      // pg parses timestamptz columns into Date objects; the record contract
+      // declares an ISO string, so normalize before the web layer renders it.
+      const submittedAt = row.submitted_at as unknown;
+      return {
+        ...row,
+        submitted_at:
+          submittedAt instanceof Date ? submittedAt.toISOString() : row.submitted_at,
+      };
     },
     /**
      * Fetch the most recent `job_results.payload` for a `job_records.id`.
