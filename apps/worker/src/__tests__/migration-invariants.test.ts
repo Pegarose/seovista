@@ -169,7 +169,10 @@ describe("Migration Invariants", () => {
 
     it("advisory lock serializes concurrent access", async () => {
       const locks = await env.db.query<{ count: string }>(
-        "SELECT count(*)::text AS count FROM pg_locks WHERE locktype = 'advisory' AND objid = 42001",
+        // Scope to the current database: pg_locks is cluster-wide, and a
+        // parallel test file's in-flight migration holds the same advisory
+        // key on its own database, which must not pollute this assertion.
+        "SELECT count(*)::text AS count FROM pg_locks WHERE locktype = 'advisory' AND objid = 42001 AND datid = (SELECT oid FROM pg_database WHERE datname = current_database())",
       );
       // After applyAll completes and releases the lock, no advisory lock remains
       expect(Number(locks.rows[0]?.count ?? 0)).toBe(0);

@@ -1,4 +1,4 @@
-/* global clearTimeout, console, process, queueMicrotask, setTimeout */
+/* global clearTimeout, console, process, setTimeout */
 
 import { execSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -58,11 +58,17 @@ export function buildWorkerTerminationSpec(platform = process.platform, pid = pr
 
 function defaultSpawnWorker(env) {
   const command = buildWorkerSpawnSpec();
-  return spawn(command.command, command.args, {
+  const options = {
     stdio: ["ignore", "pipe", "pipe"],
     env,
     shell: command.shell,
-  });
+  };
+  if (process.platform !== "win32") {
+    // Run the worker as a process-group leader on POSIX so the entire tree
+    // (corepack -> pnpm -> node worker) can be signalled together at shutdown.
+    options.detached = true;
+  }
+  return spawn(command.command, command.args, options);
 }
 
 function parseWorkerStatus(line) {
@@ -215,11 +221,23 @@ function defaultKillWorkerTree(spec) {
   return spawnSync(spec.command, spec.args, { stdio: "ignore" });
 }
 
+function defaultKillProcessGroup(pid) {
+  if (typeof pid !== "number" || pid <= 0) return;
+  try {
+    // A negative PID targets the entire detached process group, so the
+    // grandchild worker (not just the corepack shim) receives the signal.
+    process.kill(-pid, "SIGTERM");
+  } catch {
+    // Best-effort: the process group may already be gone.
+  }
+}
+
 export function stopWorker(worker, options = {}) {
   const state = trackWorkerLifecycle(worker);
   const timeoutMs = options.timeoutMs ?? DEFAULT_WORKER_STOP_TIMEOUT_MS;
   const platform = options.platform ?? process.platform;
   const killTree = options.killWorkerTree ?? defaultKillWorkerTree;
+  const killProcessGroup = options.killProcessGroup ?? defaultKillProcessGroup;
   if (state.closed || closedWorkers.has(worker)) return Promise.resolve();
 
   return new Promise((resolve, reject) => {
@@ -252,6 +270,12 @@ export function stopWorker(worker, options = {}) {
         killTree(terminationSpec);
       } else {
         worker.kill();
+        if (platform !== "win32") {
+          // POSIX: also signal the whole detached process group so the
+          // grandchild worker shuts down and the job is not held open until
+          // the CI timeout.
+          killProcessGroup(worker.pid);
+        }
       }
     } catch (error) {
       finish(error);

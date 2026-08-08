@@ -52,6 +52,7 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_SITE_URL: "https://seovista.com",
       NEXTG_API_URL: "http://localhost:3101",
+      SEOVISTA_FORCE_CANONICAL_REDIRECTS: "1",
     },
   },
 });

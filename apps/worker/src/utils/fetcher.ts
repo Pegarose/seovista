@@ -636,6 +636,14 @@ async function fetchViaCheerio(targetUrl: string): Promise<{ rawHtml: string; st
     }
   });
 
+  // A target page that answers an audit with an HTTP error has no auditable
+  // content; scoring the error page would fabricate a result. Fail the audit
+  // instead. (Plain-text fetches such as robots.txt go through
+  // fetchTextSafely, which intentionally keeps its 404-tolerant contract.)
+  if (result.status >= 400) {
+    throw new Error(`Target page returned HTTP ${result.status}`);
+  }
+
   return { rawHtml: result.body, statusCode: result.status, headers: result.headers };
 }
 

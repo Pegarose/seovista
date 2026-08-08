@@ -1,5 +1,20 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+
+/**
+ * Runs axe against the page's resting state. Entrance animations (e.g. the
+ * hero fade-in) leave elements at partial opacity while they play, and axe
+ * reads those as color-contrast violations; disabling animations keeps the
+ * scan deterministic on slower CI runners.
+ */
+async function analyzeWithAxe(page: Page) {
+  await page.addStyleTag({
+    content: "*, *::before, *::after { animation: none !important; transition: none !important; }",
+  });
+  return new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+}
 
 const representativeRoutes = [
   "/",
@@ -21,9 +36,7 @@ const representativeRoutes = [
 for (const route of representativeRoutes) {
   test(`a11y: ${route} has zero serious or critical axe violations at desktop`, async ({ page }) => {
     await page.goto(route);
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
+    const accessibilityScanResults = await analyzeWithAxe(page);
 
     const seriousOrCritical = accessibilityScanResults.violations.filter(
       (v) => v.impact === "serious" || v.impact === "critical",
@@ -47,9 +60,7 @@ for (const route of ["/", "/geo/", "/tools/", "/tools/geo-readiness-checker/", "
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto(route);
 
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
+    const accessibilityScanResults = await analyzeWithAxe(page);
 
     const seriousOrCritical = accessibilityScanResults.violations.filter(
       (v) => v.impact === "serious" || v.impact === "critical",

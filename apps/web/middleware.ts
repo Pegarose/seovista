@@ -74,6 +74,10 @@ function canonicalPath(pathname: string): string | undefined {
 }
 
 function isDevelopmentRequest(request: NextRequest): boolean {
+  // Test harnesses (e.g. the Playwright web server) set this flag so the
+  // production canonical-redirect matrix can be exercised against a local
+  // server; the local-dev carve-out below remains the default everywhere else.
+  if (process.env.SEOVISTA_FORCE_CANONICAL_REDIRECTS === "1") return false;
   if (process.env.NODE_ENV === "development") return true;
   const hostname = request.nextUrl.hostname.toLowerCase();
   if (DEVELOPMENT_HOSTS.has(hostname)) return true;
