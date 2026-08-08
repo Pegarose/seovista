@@ -401,6 +401,11 @@ jobs:
 
       - name: Run Lighthouse CI
         run: corepack pnpm lighthouse
+        env:
+          # instrumentation.ts validates the web env at server boot; CI has no
+          # .env, so provide the mock-canonical values the serve child needs.
+          NEXT_PUBLIC_SITE_URL: "https://seovista.com"
+          NEXTG_API_URL: "http://localhost:3101"
 
       - name: Upload Lighthouse artifacts on failure
         if: failure()
