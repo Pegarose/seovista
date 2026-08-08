@@ -28,14 +28,11 @@ test('executes end-to-end GEO lead capture workflow', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Unlock Full Detailed Report' })).toBeVisible({ timeout: 30000 });
   
   // Fill the email and check the consent checkbox
-  // We need to look at GatedReportForm to confirm exact locators, but usually it's "Work Email"
+  // The completed page renders both the gated-report consent and the crew
+  // report consent, so scope the checkbox to the gated form's own label.
   await page.getByLabel(/Work Email/i).fill('playwright@seovista.example');
   
-  // Consent checkbox, label usually has "consent" or "agree"
-  // Assuming a generic checkbox locator if no specific label is found, let's look at the component if needed, 
-  // but for now we'll guess standard names or update if needed.
-  // We'll use a generic selector for checkboxes.
-  await page.getByRole('checkbox').check();
+  await page.getByRole('checkbox', { name: /occasional updates/i }).check();
   
   // Submit the gated form
   await page.getByRole('button', { name: 'Unlock Report' }).click();
