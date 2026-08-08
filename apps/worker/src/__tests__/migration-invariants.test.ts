@@ -172,7 +172,8 @@ describe("Migration Invariants", () => {
         // Scope to the current database: pg_locks is cluster-wide, and a
         // parallel test file's in-flight migration holds the same advisory
         // key on its own database, which must not pollute this assertion.
-        "SELECT count(*)::text AS count FROM pg_locks WHERE locktype = 'advisory' AND objid = 42001 AND datid = (SELECT oid FROM pg_database WHERE datname = current_database())",
+        // (pg_locks names the database-OID column "database", not "datid".)
+        "SELECT count(*)::text AS count FROM pg_locks WHERE locktype = 'advisory' AND objid = 42001 AND database = (SELECT oid FROM pg_database WHERE datname = current_database())",
       );
       // After applyAll completes and releases the lock, no advisory lock remains
       expect(Number(locks.rows[0]?.count ?? 0)).toBe(0);
